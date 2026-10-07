@@ -17,6 +17,7 @@ jobs:
       - run: bun run check
       - run: bun run typecheck
       - run: bun run test
+      - run: bun run --filter '@footprint/browser' build
       - run: bun run --filter '@footprint/browser' size
       - run: cd app && bun run build
 
