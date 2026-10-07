@@ -34,13 +34,13 @@ The key is in the body (not a header) because `navigator.sendBeacon` cannot set 
 | `uuid` | string | yes | UUID (v7 recommended); used for dedup |
 | `event` | string | yes | 1–200 chars. Names starting with `$` are reserved for footprint |
 | `distinct_id` | string | yes | 1–200 chars |
-| `timestamp` | string | yes | RFC 3339 / ISO 8601 with timezone |
+| `timestamp` | string | yes | RFC 3339 / ISO 8601 with timezone, between 1900 and 2299 after skew correction |
 | `session_id` | string | no | ≤ 200 chars |
 | `properties` | object | no | JSON object, any depth |
 | `person` | object | no | `{ set?: object, set_once?: object }` |
 | `groups` | object | no | map of group type → group key, both strings ≤ 200 chars, max 5 entries |
 
-Unknown top-level fields are ignored. `sent_at` is optional; when present the server corrects client clock skew: `timestamp + (server_now - sent_at)`.
+Unknown top-level fields are ignored, and `null` optional fields count as absent. Lengths are counted in characters. `sent_at` is optional; when present the server corrects client clock skew: `timestamp + (server_now - sent_at)`.
 
 ### Limits
 
@@ -55,6 +55,7 @@ Unknown top-level fields are ignored. `sent_at` is optional; when present the se
 | `400` | `{"error": "invalid_batch", "details": [{"index": 0, "field": "event", "message": "…"}]}` | Malformed JSON or invalid event |
 | `401` | `{"error": "invalid_api_key"}` | Missing or unknown key |
 | `413` | `{"error": "payload_too_large"}` | Over the limits |
+| `503` | `{"error": "not_ready"}` or `{"error": "overloaded"}` | Project keys not loaded yet, or the write queue is full. SDKs retry with backoff |
 
 ## Reserved events
 

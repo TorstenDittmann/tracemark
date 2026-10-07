@@ -1,0 +1,30 @@
+{
+	"api_key": "fp_pub_test",
+	"sent_at": "2026-10-07T21:00:00.000Z",
+	"batch": [
+		{
+			"uuid": "01927d0b-8c4a-7cc2-9f43-3c1b2b0e9a21",
+			"event": "$pageview",
+			"distinct_id": "user_123",
+			"timestamp": "2026-10-07T20:59:58.120Z"
+		},
+		{
+			"uuid": "01927d0b-8c4a-7cc2-9f43-3c1b2b0e9a22",
+			"event": "signed_up",
+			"distinct_id": "user_123",
+			"timestamp": "2026-10-07T22:59:59+02:00",
+			"properties": {
+				"method": "email"
+			}
+		},
+		{
+			"uuid": "01927d0b-8c4a-7cc2-9f43-3c1b2b0e9a23",
+			"event": "$identify",
+			"distinct_id": "user_456",
+			"timestamp": "2026-10-07T20:59:58.120Z",
+			"properties": {
+				"$anon_distinct_id": "anon_1"
+			}
+		}
+	]
+}
