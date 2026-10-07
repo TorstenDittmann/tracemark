@@ -40,9 +40,9 @@ services:
       CLICKHOUSE_USER: footprint
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-footprint}
       CLICKHOUSE_DATABASE: footprint
-      SPILL_DIR: /spill
     volumes:
-      - ingest-spill:/spill
+      # The image pre-creates /app/spill owned by the nonroot user; mounting there keeps it writable.
+      - ingest-spill:/app/spill
     depends_on:
       clickhouse:
         condition: service_healthy
