@@ -1,0 +1,38 @@
+{
+	"api_key": "fp_pub_test",
+	"sent_at": "2026-10-07T21:00:00.000Z",
+	"batch": [
+		{
+			"uuid": "01927d0b-8c4a-7cc2-9f43-3c1b2b0e9a12",
+			"event": "$pageview",
+			"distinct_id": "user_123",
+			"timestamp": "2026-10-07T20:59:58.120Z",
+			"session_id": "01927d0b-0000-7000-8000-000000000001",
+			"properties": {
+				"$current_url": "https://example.com/pricing",
+				"$pathname": "/pricing",
+				"nested": {
+					"a": [
+						1,
+						2,
+						{
+							"b": true
+						}
+					]
+				}
+			},
+			"person": {
+				"set": {
+					"plan": "pro"
+				},
+				"set_once": {
+					"first_seen_on": "web"
+				}
+			},
+			"groups": {
+				"company": "acme",
+				"team": "growth"
+			}
+		}
+	]
+}

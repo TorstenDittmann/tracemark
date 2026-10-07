@@ -1,0 +1,10 @@
+{
+	"api_key": "fp_pub_test",
+	"batch": [
+		{
+			"event": "$pageview",
+			"distinct_id": "user_123",
+			"timestamp": "2026-10-07T20:59:58.120Z"
+		}
+	]
+}
