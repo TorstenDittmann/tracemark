@@ -1,0 +1,10 @@
+# One public hostname: event ingestion goes to the Rust service, everything else to the app.
+{$FOOTPRINT_HOST::80} {
+	@ingest path /e /e/* /v1/traces
+	handle @ingest {
+		reverse_proxy ingest:8081
+	}
+	handle {
+		reverse_proxy app:3000
+	}
+}
