@@ -41,8 +41,10 @@ export function setURL(url: string) {
 export function clearCookies() {
 	for (const part of document.cookie.split(';')) {
 		const name = part.split('=')[0]?.trim();
+		// Max-Age=-1, not 0: happy-dom expires a Max-Age=0 cookie at Date.now() and only drops it a
+		// millisecond later, so a fast next test could still see `name=`.
 		// biome-ignore lint/suspicious/noDocumentCookie: test cleanup
-		if (name) document.cookie = `${name}=; Max-Age=0; Path=/`;
+		if (name) document.cookie = `${name}=; Max-Age=-1; Path=/`;
 	}
 }
 
