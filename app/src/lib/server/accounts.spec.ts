@@ -47,7 +47,7 @@ describe('setupFirstUser', () => {
 });
 
 describe('sign-up', () => {
-	it('is closed after the first user unless invited', async () => {
+	it('is closed after the first user unless there is a current invitation', async () => {
 		const { db, auth } = await setup();
 		const owner = await setupFirstUser(auth, db, input);
 		if (!owner) throw new Error('no owner');
@@ -57,13 +57,16 @@ describe('sign-up', () => {
 
 		const [org] = await listOrganizationsForUser(db, owner.id);
 		if (!org) throw new Error('no org');
-		await db.insert(invitations).values({
+		const invite = {
 			organizationId: org.id,
 			email: 'eve@example.com',
 			role: 'member',
-			expiresAt: new Date(Date.now() + 60_000),
 			inviterId: owner.id
-		});
+		};
+		await db.insert(invitations).values({ ...invite, expiresAt: new Date(Date.now() - 1000) });
+		await expect(auth.api.signUpEmail({ body })).rejects.toThrow(/closed/);
+
+		await db.insert(invitations).values({ ...invite, expiresAt: new Date(Date.now() + 60_000) });
 		expect((await auth.api.signUpEmail({ body })).user.email).toBe('eve@example.com');
 	});
 });

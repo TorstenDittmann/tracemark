@@ -1,7 +1,7 @@
 import { APIError, type BetterAuthPlugin, betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { organization } from 'better-auth/plugins';
-import { and, count, eq } from 'drizzle-orm';
+import { and, count, eq, gt } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import * as schema from '../db/schema';
 
@@ -16,7 +16,7 @@ export interface AuthConfig {
 	plugins?: BetterAuthPlugin[];
 }
 
-/** Sign-up is open for the instance's first user and, later, for people with a pending invitation. */
+/** Sign-up is open for the instance's first user and, later, for people with a pending, unexpired invitation. */
 async function canSignUp(db: Db, email: string): Promise<boolean> {
 	const [row] = await db.select({ n: count() }).from(schema.users);
 	if ((row?.n ?? 0) === 0) return true;
@@ -26,7 +26,8 @@ async function canSignUp(db: Db, email: string): Promise<boolean> {
 		.where(
 			and(
 				eq(schema.invitations.email, email.toLowerCase()),
-				eq(schema.invitations.status, 'pending')
+				eq(schema.invitations.status, 'pending'),
+				gt(schema.invitations.expiresAt, new Date())
 			)
 		)
 		.limit(1);
