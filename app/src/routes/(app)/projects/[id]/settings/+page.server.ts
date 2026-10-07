@@ -2,6 +2,7 @@ import { error, fail, redirect } from '@sveltejs/kit';
 import { deleteProjectEvents } from '#lib/server/analytics.js';
 import { getDb } from '#lib/server/db/index.js';
 import {
+	canManage,
 	deleteProject,
 	getProjectForUser,
 	renameProject,
@@ -11,11 +12,12 @@ import {
 import type { Actions, RequestEvent } from './$types';
 
 /** Actions don't run layout loads, so each one checks access itself. */
-async function access({ locals, params }: RequestEvent, ownerOnly: boolean) {
+async function access({ locals, params }: RequestEvent, managersOnly: boolean) {
 	if (!locals.user) redirect(303, '/login');
 	const row = await getProjectForUser(getDb(), locals.user.id, params.id);
 	if (!row) error(404, 'Project not found');
-	if (ownerOnly && row.role !== 'owner') error(403, 'Only organization owners can do this');
+	if (managersOnly && !canManage(row.role))
+		error(403, 'Only organization owners and admins can do this');
 	return row.project;
 }
 

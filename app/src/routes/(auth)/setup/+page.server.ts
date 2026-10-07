@@ -1,7 +1,8 @@
 import { fail, redirect } from '@sveltejs/kit';
-import { hasUsers, setupFirstUser, validateCredentials } from '#lib/server/accounts.js';
-import { setSessionCookie } from '#lib/server/auth/cookie.js';
-import { createSession } from '#lib/server/auth/session.js';
+import { isAPIError } from 'better-auth/api';
+import { hasUsers, setupFirstUser } from '#lib/server/accounts.js';
+import { MIN_PASSWORD_LENGTH } from '#lib/server/auth/index.js';
+import { getAuth } from '#lib/server/auth/instance.js';
 import { getDb } from '#lib/server/db/index.js';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -11,7 +12,7 @@ export const load: PageServerLoad = async () => {
 };
 
 export const actions: Actions = {
-	default: async ({ request, cookies, url }) => {
+	default: async ({ request }) => {
 		const form = await request.formData();
 		const input = {
 			name: String(form.get('name') ?? '').trim(),
@@ -21,17 +22,27 @@ export const actions: Actions = {
 		};
 		const values = { name: input.name, email: input.email, organization: input.organization };
 
-		const errors: Record<string, string> = validateCredentials(input) ?? {};
+		const errors: Record<string, string> = {};
 		if (!input.name) errors.name = 'Enter your name.';
+		if (!/^[^\s@]+@[^\s@]+$/.test(input.email)) errors.email = 'Enter a valid email address.';
+		if (input.password.length < MIN_PASSWORD_LENGTH) {
+			errors.password = `Use at least ${MIN_PASSWORD_LENGTH} characters.`;
+		} else if (input.password.length > 256) {
+			errors.password = 'Use at most 256 characters.';
+		}
 		if (!input.organization) errors.organization = 'Enter an organization name.';
 		if (Object.keys(errors).length) return fail(400, { values, errors });
 
-		const db = getDb();
-		const user = await setupFirstUser(db, input);
-		if (!user) redirect(303, '/login');
-
-		const session = await createSession(db, user.id);
-		setSessionCookie(cookies, url, session.token, session.expiresAt);
-		redirect(303, '/projects');
+		let user: Awaited<ReturnType<typeof setupFirstUser>>;
+		try {
+			// The SvelteKit cookie plugin sets the session cookie.
+			user = await setupFirstUser(getAuth(), getDb(), input, request.headers);
+		} catch (err) {
+			if (isAPIError(err)) {
+				return fail(400, { values, errors: { email: err.message } as Record<string, string> });
+			}
+			throw err;
+		}
+		redirect(303, user ? '/projects' : '/login');
 	}
 };

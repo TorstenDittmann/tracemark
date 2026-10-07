@@ -25,11 +25,11 @@ SDKs ──POST /e──▶ ingest (Rust) ──batched inserts──▶ ClickHo
 ## Self-hosting
 
 ```sh
-cp .env.example .env            # set INTERNAL_TOKEN (openssl rand -hex 32)
+cp .env.example .env            # set INTERNAL_TOKEN and AUTH_SECRET (openssl rand -hex 32 each)
 docker compose up -d
 ```
 
-Open `http://localhost:8080`. The first visit asks you to create the owner account and an organization; after that, create a project to get its public key. Everything is served on one port (default `8080`): `/e` goes to the ingest service, everything else to the app. Set `FOOTPRINT_HOST=analytics.example.com` to get automatic HTTPS.
+Open `http://localhost:8080`. The first visit asks you to create the owner account and an organization; after that, create a project to get its public key. Everything is served on one port (default `8080`): `/e` goes to the ingest service, everything else to the app. Set `FOOTPRINT_HOST=analytics.example.com` and `PUBLIC_URL=https://analytics.example.com` to get automatic HTTPS. Sign-in uses [better-auth](https://www.better-auth.com).
 
 ## Tracking events
 

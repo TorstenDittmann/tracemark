@@ -1,12 +1,15 @@
 // See https://svelte.dev/docs/kit/types#app.d.ts
 // for information about these interfaces
-import type { SessionUser } from '#lib/server/auth/session.js';
+import type { Auth } from '#lib/server/auth/index.js';
+
+type AuthSession = NonNullable<Awaited<ReturnType<Auth['api']['getSession']>>>;
 
 declare global {
 	namespace App {
 		// interface Error {}
 		interface Locals {
-			user: SessionUser | null;
+			user: AuthSession['user'] | null;
+			session: AuthSession['session'] | null;
 		}
 		// interface PageData {}
 		// interface PageState {}

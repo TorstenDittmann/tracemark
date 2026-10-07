@@ -9,7 +9,7 @@ import type { PageProps } from './$types';
 let { data, form }: PageProps = $props();
 let confirmName = $state('');
 
-const isOwner = $derived(data.role === 'owner');
+const canManage = $derived(data.role === 'owner' || data.role === 'admin');
 const messageFor = (action: string) => (form?.action === action ? form.message : null);
 </script>
 
@@ -64,7 +64,7 @@ const messageFor = (action: string) => (form?.action === action ? form.message :
 					if (!confirm('Rotate the key? Events sent with the old key will be rejected.')) cancel();
 				}}
 			>
-				<Button type="submit" variant="outline" disabled={!isOwner}>Rotate key</Button>
+				<Button type="submit" variant="outline" disabled={!canManage}>Rotate key</Button>
 			</form>
 			{#if messageFor('rotate')}
 				<p class="mt-2 text-sm text-muted-foreground" role="status">{messageFor('rotate')}</p>
@@ -89,13 +89,13 @@ const messageFor = (action: string) => (form?.action === action ? form.message :
 					name="confirm"
 					autocomplete="off"
 					bind:value={confirmName}
-					disabled={!isOwner}
+					disabled={!canManage}
 				/>
 				<div>
 					<Button
 						type="submit"
 						variant="destructive"
-						disabled={!isOwner || confirmName !== data.project.name}
+						disabled={!canManage || confirmName !== data.project.name}
 					>
 						Delete project
 					</Button>
@@ -107,9 +107,9 @@ const messageFor = (action: string) => (form?.action === action ? form.message :
 		</Card.Content>
 	</Card.Root>
 
-	{#if !isOwner}
+	{#if !canManage}
 		<p class="text-sm text-muted-foreground">
-			Only organization owners can rotate keys or delete projects.
+			Only organization owners and admins can rotate keys or delete projects.
 		</p>
 	{/if}
 </div>

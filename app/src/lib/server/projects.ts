@@ -1,7 +1,12 @@
 import { and, asc, eq } from 'drizzle-orm';
 import type { Db } from './db/client';
-import { memberships, organizations, projects } from './db/schema';
+import { members, organizations, projects } from './db/schema';
 import { generatePublicKey } from './keys';
+
+/** Owners and admins manage keys and can delete projects; members can view and rename. */
+export function canManage(role: string): boolean {
+	return role === 'owner' || role === 'admin';
+}
 
 export function validateProjectName(name: string): string | null {
 	if (!name) return 'Enter a name.';
@@ -11,10 +16,10 @@ export function validateProjectName(name: string): string | null {
 
 export async function listOrganizationsForUser(db: Db, userId: string) {
 	return db
-		.select({ id: organizations.id, name: organizations.name, role: memberships.role })
-		.from(memberships)
-		.innerJoin(organizations, eq(memberships.organizationId, organizations.id))
-		.where(eq(memberships.userId, userId))
+		.select({ id: organizations.id, name: organizations.name, role: members.role })
+		.from(members)
+		.innerJoin(organizations, eq(members.organizationId, organizations.id))
+		.where(eq(members.userId, userId))
 		.orderBy(asc(organizations.name));
 }
 
@@ -28,26 +33,26 @@ export async function listProjectsForUser(db: Db, userId: string) {
 		})
 		.from(projects)
 		.innerJoin(organizations, eq(projects.organizationId, organizations.id))
-		.innerJoin(memberships, eq(memberships.organizationId, projects.organizationId))
-		.where(eq(memberships.userId, userId))
+		.innerJoin(members, eq(members.organizationId, projects.organizationId))
+		.where(eq(members.userId, userId))
 		.orderBy(asc(organizations.name), asc(projects.name));
 }
 
 /** The project with the user's role in its organization, or null when the user is not a member. */
 export async function getProjectForUser(db: Db, userId: string, projectId: string) {
 	const [row] = await db
-		.select({ project: projects, role: memberships.role })
+		.select({ project: projects, role: members.role })
 		.from(projects)
-		.innerJoin(memberships, eq(memberships.organizationId, projects.organizationId))
-		.where(and(eq(projects.id, projectId), eq(memberships.userId, userId)));
+		.innerJoin(members, eq(members.organizationId, projects.organizationId))
+		.where(and(eq(projects.id, projectId), eq(members.userId, userId)));
 	return row ?? null;
 }
 
 export async function getMembership(db: Db, userId: string, organizationId: string) {
 	const [row] = await db
 		.select()
-		.from(memberships)
-		.where(and(eq(memberships.userId, userId), eq(memberships.organizationId, organizationId)));
+		.from(members)
+		.where(and(eq(members.userId, userId), eq(members.organizationId, organizationId)));
 	return row ?? null;
 }
 
