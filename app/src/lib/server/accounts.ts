@@ -36,6 +36,9 @@ export async function setupFirstUser(
 	db: Db,
 	input: { name: string; email: string; password: string; organization: string }
 ): Promise<SessionUser | null> {
+	// Cheap check first so unauthenticated posts to a set-up instance never pay for scrypt;
+	// the check inside the transaction still settles a race between two first users.
+	if (await hasUsers(db)) return null;
 	const passwordHash = await hashPassword(input.password);
 	return db.transaction(async (tx) => {
 		const [existing] = await tx.select({ n: count() }).from(users);
