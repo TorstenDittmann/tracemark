@@ -13,7 +13,8 @@
 		"test": "vitest --run",
 		"db:generate": "drizzle-kit generate",
 		"migrate": "bun ./scripts/migrate.ts",
-		"create-project": "bun ./scripts/create-project.ts"
+		"create-project": "bun ./scripts/create-project.ts",
+		"reset-password": "bun ./scripts/reset-password.ts"
 	},
 	"dependencies": {
 		"@libsql/client": "^0.18.0",

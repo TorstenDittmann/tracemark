@@ -1,6 +1,6 @@
 // Creates an organization and a project and prints the project's public key.
 // Usage: bun run create-project --org "Acme" --name "Website"
-// Temporary until the dashboard has sign-up and project settings.
+// The dashboard does the same at /projects; this is for scripted setups.
 import { parseArgs } from 'node:util';
 import { organizations, projects } from '../src/lib/server/db/schema';
 import { generatePublicKey } from '../src/lib/server/keys';
