@@ -6,18 +6,31 @@ COPY app/package.json app/package.json
 COPY packages/sdk-browser/package.json packages/sdk-browser/package.json
 RUN bun install --frozen-lockfile
 COPY app app
-RUN cd app && bun run build
+WORKDIR /repo/app
+RUN bun run build
+# Scripts are bundled so the image needs no dev dependencies. libSQL loads a native
+# module and the server build imports drizzle, so both stay external and are copied below.
+RUN bun build scripts/start.ts scripts/migrate.ts scripts/create-project.ts scripts/reset-password.ts \
+        --target bun --outdir /out/scripts --external @libsql/client --external 'drizzle-orm' --external 'drizzle-orm/*' \
+    && bun scripts/copy-runtime-deps.ts /out @libsql/client drizzle-orm \
+        --exclude @types+ --exclude bun-types@ --exclude -musl@
+# The distroless image lacks libgcc_s, which libSQL's native module links, and a shell,
+# which `bun run <script>` needs. dash only depends on libc.
+RUN lib=usr/lib/$(uname -m)-linux-gnu && mkdir -p /out/root/$lib /out/root/usr/bin \
+    && cp /$lib/libgcc_s.so.1 /out/root/$lib/ \
+    && cp /bin/dash /out/root/usr/bin/sh
 
-FROM oven/bun:1.4-slim
+FROM oven/bun:1.4-distroless
 WORKDIR /srv/app
 ENV NODE_ENV=production DATABASE_URL=file:/data/footprint.db CLICKHOUSE_MIGRATIONS=/srv/clickhouse/migrations
-COPY --from=build /repo/app/package.json ./
-RUN bun install --production --ignore-scripts
+COPY app/docker/package.json ./
+COPY --from=build /out/root/ /
+COPY --from=build /out/node_modules ./node_modules
+COPY --from=build /out/scripts ./scripts
 COPY --from=build /repo/app/build ./build
-COPY --from=build /repo/app/scripts ./scripts
-COPY --from=build /repo/app/src/lib/server ./src/lib/server
-COPY --from=build /repo/app/drizzle ./drizzle
+COPY app/drizzle ./drizzle
 COPY clickhouse/migrations /srv/clickhouse/migrations
 VOLUME /data
 EXPOSE 3000
-CMD ["sh", "-c", "bun ./scripts/migrate.ts && bun ./build"]
+ENTRYPOINT []
+CMD ["bun", "./scripts/start.js"]
