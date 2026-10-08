@@ -63,3 +63,10 @@ jobs:
           for i in 1 2 3 4 5 6 7 8 9 10; do curl -sf http://localhost:8123/ping && break; sleep 2; done
           bun run migrate
           bun run migrate
+      - name: ClickHouse integration tests
+        working-directory: app
+        env:
+          CLICKHOUSE_TEST_URL: http://localhost:8123
+          CLICKHOUSE_TEST_USER: footprint
+          CLICKHOUSE_TEST_PASSWORD: footprint
+        run: bunx vitest --run src/lib/server/events.clickhouse.spec.ts

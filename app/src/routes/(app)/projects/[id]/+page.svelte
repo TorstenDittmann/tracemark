@@ -36,12 +36,20 @@ async function copy(label: string, text: string) {
 </svelte:head>
 
 <div class="grid gap-6">
-	<div class="grid gap-4 sm:grid-cols-2">
+	<div class="grid gap-4 sm:grid-cols-3">
 		<Card.Root class="gap-2">
 			<Card.Header>
 				<Card.Description>Events in the last 24 hours</Card.Description>
 				<Card.Title class="text-3xl tabular-nums">
 					{data.stats ? data.stats.last24h.toLocaleString() : '–'}
+				</Card.Title>
+			</Card.Header>
+		</Card.Root>
+		<Card.Root class="gap-2">
+			<Card.Header>
+				<Card.Description>People in the last 24 hours</Card.Description>
+				<Card.Title class="text-3xl tabular-nums">
+					{data.stats ? data.stats.people24h.toLocaleString() : '–'}
 				</Card.Title>
 			</Card.Header>
 		</Card.Root>
