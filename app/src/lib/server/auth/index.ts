@@ -8,6 +8,9 @@ import * as schema from '../db/schema';
 export const MIN_PASSWORD_LENGTH = 10;
 const DAY = 24 * 60 * 60;
 
+export const INVITE_ROLES = ['member', 'admin'] as const;
+export type InviteRole = (typeof INVITE_ROLES)[number];
+
 export interface AuthConfig {
 	/** Public URL of the instance; decides cookie security and trusted origins. Inferred per request when unset. */
 	baseURL?: string;
@@ -60,7 +63,15 @@ export function createAuth(db: Db, config: AuthConfig = {}) {
 		advanced: { database: { generateId: 'uuid' } },
 		telemetry: { enabled: false },
 		// cookie plugins must come last
-		plugins: [organization(), ...(config.plugins ?? [])]
+		plugins: [
+			organization({
+				invitationExpiresIn: 7 * DAY,
+				cancelPendingInvitationsOnReInvite: true,
+				// There is no email delivery: the invite link itself proves the address.
+				requireEmailVerificationOnInvitation: false
+			}),
+			...(config.plugins ?? [])
+		]
 	});
 }
 

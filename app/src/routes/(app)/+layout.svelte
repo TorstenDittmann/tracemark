@@ -25,6 +25,17 @@ let { data, children }: LayoutProps = $props();
 					</a>
 				{/each}
 			</nav>
+			<a
+				href="/organizations"
+				class={[
+					'rounded-md px-2.5 py-1.5 text-sm hover:bg-accent',
+					page.url.pathname.startsWith('/organizations')
+						? 'bg-accent font-medium'
+						: 'text-muted-foreground'
+				]}
+			>
+				Team
+			</a>
 			<span class="hidden text-sm text-muted-foreground sm:inline">{data.user.email}</span>
 			<form method="POST" action="/logout">
 				<Button type="submit" variant="ghost" size="sm">Sign out</Button>
