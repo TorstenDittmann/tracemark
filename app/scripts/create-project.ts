@@ -1,7 +1,8 @@
 // Creates an organization and a project and prints the project's public key.
 // Usage: bun run create-project --org "Acme" --name "Website"
-// Temporary until the dashboard has sign-up and project settings.
+// The dashboard does the same at /projects; this is for scripted setups.
 import { parseArgs } from 'node:util';
+import { slugify } from '../src/lib/server/accounts';
 import { organizations, projects } from '../src/lib/server/db/schema';
 import { generatePublicKey } from '../src/lib/server/keys';
 import { db } from './config';
@@ -17,7 +18,7 @@ if (!values.org || !values.name) {
 const database = db();
 const [organization] = await database
 	.insert(organizations)
-	.values({ name: values.org })
+	.values({ name: values.org, slug: slugify(values.org) })
 	.returning();
 if (!organization) throw new Error('failed to create organization');
 const [project] = await database

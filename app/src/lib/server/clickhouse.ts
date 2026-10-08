@@ -9,11 +9,15 @@ export interface ClickHouseConfig {
 export async function clickhouseQuery(
 	config: ClickHouseConfig,
 	query: string,
-	options: { database?: string | null } = {}
+	options: { database?: string | null; params?: Record<string, string> } = {}
 ): Promise<string> {
 	const url = new URL(config.url);
 	const database = options.database === undefined ? config.database : options.database;
 	if (database) url.searchParams.set('database', database);
+	// Bound to {name:Type} placeholders server-side, see ClickHouse "queries with parameters".
+	for (const [name, value] of Object.entries(options.params ?? {})) {
+		url.searchParams.set(`param_${name}`, value);
+	}
 
 	const response = await fetch(url, {
 		method: 'POST',

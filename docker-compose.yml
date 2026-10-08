@@ -1,4 +1,4 @@
-# Self-host footprint: `cp .env.example .env`, set INTERNAL_TOKEN, then `docker compose up -d`.
+# Self-host footprint: `cp .env.example .env`, set INTERNAL_TOKEN and AUTH_SECRET, then `docker compose up -d`.
 services:
   proxy:
     image: caddy:2
@@ -18,12 +18,17 @@ services:
       dockerfile: app/Dockerfile
     environment:
       INTERNAL_TOKEN: ${INTERNAL_TOKEN:?set INTERNAL_TOKEN in .env}
+      AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET in .env}
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:${FOOTPRINT_PORT:-8080}}
       CLICKHOUSE_URL: http://clickhouse:8123
       CLICKHOUSE_USER: footprint
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-footprint}
       CLICKHOUSE_DATABASE: footprint
       PROTOCOL_HEADER: x-forwarded-proto
       HOST_HEADER: x-forwarded-host
+      # Client IPs for sign-in rate limiting; Caddy is the only proxy in front of the app.
+      ADDRESS_HEADER: x-forwarded-for
+      XFF_DEPTH: 1
     volumes:
       - app-data:/data
     depends_on:

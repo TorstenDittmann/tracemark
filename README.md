@@ -2,7 +2,7 @@
 
 Lightweight, self-hosted product analytics: web and product analytics, error tracking, AI observability, feature flags, experiments, and people/group identification. Nothing else.
 
-> Early development. This is the phase 1 foundation: ingestion, storage and the browser SDK. The dashboard comes next.
+> Early development. Ingestion, storage, the browser SDK, sign-in and project management work today; analytics views come next.
 
 ## How it fits together
 
@@ -25,12 +25,11 @@ SDKs ──POST /e──▶ ingest (Rust) ──batched inserts──▶ ClickHo
 ## Self-hosting
 
 ```sh
-cp .env.example .env            # set INTERNAL_TOKEN (openssl rand -hex 32)
+cp .env.example .env            # set INTERNAL_TOKEN and AUTH_SECRET (openssl rand -hex 32 each)
 docker compose up -d
-docker compose exec app bun run create-project --org "Acme" --name "Website"
 ```
 
-The last command prints the project's public key. Everything is served on one port (default `8080`): `/e` goes to the ingest service, everything else to the app. Set `FOOTPRINT_HOST=analytics.example.com` to get automatic HTTPS.
+Open `http://localhost:8080`. The first visit asks you to create the owner account and an organization; after that, create a project to get its public key. Everything is served on one port (default `8080`): `/e` goes to the ingest service, everything else to the app. Set `FOOTPRINT_HOST=analytics.example.com` and `PUBLIC_URL=https://analytics.example.com` to get automatic HTTPS. Sign-in uses [better-auth](https://www.better-auth.com).
 
 ## Tracking events
 
@@ -43,6 +42,13 @@ footprint.identify('user_123', { set: { email: 'ada@example.com' } });
 ```
 
 Page views, including SPA navigations, are captured automatically.
+
+## Administration
+
+```sh
+docker compose exec app bun run reset-password --email ada@example.com   # set a new password, sign out everywhere
+docker compose exec app bun run create-project --org "Acme" --name "Website"   # scripted project setup
+```
 
 ## Development
 
