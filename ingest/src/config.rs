@@ -25,6 +25,11 @@ pub struct Config {
     pub spill_dir: PathBuf,
     pub queue_capacity: usize,
     pub log_json: bool,
+    /// MaxMind-format city database for location properties; none disables lookups.
+    pub geoip_db: Option<PathBuf>,
+    /// Header carrying the client address when behind a proxy, e.g. `x-forwarded-for`.
+    pub address_header: Option<String>,
+    pub xff_depth: usize,
 }
 
 impl Config {
@@ -54,6 +59,9 @@ impl Config {
             spill_dir: PathBuf::from(string("SPILL_DIR", "./spill")),
             queue_capacity: positive(&get, "QUEUE_CAPACITY", 100_000)?,
             log_json: get("LOG_FORMAT").is_some_and(|v| v.eq_ignore_ascii_case("json")),
+            geoip_db: get("GEOIP_DB").map(PathBuf::from),
+            address_header: get("ADDRESS_HEADER").map(|v| v.trim().to_ascii_lowercase()),
+            xff_depth: positive(&get, "XFF_DEPTH", 1)?,
         })
     }
 }
@@ -129,6 +137,9 @@ mod tests {
         assert_eq!(c.key_refresh, Duration::from_secs(30));
         assert_eq!(c.spill_dir, PathBuf::from("./spill"));
         assert!(!c.log_json);
+        assert_eq!(c.geoip_db, None);
+        assert_eq!(c.address_header, None);
+        assert_eq!(c.xff_depth, 1);
     }
 
     #[test]
@@ -140,8 +151,14 @@ mod tests {
             ("FLUSH_INTERVAL_MS", "250"),
             ("FLUSH_MAX_ROWS", "5"),
             ("LOG_FORMAT", "JSON"),
+            ("GEOIP_DB", "/data/city.mmdb"),
+            ("ADDRESS_HEADER", "X-Forwarded-For"),
+            ("XFF_DEPTH", "2"),
         ])
         .unwrap();
+        assert_eq!(c.geoip_db, Some(PathBuf::from("/data/city.mmdb")));
+        assert_eq!(c.address_header.as_deref(), Some("x-forwarded-for"));
+        assert_eq!(c.xff_depth, 2);
         assert_eq!(c.port, 9000);
         assert_eq!(c.clickhouse_url, "http://ch:8123");
         assert_eq!(c.flush_interval, Duration::from_millis(250));

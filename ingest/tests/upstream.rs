@@ -265,7 +265,16 @@ async fn spills_after_retries_then_replays_on_next_success() {
         .map(|r| r["distinct_id"].as_str().unwrap().to_owned())
         .collect();
     assert_eq!(ids, ["user_2", "user_1"]);
-    assert!(spill_files(&spill_dir).await.unwrap().is_empty());
+    // The file is removed after the replayed insert returns, so it can briefly outlive it.
+    let dir = spill_dir.clone();
+    eventually("the spill file to be removed", || {
+        std::fs::read_dir(&dir).is_ok_and(|entries| {
+            !entries
+                .flatten()
+                .any(|e| e.path().extension().is_some_and(|x| x == "jsonl"))
+        })
+    })
+    .await;
 
     drop(tx);
     writer.await.unwrap();
