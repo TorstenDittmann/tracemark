@@ -42,7 +42,7 @@ describe('model prices', () => {
 			custom: false
 		});
 
-		await deleteModelPrice(db, project.id, 'gpt-4o');
+		await deleteModelPrice(db, project.id, 'OpenAI/GPT-4o');
 		await deleteModelPrice(db, project.id, 'my-model');
 		const reverted = await modelPrices(db, project.id);
 		expect(reverted.find((p) => p.model === 'gpt-4o')).toMatchObject({ input: 2.5, custom: false });

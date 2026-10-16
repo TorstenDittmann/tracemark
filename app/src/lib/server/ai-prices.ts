@@ -81,5 +81,7 @@ export async function setModelPrice(
 export async function deleteModelPrice(db: Db, projectId: string, model: string) {
 	await db
 		.delete(aiModelPrices)
-		.where(and(eq(aiModelPrices.projectId, projectId), eq(aiModelPrices.model, model)));
+		.where(
+			and(eq(aiModelPrices.projectId, projectId), eq(aiModelPrices.model, normalizeModel(model)))
+		);
 }
