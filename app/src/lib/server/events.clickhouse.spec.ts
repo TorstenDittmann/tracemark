@@ -1,57 +1,33 @@
 // Runs against a real ClickHouse when CLICKHOUSE_TEST_URL is set (CI's migrations job does), skipped otherwise.
-import { resolve } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { type ClickHouseConfig, clickhouseQuery } from './clickhouse';
+import type { ClickHouseConfig } from './clickhouse';
+import {
+	clickhouseTestUrl,
+	createTestDatabase,
+	dropTestDatabase,
+	insertEvents,
+	type TestEvent
+} from './clickhouse-test';
 import { deleteProjectEvents, personProperties, projectEventStats } from './events';
-import { migrateClickhouse } from './migrate';
 
-const url = process.env.CLICKHOUSE_TEST_URL;
 const project = '11111111-1111-4111-8111-111111111111';
 const other = '22222222-2222-4222-8222-222222222222';
 
 let config: ClickHouseConfig;
-let seq = 0;
 
 function event(
 	distinctId: string,
 	name: string,
 	minutesAgo: number,
-	extra: { properties?: object; set?: object; setOnce?: object; projectId?: string } = {}
-) {
-	seq += 1;
-	return {
-		uuid: `00000000-0000-4000-8000-${String(seq).padStart(12, '0')}`,
-		project_id: extra.projectId ?? project,
-		event: name,
-		timestamp: new Date(Date.now() - minutesAgo * 60_000).toISOString().replace('Z', ''),
-		distinct_id: distinctId,
-		properties: extra.properties ?? {},
-		person_set: extra.set ?? {},
-		person_set_once: extra.setOnce ?? {}
-	};
+	extra: Partial<TestEvent> = {}
+): TestEvent {
+	return { distinctId, event: name, minutesAgo, projectId: project, ...extra };
 }
 
-async function insert(rows: object[]) {
-	await clickhouseQuery(
-		config,
-		`INSERT INTO events (uuid, project_id, event, timestamp, distinct_id, properties, person_set, person_set_once)
-		FORMAT JSONEachRow\n${rows.map((row) => JSON.stringify(row)).join('\n')}`
-	);
-}
-
-describe.skipIf(!url)('people in ClickHouse', () => {
+describe.skipIf(!clickhouseTestUrl)('people in ClickHouse', () => {
 	beforeAll(async () => {
-		config = {
-			url: url ?? '',
-			user: process.env.CLICKHOUSE_TEST_USER ?? 'default',
-			password: process.env.CLICKHOUSE_TEST_PASSWORD ?? '',
-			database: `footprint_test_${Date.now()}`
-		};
-		await migrateClickhouse(
-			config,
-			resolve(import.meta.dirname, '../../../../clickhouse/migrations')
-		);
-		await insert([
+		config = await createTestDatabase('people');
+		await insertEvents(config, [
 			event('anon-1', '$pageview', 30, { set: { plan: 'free' }, setOnce: { first_seen: 'web' } }),
 			event('user-1', '$identify', 20, {
 				properties: { $anon_distinct_id: 'anon-1' },
@@ -68,12 +44,7 @@ describe.skipIf(!url)('people in ClickHouse', () => {
 		]);
 	});
 
-	afterAll(async () => {
-		if (url)
-			await clickhouseQuery(config, `DROP DATABASE IF EXISTS ${config.database}`, {
-				database: null
-			});
-	});
+	afterAll(() => dropTestDatabase(config));
 
 	it('counts an anonymous visitor and the id they identify as as one person', async () => {
 		const stats = await projectEventStats(config, project);

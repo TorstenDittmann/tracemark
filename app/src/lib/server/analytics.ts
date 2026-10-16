@@ -6,8 +6,10 @@ import {
 } from '$app/env/private';
 import type { ClickHouseConfig } from './clickhouse';
 import * as events from './events';
+import * as web from './web';
 
 export type { EventStats } from './events';
+export type { WebAnalytics } from './web';
 
 function config(): ClickHouseConfig {
 	return {
@@ -23,3 +25,6 @@ export const projectEventStats = (projectId: string) =>
 
 export const deleteProjectEvents = (projectId: string) =>
 	events.deleteProjectEvents(config(), projectId);
+
+export const webAnalytics = (projectId: string, options: Parameters<typeof web.webAnalytics>[2]) =>
+	web.webAnalytics(config(), projectId, options);

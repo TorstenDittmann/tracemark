@@ -69,7 +69,7 @@ jobs:
           CLICKHOUSE_TEST_URL: http://localhost:8123
           CLICKHOUSE_TEST_USER: footprint
           CLICKHOUSE_TEST_PASSWORD: footprint
-        run: bunx vitest --run src/lib/server/events.clickhouse.spec.ts
+        run: bunx vitest --run src/lib/server/*.clickhouse.spec.ts
 
   app-image:
     runs-on: ubuntu-latest
