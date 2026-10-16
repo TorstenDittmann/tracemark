@@ -1,0 +1,54 @@
+# AI observability
+
+footprint records LLM calls as events, like everything else: one `$ai_generation` per model call,
+grouped into traces. Cost, tokens and latency per model and per person come from those events.
+
+## Events
+
+| Event | What it is |
+| :-- | :-- |
+| `$ai_generation` | One call to a model: its input, output, tokens and latency. |
+| `$ai_embedding` | One call to an embedding model. |
+| `$ai_span` | A step of your own inside a trace, such as a retrieval or a tool call. |
+| `$ai_trace` | A whole trace, such as one agent run or one chat turn. Optional: traces are built from the events that share a `$ai_trace_id`. |
+
+Properties, all optional except where noted:
+
+| Property | On | Meaning |
+| :-- | :-- | :-- |
+| `$ai_trace_id` | all | Groups the events of one trace. Required. |
+| `$ai_span_id` | all | This event's id within the trace. |
+| `$ai_parent_id` | all | The span id of the event this one ran under; the trace's top level when unset. |
+| `$ai_span_name` | all | A name for the step, such as `retrieve` or `chat`. |
+| `$ai_provider` | generation, embedding | `anthropic`, `openai`, … |
+| `$ai_model` | generation, embedding | The model the provider reported, such as `claude-sonnet-4-5-20250929`. |
+| `$ai_input` | generation, embedding | The messages sent, as an array of `{role, content}`. |
+| `$ai_output_choices` | generation | The messages received, in the same shape. |
+| `$ai_input_tokens` | generation, embedding | Every input token, including cached ones. |
+| `$ai_output_tokens` | generation | Output tokens, including reasoning tokens. |
+| `$ai_cache_read_input_tokens` | generation | Input tokens read from the provider's cache (also counted in `$ai_input_tokens`). |
+| `$ai_cache_creation_input_tokens` | generation | Input tokens written to the cache (also counted in `$ai_input_tokens`). |
+| `$ai_latency` | all | Seconds the call or step took. |
+| `$ai_is_error`, `$ai_error` | all | Whether it failed, and the error. |
+| `$ai_http_status` | generation, embedding | The provider's HTTP status. |
+| `$ai_stream` | generation | Whether the response was streamed. |
+| `$ai_temperature`, `$ai_max_tokens`, `$ai_tools` | generation | Request parameters. |
+| `$ai_input_state`, `$ai_output_state` | span, trace | What the step took and returned, any JSON. |
+| `$ai_cost_usd` | generation, embedding | Added at ingest, see below. |
+
+## Cost
+
+Ingest adds `$ai_cost_usd`, `$ai_input_cost_usd` and `$ai_output_cost_usd` to each `$ai_generation`
+and `$ai_embedding` that has a `$ai_model` and token counts:
+
+- input: uncached input tokens × the input price, plus cache reads and writes at their own prices
+  (the input price when a model has none);
+- output: output tokens × the output price.
+
+Prices are USD per million tokens. footprint ships prices for common Anthropic, OpenAI and Google
+models, and each project can add or change prices under Settings → Model prices. A model uses the
+price with its exact name, else the longest name it starts with, ignoring case and any `provider/`
+prefix: `gpt-4o` prices `gpt-4o-2024-08-06` and `openai/gpt-4o`, while `gpt-4o-mini` keeps its own
+price. Events whose model has no price get no cost. A `$ai_cost_usd` the client sent is kept.
+
+Prices apply to events as they arrive; changing a price does not recompute stored costs.

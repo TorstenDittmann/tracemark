@@ -19,6 +19,7 @@ fn keys(salt: Option<&str>) -> KeyStore {
     KeyStore::from_map(Snapshot {
         keys: HashMap::from([(TEST_KEY.to_owned(), TEST_PROJECT)]),
         salts,
+        ..Snapshot::default()
     })
 }
 

@@ -1,4 +1,10 @@
 import { error, fail, redirect } from '@sveltejs/kit';
+import {
+	deleteModelPrice,
+	modelPrices,
+	parsePriceForm,
+	setModelPrice
+} from '#lib/server/ai-prices.js';
 import { deleteProjectEvents } from '#lib/server/analytics.js';
 import { getDb } from '#lib/server/db/index.js';
 import {
@@ -24,7 +30,8 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 	if (!row) error(404, 'Project not found');
 	return {
 		secretKey: canManage(row.role) ? row.project.secretKey : null,
-		sourcemaps: await sourcemapReleases(getDb(), row.project.id)
+		sourcemaps: await sourcemapReleases(getDb(), row.project.id),
+		modelPrices: await modelPrices(getDb(), row.project.id)
 	};
 };
 
@@ -71,6 +78,21 @@ export const actions: Actions = {
 			action: 'deleteSourcemaps',
 			message: `Deleted ${count} source ${count === 1 ? 'map' : 'maps'}.`
 		};
+	},
+
+	setModelPrice: async (event) => {
+		const project = await access(event, true);
+		const price = parsePriceForm(await event.request.formData());
+		if (typeof price === 'string') return fail(400, { action: 'setModelPrice', message: price });
+		await setModelPrice(getDb(), project.id, price);
+		return { action: 'setModelPrice', message: `Saved the price of ${price.model}.` };
+	},
+
+	deleteModelPrice: async (event) => {
+		const project = await access(event, true);
+		const model = String((await event.request.formData()).get('model') ?? '');
+		await deleteModelPrice(getDb(), project.id, model);
+		return { action: 'deleteModelPrice', message: `Removed your price for ${model}.` };
 	},
 
 	delete: async (event) => {

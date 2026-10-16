@@ -17,6 +17,7 @@ use serde_json::json;
 use tokio::sync::mpsc;
 use tower_http::cors::{Any, CorsLayer};
 
+use crate::ai;
 use crate::enrich::{self, Enricher};
 use crate::keys::{KeyStore, Lookup};
 use crate::protocol::{self, Envelope, Issue, MAX_BODY_BYTES, MAX_EVENTS, Row};
@@ -128,6 +129,10 @@ async fn ingest(
         None
     };
     state.enricher.enrich(&mut rows, &request, salt.as_deref());
+    let prices = state.keys.prices();
+    for row in &mut rows {
+        ai::add_cost(&row.event, row.project_id, &mut row.properties, &prices);
+    }
 
     let accepted = rows.len();
     enqueue(&state.events, rows)?;

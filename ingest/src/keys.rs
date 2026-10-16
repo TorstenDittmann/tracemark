@@ -8,6 +8,8 @@ use chrono::NaiveDate;
 use serde::Deserialize;
 use uuid::Uuid;
 
+use crate::ai::Prices;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Lookup {
     Found(Uuid),
@@ -24,13 +26,15 @@ pub struct Snapshot {
     pub keys: KeyMap,
     /// Cookieless salts by UTC day (`YYYY-MM-DD`): today's and tomorrow's.
     pub salts: HashMap<String, String>,
+    /// Model prices for `$ai_cost_usd`.
+    pub prices: Arc<Prices>,
 }
 
 impl From<KeyMap> for Snapshot {
     fn from(keys: KeyMap) -> Self {
         Self {
             keys,
-            salts: HashMap::new(),
+            ..Self::default()
         }
     }
 }
@@ -81,6 +85,13 @@ impl KeyStore {
             .cloned()
     }
 
+    /// The model prices from the last poll; empty before the first one.
+    pub fn prices(&self) -> Arc<Prices> {
+        self.current()
+            .map(|snapshot| snapshot.prices.clone())
+            .unwrap_or_default()
+    }
+
     pub fn is_ready(&self) -> bool {
         self.current().is_some()
     }
@@ -99,6 +110,8 @@ struct ProjectsResponse {
     projects: Vec<Project>,
     #[serde(default)]
     salts: HashMap<String, String>,
+    #[serde(default)]
+    model_prices: Prices,
 }
 
 #[derive(Deserialize)]
@@ -133,6 +146,7 @@ impl KeySource {
                 .map(|p| (p.public_key, p.id))
                 .collect(),
             salts: body.salts,
+            prices: Arc::new(body.model_prices),
         })
     }
 }
@@ -193,6 +207,7 @@ mod tests {
         store.replace(Snapshot {
             keys: HashMap::new(),
             salts: HashMap::from([("2026-10-16".to_owned(), "abc".to_owned())]),
+            ..Snapshot::default()
         });
         assert_eq!(store.salt(day).as_deref(), Some("abc"));
         assert_eq!(store.salt(day.succ_opt().unwrap()), None);

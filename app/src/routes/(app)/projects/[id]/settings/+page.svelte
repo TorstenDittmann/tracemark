@@ -9,6 +9,18 @@ import type { PageProps } from './$types';
 let { data, form }: PageProps = $props();
 let confirmName = $state('');
 let showSecret = $state(false);
+let price = $state({ model: '', input: '', output: '', cacheRead: '', cacheWrite: '' });
+
+function editPrice(p: PageProps['data']['modelPrices'][number]) {
+	price = {
+		model: p.model,
+		input: String(p.input),
+		output: String(p.output),
+		cacheRead: p.cacheRead === undefined ? '' : String(p.cacheRead),
+		cacheWrite: p.cacheWrite === undefined ? '' : String(p.cacheWrite)
+	};
+}
+const usd = (value: number | undefined) => (value === undefined ? '' : `$${value}`);
 
 const canManage = $derived(data.role === 'owner' || data.role === 'admin');
 const messageFor = (action: string) => (form?.action === action ? form.message : null);
@@ -187,6 +199,136 @@ function formatBytes(bytes: number): string {
 			{/if}
 			{#if messageFor('deleteSourcemaps')}
 				<p class="text-sm text-muted-foreground" role="status">{messageFor('deleteSourcemaps')}</p>
+			{/if}
+		</Card.Content>
+	</Card.Root>
+
+	<Card.Root>
+		<Card.Header>
+			<Card.Title>Model prices</Card.Title>
+			<Card.Description>
+				USD per million tokens, used to compute the cost of AI generations as they arrive. A model
+				uses the price with its exact name, else the longest name it starts with. Cached tokens cost
+				the input price unless set. Check your provider's current prices; changes apply to new
+				events only.
+			</Card.Description>
+		</Card.Header>
+		<Card.Content class="grid gap-4">
+			<div class="relative max-h-96 overflow-auto">
+				<table class="w-full text-sm">
+					<thead class="sticky top-0 bg-card text-left text-xs text-muted-foreground">
+						<tr>
+							<th class="py-2 pr-4 font-normal">Model</th>
+							<th class="px-4 py-2 text-right font-normal">Input</th>
+							<th class="px-4 py-2 text-right font-normal">Output</th>
+							<th class="px-4 py-2 text-right font-normal">Cache read</th>
+							<th class="px-4 py-2 text-right font-normal">Cache write</th>
+							<th class="py-2 pl-4"><span class="sr-only">Actions</span></th>
+						</tr>
+					</thead>
+					<tbody>
+						{#each data.modelPrices as p (p.model)}
+							<tr class="border-t">
+								<td class="py-2 pr-4 font-mono whitespace-nowrap">
+									{p.model}
+									{#if p.custom}
+										<span class="ml-1 font-sans text-xs text-muted-foreground">yours</span>
+									{/if}
+								</td>
+								<td class="px-4 py-2 text-right tabular-nums">{usd(p.input)}</td>
+								<td class="px-4 py-2 text-right tabular-nums">{usd(p.output)}</td>
+								<td class="px-4 py-2 text-right tabular-nums text-muted-foreground">
+									{usd(p.cacheRead)}
+								</td>
+								<td class="px-4 py-2 text-right tabular-nums text-muted-foreground">
+									{usd(p.cacheWrite)}
+								</td>
+								<td class="py-2 pl-4 text-right whitespace-nowrap">
+									{#if canManage}
+										<Button type="button" variant="ghost" size="sm" onclick={() => editPrice(p)}>
+											Edit
+										</Button>
+										{#if p.custom}
+											<form method="POST" action="?/deleteModelPrice" class="inline" use:enhance>
+												<input type="hidden" name="model" value={p.model}>
+												<Button type="submit" variant="ghost" size="sm">Reset</Button>
+											</form>
+										{/if}
+									{/if}
+								</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
+			{#if canManage}
+				<form
+					method="POST"
+					action="?/setModelPrice"
+					class="grid gap-3 sm:grid-cols-[2fr_repeat(4,1fr)_auto] sm:items-end"
+					use:enhance={() =>
+						async ({ result, update }) => {
+							await update({ reset: false });
+							if (result.type === 'success') {
+								price = { model: '', input: '', output: '', cacheRead: '', cacheWrite: '' };
+							}
+						}}
+				>
+					<div class="grid gap-1.5">
+						<Label for="price-model">Model</Label>
+						<Input
+							id="price-model"
+							name="model"
+							required
+							placeholder="gpt-4o"
+							bind:value={price.model}
+						/>
+					</div>
+					<div class="grid gap-1.5">
+						<Label for="price-input">Input</Label>
+						<Input
+							id="price-input"
+							name="input"
+							required
+							inputmode="decimal"
+							bind:value={price.input}
+						/>
+					</div>
+					<div class="grid gap-1.5">
+						<Label for="price-output">Output</Label>
+						<Input
+							id="price-output"
+							name="output"
+							required
+							inputmode="decimal"
+							bind:value={price.output}
+						/>
+					</div>
+					<div class="grid gap-1.5">
+						<Label for="price-cache-read">Cache read</Label>
+						<Input
+							id="price-cache-read"
+							name="cacheRead"
+							inputmode="decimal"
+							bind:value={price.cacheRead}
+						/>
+					</div>
+					<div class="grid gap-1.5">
+						<Label for="price-cache-write">Cache write</Label>
+						<Input
+							id="price-cache-write"
+							name="cacheWrite"
+							inputmode="decimal"
+							bind:value={price.cacheWrite}
+						/>
+					</div>
+					<Button type="submit" variant="outline">Save price</Button>
+				</form>
+			{/if}
+			{#if messageFor('setModelPrice') ?? messageFor('deleteModelPrice')}
+				<p class="text-sm text-muted-foreground" role="status">
+					{messageFor('setModelPrice') ?? messageFor('deleteModelPrice')}
+				</p>
 			{/if}
 		</Card.Content>
 	</Card.Root>

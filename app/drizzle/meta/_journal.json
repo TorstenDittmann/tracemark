@@ -64,6 +64,13 @@
       "when": 1792180450969,
       "tag": "0008_sourcemaps",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1792183393924,
+      "tag": "0009_ai_model_prices",
+      "breakpoints": true
     }
   ]
 }

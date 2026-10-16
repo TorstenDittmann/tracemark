@@ -301,7 +301,13 @@ async fn polls_project_keys_and_keeps_last_good_map() {
         if *calls != 2 || token != "s3cret" {
             return (StatusCode::INTERNAL_SERVER_ERROR, String::new());
         }
-        let body = json!({"projects": [{"id": Uuid::from_u128(9), "public_key": "fp_pub_test", "name": "x"}]});
+        let body = json!({
+            "projects": [{"id": Uuid::from_u128(9), "public_key": "fp_pub_test", "name": "x"}],
+            "model_prices": {
+                "defaults": [{"model": "gpt-4o", "input": 2.5, "output": 10, "cache_read": null, "cache_write": null}],
+                "projects": {Uuid::from_u128(9).to_string(): [{"model": "gpt-4o", "input": 1, "output": 2}]}
+            }
+        });
         (StatusCode::OK, body.to_string())
     }
 
@@ -337,6 +343,15 @@ async fn polls_project_keys_and_keeps_last_good_map() {
         Lookup::Found(Uuid::from_u128(9))
     );
     assert_eq!(store.lookup("fp_pub_other"), Lookup::Unknown);
+    let prices = store.prices();
+    assert_eq!(
+        prices.lookup(Uuid::from_u128(1), "gpt-4o").unwrap().input,
+        2.5
+    );
+    assert_eq!(
+        prices.lookup(Uuid::from_u128(9), "gpt-4o").unwrap().input,
+        1.0
+    );
     assert!(app.tokens.lock().unwrap().iter().all(|t| t == "s3cret"));
 
     poller.abort();

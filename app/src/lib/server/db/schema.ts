@@ -3,6 +3,7 @@ import {
 	index,
 	integer,
 	primaryKey,
+	real,
 	sqliteTable,
 	text,
 	uniqueIndex
@@ -378,3 +379,29 @@ export const sourcemaps = sqliteTable(
 );
 
 export type Sourcemap = typeof sourcemaps.$inferSelect;
+
+/**
+ * A project's own token prices, in USD per million tokens. They override the built-in list in
+ * `$lib/ai-prices.ts` for the same model; ingest uses them to compute `$ai_cost_usd`.
+ */
+export const aiModelPrices = sqliteTable(
+	'ai_model_prices',
+	{
+		id: id(),
+		projectId: text('project_id')
+			.notNull()
+			.references(() => projects.id, { onDelete: 'cascade' }),
+		/** Matches models with this name or starting with it, such as `gpt-4o` for `gpt-4o-2024-08-06`. */
+		model: text('model').notNull(),
+		input: real('input').notNull(),
+		output: real('output').notNull(),
+		/** Cached input tokens read; the input price when unset. */
+		cacheRead: real('cache_read'),
+		/** Input tokens written to the cache; the input price when unset. */
+		cacheWrite: real('cache_write'),
+		updatedAt: timestamp('updated_at').notNull().default(sql`(unixepoch('subsec') * 1000)`)
+	},
+	(table) => [uniqueIndex('ai_model_prices_project_model_idx').on(table.projectId, table.model)]
+);
+
+export type AiModelPrice = typeof aiModelPrices.$inferSelect;
