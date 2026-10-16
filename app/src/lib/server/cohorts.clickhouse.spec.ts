@@ -98,7 +98,9 @@ describe.skipIf(!clickhouseTestUrl)('cohorts in ClickHouse', () => {
 		const withEmail = cohort([{ property: 'email', operator: 'contains', value: 'EXAMPLE' }]);
 		expect(await cohortSize(config, project, withEmail)).toBe(1);
 		const noSeats = cohort([{ property: 'seats', operator: 'is_not_set' }]);
-		expect(await cohortSize(config, project, noSeats)).toBe(1);
+		// Bob has no seats; Eve has no person properties at all.
+		expect(await cohortSize(config, project, noSeats)).toBe(2);
+		expect(await cohortSize(config, project, cohort([]))).toBe(4);
 
 		const people = await listPersons(config, project, { now, cohort: pro });
 		expect(people.persons.map((p) => p.person)).toEqual(['grace', 'ada']);

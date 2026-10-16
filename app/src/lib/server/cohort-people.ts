@@ -18,17 +18,23 @@ export function cohortPeopleSql(cohort: CohortSpec, params: Record<string, strin
 		return `SELECT person FROM cohort_people
 			WHERE project_id = {project:UUID} AND cohort_id = {cohort:UUID}`;
 	}
-	if (!cohort.filters.length) {
-		return `SELECT DISTINCT person FROM persons_properties WHERE project_id = {project:UUID}`;
-	}
+	// Everyone seen in events, so people with no person properties count too.
+	const everyone = `SELECT DISTINCT if(a.person = '', e.distinct_id, a.person) AS person
+		FROM events AS e
+		LEFT JOIN (SELECT alias, person FROM person_distinct_ids WHERE project_id = {project:UUID}) AS a
+			ON a.alias = e.distinct_id
+		WHERE e.project_id = {project:UUID}`;
+	if (!cohort.filters.length) return everyone;
 	const conditions = cohort.filters.map((filter, i) => {
 		params[`ck${i}`] = filter.property;
 		if (filter.value !== undefined) params[`cv${i}`] = filter.value;
 		return compareSql(`anyIf(${TEXT}, key = {ck${i}:String})`, filter.operator, `cv${i}`);
 	});
-	return `SELECT person FROM persons_properties
-		WHERE project_id = {project:UUID}
-		GROUP BY person
+	return `SELECT p.person AS person
+		FROM (${everyone}) AS p
+		LEFT JOIN (SELECT person, key, value FROM persons_properties WHERE project_id = {project:UUID}) AS pp
+			ON pp.person = p.person
+		GROUP BY p.person
 		HAVING ${conditions.join(' AND ')}`;
 }
 
