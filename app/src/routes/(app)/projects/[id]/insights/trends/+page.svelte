@@ -1,5 +1,4 @@
 <script lang="ts">
-import LineChart from '#lib/components/charts/line-chart.svelte';
 import BreakdownSelect from '#lib/components/insights/breakdown-select.svelte';
 import {
 	selectClass as select,
@@ -8,6 +7,8 @@ import {
 } from '#lib/components/insights/editor.svelte.js';
 import FiltersEditor from '#lib/components/insights/filters-editor.svelte';
 import RangePicker from '#lib/components/insights/range-picker.svelte';
+import SaveInsight from '#lib/components/insights/save-insight.svelte';
+import TrendsView from '#lib/components/insights/trends-view.svelte';
 import { Button } from '#lib/components/ui/button/index.js';
 import * as Card from '#lib/components/ui/card/index.js';
 import {
@@ -20,27 +21,13 @@ import {
 import { RANGES } from '#lib/web.js';
 import type { PageProps } from './$types';
 
-let { data }: PageProps = $props();
+let { data, form }: PageProps = $props();
 
 const update = (change: (query: TrendsQuery) => void) => showQuery(data.query, change);
 
 const eventOptions = $derived(data.events.map((e) => e.event));
 const allProperties = $derived(data.properties.map((p) => p.name));
 const numericProperties = $derived(data.properties.filter((p) => p.numeric).map((p) => p.name));
-const valueFormat = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 });
-const format = (value: number) => valueFormat.format(value);
-
-const lines = $derived(
-	data.result?.lines.map((line, i) => ({
-		key: `${line.series}:${line.breakdown ?? ''}:${i}`,
-		label:
-			line.breakdown === undefined
-				? line.label
-				: `${line.label} · ${line.breakdown === '' ? 'None' : line.breakdown}`,
-		data: line.data,
-		total: line.total
-	})) ?? []
-);
 </script>
 
 <svelte:head>
@@ -48,6 +35,13 @@ const lines = $derived(
 </svelte:head>
 
 <div class="grid gap-6">
+	<SaveInsight
+		query={data.query}
+		saved={data.saved}
+		dashboards={data.dashboards}
+		dashboardsHref="/projects/{data.project.id}/dashboards"
+		{form}
+	/>
 	<Card.Root class="gap-4">
 		<Card.Header>
 			<Card.Title>Trends</Card.Title>
@@ -162,44 +156,8 @@ const lines = $derived(
 	{:else}
 		<Card.Root>
 			<Card.Content>
-				{#if lines.length}
-					<LineChart {lines} buckets={data.result.buckets} bucket={data.result.bucket} {format} />
-				{:else}
-					<p class="py-12 text-center text-sm text-muted-foreground">No events match this query.</p>
-				{/if}
+				<TrendsView result={data.result} totalLabel={RANGES[data.query.range].label} />
 			</Card.Content>
 		</Card.Root>
-
-		{#if lines.length}
-			<Card.Root class="py-2">
-				<table class="w-full text-sm">
-					<thead class="text-left text-xs text-muted-foreground">
-						<tr>
-							<th class="px-6 py-2 font-normal">Series</th>
-							<th class="px-6 py-2 text-right font-normal">
-								{RANGES[data.query.range].label}
-							</th>
-						</tr>
-					</thead>
-					<tbody>
-						{#each lines as line, i (line.key)}
-							<tr class="border-t">
-								<td class="px-6 py-2">
-									<span class="flex items-center gap-2">
-										<span
-											class="size-2.5 shrink-0 rounded-full"
-											style:background="var(--series-{(i % 8) + 1})"
-											aria-hidden="true"
-										></span>
-										{line.label}
-									</span>
-								</td>
-								<td class="px-6 py-2 text-right tabular-nums">{format(line.total)}</td>
-							</tr>
-						{/each}
-					</tbody>
-				</table>
-			</Card.Root>
-		{/if}
 	{/if}
 </div>

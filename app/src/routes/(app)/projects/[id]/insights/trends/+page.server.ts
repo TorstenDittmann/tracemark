@@ -7,11 +7,13 @@ import {
 	type TrendsResult,
 	trends
 } from '#lib/server/analytics.js';
-import type { PageServerLoad } from './$types';
+import { insightActions, loadSaved } from '#lib/server/insight-page.js';
+import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ parent, url }) => {
 	const { project } = await parent();
-	const query = parseTrendsParam(url.searchParams.get('q'));
+	const { saved, storedQuery, dashboards } = await loadSaved(project.id, url, 'trends');
+	const query = parseTrendsParam(url.searchParams.get('q') ?? storedQuery);
 	let result: TrendsResult | null = null;
 	let events: EventName[] = [];
 	let properties: PropertyName[] = [];
@@ -24,5 +26,7 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 	} catch (err) {
 		console.error('insights unavailable:', err);
 	}
-	return { query, result, events, properties };
+	return { query, result, events, properties, saved, dashboards };
 };
+
+export const actions: Actions = insightActions('trends');

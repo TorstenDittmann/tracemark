@@ -2,7 +2,9 @@
 import BreakdownSelect from '#lib/components/insights/breakdown-select.svelte';
 import { selectClass, showQuery, withCurrent } from '#lib/components/insights/editor.svelte.js';
 import FiltersEditor from '#lib/components/insights/filters-editor.svelte';
+import FunnelView from '#lib/components/insights/funnel-view.svelte';
 import RangePicker from '#lib/components/insights/range-picker.svelte';
+import SaveInsight from '#lib/components/insights/save-insight.svelte';
 import { Button } from '#lib/components/ui/button/index.js';
 import * as Card from '#lib/components/ui/card/index.js';
 import {
@@ -14,18 +16,12 @@ import {
 } from '#lib/insights.js';
 import type { PageProps } from './$types';
 
-let { data }: PageProps = $props();
+let { data, form }: PageProps = $props();
 
 const update = (change: (query: FunnelQuery) => void) => showQuery(data.query, change);
 
 const eventOptions = $derived(data.events.map((e) => e.event));
 const allProperties = $derived(data.properties.map((p) => p.name));
-
-const percent = (part: number, whole: number) =>
-	whole === 0 ? '0%' : `${Math.round((part / whole) * 1000) / 10}%`;
-
-const counts = $derived(data.result?.total.counts ?? []);
-const entered = $derived(counts[0] ?? 0);
 </script>
 
 <svelte:head>
@@ -33,6 +29,13 @@ const entered = $derived(counts[0] ?? 0);
 </svelte:head>
 
 <div class="grid gap-6">
+	<SaveInsight
+		query={data.query}
+		saved={data.saved}
+		dashboards={data.dashboards}
+		dashboardsHref="/projects/{data.project.id}/dashboards"
+		{form}
+	/>
 	<Card.Root class="gap-4">
 		<Card.Header>
 			<Card.Title>Funnel</Card.Title>
@@ -123,91 +126,10 @@ const entered = $derived(counts[0] ?? 0);
 			Insights are unavailable because ClickHouse could not be reached.
 		</p>
 	{:else}
-		<Card.Root class="gap-4">
-			<Card.Header>
-				<Card.Description>Converted</Card.Description>
-				<Card.Title class="text-3xl tabular-nums">
-					{percent(counts.at(-1) ?? 0, entered)}
-				</Card.Title>
-				<Card.Description>
-					{(counts.at(-1) ?? 0).toLocaleString()}
-					of {entered.toLocaleString()} people who entered
-				</Card.Description>
-			</Card.Header>
+		<Card.Root>
 			<Card.Content>
-				{#if entered === 0}
-					<p class="py-12 text-center text-sm text-muted-foreground">
-						Nobody did the first step in this range.
-					</p>
-				{:else}
-					<ol
-						class="grid gap-3"
-						style:grid-template-columns="repeat({data.result.steps.length}, minmax(0, 1fr))"
-					>
-						{#each data.result.steps as step, i (i)}
-							{@const count = counts[i]}
-							<li class="grid min-w-0 gap-2 text-sm">
-								<div class="truncate">
-									<span class="font-medium tabular-nums">{count.toLocaleString()}</span>
-									<span class="text-muted-foreground">· {percent(count, entered)}</span>
-								</div>
-								<div
-									class="relative h-48 overflow-hidden rounded bg-muted"
-									title="{step}: {count.toLocaleString()} people, {percent(
-										count,
-										entered
-									)} of entered"
-								>
-									<div
-										class="absolute inset-x-0 bottom-0 rounded bg-series-1"
-										style:height="{(count / entered) * 100}%"
-									></div>
-								</div>
-								<div class="min-w-0">
-									<div class="truncate font-medium" title={step}>{i + 1}. {step}</div>
-									{#if i > 0}
-										<div class="text-xs text-muted-foreground">
-											{percent(count, counts[i - 1])}
-											of previous
-										</div>
-									{/if}
-								</div>
-							</li>
-						{/each}
-					</ol>
-				{/if}
+				<FunnelView result={data.result} breakdown={data.query.breakdown} />
 			</Card.Content>
 		</Card.Root>
-
-		{#if data.result.groups.length}
-			<Card.Root class="py-2">
-				<div class="overflow-x-auto">
-					<table class="w-full text-sm">
-						<thead class="text-left text-xs text-muted-foreground">
-							<tr>
-								<th class="px-6 py-2 font-normal">{data.query.breakdown}</th>
-								{#each data.result.steps as step, i (i)}
-									<th class="px-4 py-2 text-right font-normal">{i + 1}. {step}</th>
-								{/each}
-								<th class="px-6 py-2 text-right font-normal">Converted</th>
-							</tr>
-						</thead>
-						<tbody>
-							{#each data.result.groups as group (group.breakdown)}
-								<tr class="border-t">
-									<td class="px-6 py-2">{group.breakdown || 'None'}</td>
-									{#each group.counts as count, i (i)}
-										<td class="px-4 py-2 text-right tabular-nums">{count.toLocaleString()}</td>
-									{/each}
-									<td class="px-6 py-2 text-right font-medium tabular-nums">
-										{percent(group.counts.at(-1) ?? 0, group.counts[0])}
-									</td>
-								</tr>
-							{/each}
-						</tbody>
-					</table>
-				</div>
-			</Card.Root>
-		{/if}
 	{/if}
 </div>
