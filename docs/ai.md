@@ -3,6 +3,11 @@
 footprint records LLM calls as events, like everything else: one `$ai_generation` per model call,
 grouped into traces. Cost, tokens and latency per model and per person come from those events.
 
+The project's **AI** tab shows them: an overview of cost, calls, tokens, latency and errors over
+time, by model and by person, and a list of traces. Opening a trace shows its steps as a tree with
+a timeline, and each step's inputs, outputs, tokens and cost. Calls without a person (`$server`,
+or `otel:<service>` from OpenTelemetry) count in the totals but not in the per-person table.
+
 ## Node SDK
 
 `@footprint/node/ai` records calls made through the Anthropic and OpenAI SDKs and the Vercel AI SDK,

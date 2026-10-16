@@ -49,7 +49,8 @@ const tickFormat = $derived(
 
 /** A round axis maximum with four even steps. */
 function niceMax(max: number): number {
-	if (max <= 4) return 4;
+	// Counts get whole-number steps; small fractions such as costs get their own scale.
+	if (max <= 0 || (max <= 4 && Number.isInteger(max))) return 4;
 	const raw = max / 4;
 	const magnitude = 10 ** Math.floor(Math.log10(raw));
 	const step = [1, 2, 2.5, 5, 10].map((m) => m * magnitude).find((s) => s >= raw) ?? raw;
