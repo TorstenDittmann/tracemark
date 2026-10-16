@@ -86,7 +86,7 @@ const columns = $derived(
 								</a>
 							{/if}
 							<time
-								class="text-muted-foreground tabular-nums sm:text-right"
+								class="text-muted-foreground tabular-nums sm:text-right sm:whitespace-nowrap"
 								datetime={event.timestamp}
 							>
 								{timeFormat.format(new Date(event.timestamp))}

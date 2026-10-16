@@ -7,12 +7,14 @@ import {
 import type { ClickHouseConfig } from './clickhouse';
 import * as events from './events';
 import * as explore from './explore';
+import * as groups from './groups';
 import * as insights from './insights';
 import * as persons from './persons';
 import type { SavedQuery } from './saved';
 import * as web from './web';
 
 export type { EventStats } from './events';
+export type { GroupDetail } from './groups';
 export type {
 	EventName,
 	FunnelResult,
@@ -90,3 +92,14 @@ export const listPersons = (
 
 export const getPerson = (projectId: string, distinctId: string) =>
 	persons.getPerson(config(), projectId, distinctId);
+
+export const groupTypes = (projectId: string) => groups.groupTypes(config(), projectId);
+
+export const listGroups = (
+	projectId: string,
+	type: string,
+	options?: Parameters<typeof groups.listGroups>[3]
+) => groups.listGroups(config(), projectId, type, options);
+
+export const getGroup = (projectId: string, type: string, key: string) =>
+	groups.getGroup(config(), projectId, type, key);

@@ -9,6 +9,7 @@ const tabs = $derived([
 	{ href: `/projects/${data.project.id}/web`, label: 'Web analytics' },
 	{ href: `/projects/${data.project.id}/events`, label: 'Events' },
 	{ href: `/projects/${data.project.id}/persons`, label: 'People' },
+	{ href: `/projects/${data.project.id}/groups`, label: 'Groups' },
 	{ href: `/projects/${data.project.id}/insights`, label: 'Insights' },
 	{ href: `/projects/${data.project.id}/dashboards`, label: 'Dashboards' },
 	{ href: `/projects/${data.project.id}/settings`, label: 'Settings' }

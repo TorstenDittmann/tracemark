@@ -18,7 +18,7 @@ function rows<T>(body: string): T[] {
 }
 
 /** Merged person properties for each of `persons`, values parsed from JSON. */
-async function propertiesOf(
+export async function propertiesOf(
 	config: ClickHouseConfig,
 	projectId: string,
 	persons: string[]

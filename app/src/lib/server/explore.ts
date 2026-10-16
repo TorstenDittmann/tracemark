@@ -39,6 +39,8 @@ export async function recentEvents(
 		now?: Date;
 		/** Only these distinct ids, from any time rather than the lookback window. */
 		distinctIds?: string[];
+		/** Only this group's events, from any time rather than the lookback window. */
+		group?: { type: string; key: string };
 	} = {}
 ): Promise<ActivityPage> {
 	const limit = options.limit ?? ACTIVITY_PAGE_SIZE;
@@ -52,7 +54,13 @@ export async function recentEvents(
 	if (options.distinctIds) {
 		params.ids = options.distinctIds;
 		conditions.push('e.distinct_id IN {ids:Array(String)}');
-	} else {
+	}
+	if (options.group) {
+		params.groupType = options.group.type;
+		params.groupKey = options.group.key;
+		conditions.push('e.groups[{groupType:String}] = {groupKey:String}');
+	}
+	if (!options.distinctIds && !options.group) {
 		conditions.push(`e.timestamp >= {from:DateTime64(3, 'UTC')}`);
 	}
 	if (query.event !== undefined) {
