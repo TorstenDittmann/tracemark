@@ -1,0 +1,303 @@
+{
+	"description": "Shared feature flag vectors. Every evaluator (the app, every server SDK) must pass all of them. `bucket` is the first 13 hex digits of SHA-1 of `<flag>.<id><salt>` divided by 2^52. An expected value of \"inconclusive\" means the evaluator must give up rather than answer.",
+	"buckets": [
+		{ "flag": "new-checkout", "id": "ada", "salt": "", "bucket": 0.8368345762834002 },
+		{ "flag": "new-checkout", "id": "grace", "salt": "", "bucket": 0.687810039893479 },
+		{ "flag": "new-checkout", "id": "bob", "salt": "", "bucket": 0.8543366164176671 },
+		{ "flag": "new-checkout", "id": "eve", "salt": "", "bucket": 0.26764645521456476 },
+		{ "flag": "pricing", "id": "ada", "salt": "", "bucket": 0.32715864819103513 },
+		{ "flag": "pricing", "id": "ada", "salt": ".variant", "bucket": 0.487133953359006 },
+		{ "flag": "pricing", "id": "grace", "salt": ".variant", "bucket": 0.8012455166777868 },
+		{ "flag": "pricing", "id": "bob", "salt": ".variant", "bucket": 0.2610844788454636 },
+		{ "flag": "pricing", "id": "eve", "salt": ".variant", "bucket": 0.8225803596516226 },
+		{ "flag": "beta", "id": "acme", "salt": "", "bucket": 0.6842929442168548 },
+		{ "flag": "beta", "id": "globex", "salt": "", "bucket": 0.29408651787437523 },
+		{ "flag": "ünïcode-flag", "id": "用户-42", "salt": "", "bucket": 0.8663171585882754 }
+	],
+	"flags": [
+		{
+			"name": "a boolean flag rolled out to 70%",
+			"flag": {
+				"key": "new-checkout",
+				"active": true,
+				"conditions": [{ "filters": [], "rollout": 70 }],
+				"variants": [],
+				"payloads": { "true": { "color": "green" } }
+			},
+			"cases": [
+				{
+					"context": { "distinctId": "ada" },
+					"expected": { "value": false, "payload": null, "reason": "out_of_rollout" }
+				},
+				{
+					"context": { "distinctId": "grace" },
+					"expected": {
+						"value": true,
+						"payload": { "color": "green" },
+						"reason": "match",
+						"condition": 0
+					}
+				},
+				{
+					"context": { "distinctId": "bob" },
+					"expected": { "value": false, "payload": null, "reason": "out_of_rollout" }
+				},
+				{
+					"context": { "distinctId": "eve" },
+					"expected": {
+						"value": true,
+						"payload": { "color": "green" },
+						"reason": "match",
+						"condition": 0
+					}
+				}
+			]
+		},
+		{
+			"name": "a 50/50 multivariate flag with an override for staff",
+			"flag": {
+				"key": "pricing",
+				"active": true,
+				"conditions": [
+					{
+						"filters": [
+							{
+								"type": "person",
+								"property": "email",
+								"operator": "contains",
+								"value": "@EXAMPLE.com"
+							}
+						],
+						"rollout": 100,
+						"variant": "test"
+					},
+					{ "filters": [], "rollout": 100 }
+				],
+				"variants": [{ "key": "control", "rollout": 50 }, { "key": "test", "rollout": 50 }],
+				"payloads": { "test": { "price": 9 } }
+			},
+			"cases": [
+				{
+					"context": { "distinctId": "ada" },
+					"expected": { "value": "control", "payload": null, "reason": "match", "condition": 1 }
+				},
+				{
+					"context": { "distinctId": "ada", "personProperties": { "email": "ada@example.com" } },
+					"expected": {
+						"value": "test",
+						"payload": { "price": 9 },
+						"reason": "match",
+						"condition": 0
+					}
+				},
+				{
+					"context": { "distinctId": "grace" },
+					"expected": {
+						"value": "test",
+						"payload": { "price": 9 },
+						"reason": "match",
+						"condition": 1
+					}
+				},
+				{
+					"context": { "distinctId": "bob" },
+					"expected": { "value": "control", "payload": null, "reason": "match", "condition": 1 }
+				},
+				{
+					"context": { "distinctId": "eve" },
+					"expected": {
+						"value": "test",
+						"payload": { "price": 9 },
+						"reason": "match",
+						"condition": 1
+					}
+				},
+				{
+					"context": { "distinctId": "eve" },
+					"missing": "inconclusive",
+					"expected": "inconclusive"
+				}
+			]
+		},
+		{
+			"name": "person property filters",
+			"flag": {
+				"key": "pro-only",
+				"active": true,
+				"conditions": [
+					{
+						"filters": [
+							{ "type": "person", "property": "plan", "operator": "eq", "value": "pro" },
+							{ "type": "person", "property": "seats", "operator": "gt", "value": "5" }
+						],
+						"rollout": 100
+					}
+				],
+				"variants": [],
+				"payloads": {}
+			},
+			"cases": [
+				{
+					"context": { "distinctId": "ada", "personProperties": { "plan": "pro", "seats": 12 } },
+					"expected": { "value": true, "payload": null, "reason": "match", "condition": 0 }
+				},
+				{
+					"context": {
+						"distinctId": "ada",
+						"personProperties": { "plan": "pro", "seats": "12.5" }
+					},
+					"expected": { "value": true, "payload": null, "reason": "match", "condition": 0 }
+				},
+				{
+					"context": { "distinctId": "grace", "personProperties": { "plan": "pro", "seats": 3 } },
+					"expected": { "value": false, "payload": null, "reason": "no_match" }
+				},
+				{
+					"context": {
+						"distinctId": "grace",
+						"personProperties": { "plan": "pro", "seats": "many" }
+					},
+					"expected": { "value": false, "payload": null, "reason": "no_match" }
+				},
+				{
+					"context": { "distinctId": "bob", "personProperties": { "plan": "Pro", "seats": 9 } },
+					"expected": { "value": false, "payload": null, "reason": "no_match" }
+				},
+				{
+					"context": { "distinctId": "eve" },
+					"expected": { "value": false, "payload": null, "reason": "no_match" }
+				},
+				{
+					"context": { "distinctId": "eve", "personProperties": { "plan": "pro" } },
+					"missing": "inconclusive",
+					"expected": "inconclusive"
+				}
+			]
+		},
+		{
+			"name": "a property that isn't set",
+			"flag": {
+				"key": "anonymous-banner",
+				"active": true,
+				"conditions": [
+					{
+						"filters": [{ "type": "person", "property": "email", "operator": "is_not_set" }],
+						"rollout": 100
+					}
+				],
+				"variants": [],
+				"payloads": {}
+			},
+			"cases": [
+				{
+					"context": { "distinctId": "eve" },
+					"expected": { "value": true, "payload": null, "reason": "match", "condition": 0 }
+				},
+				{
+					"context": { "distinctId": "eve", "personProperties": { "email": "" } },
+					"missing": "inconclusive",
+					"expected": { "value": true, "payload": null, "reason": "match", "condition": 0 }
+				},
+				{
+					"context": { "distinctId": "ada", "personProperties": { "email": "ada@example.com" } },
+					"expected": { "value": false, "payload": null, "reason": "no_match" }
+				}
+			]
+		},
+		{
+			"name": "a group flag bucketed by company",
+			"flag": {
+				"key": "beta",
+				"active": true,
+				"groupType": "company",
+				"conditions": [
+					{
+						"filters": [
+							{
+								"type": "group",
+								"groupType": "company",
+								"property": "seats",
+								"operator": "gt",
+								"value": "10"
+							}
+						],
+						"rollout": 50
+					}
+				],
+				"variants": [],
+				"payloads": {}
+			},
+			"cases": [
+				{
+					"context": {
+						"distinctId": "ada",
+						"groups": { "company": "acme" },
+						"groupProperties": { "company": { "seats": 40 } }
+					},
+					"expected": { "value": false, "payload": null, "reason": "out_of_rollout" }
+				},
+				{
+					"context": {
+						"distinctId": "ada",
+						"groups": { "company": "globex" },
+						"groupProperties": { "company": { "seats": 40 } }
+					},
+					"expected": { "value": true, "payload": null, "reason": "match", "condition": 0 }
+				},
+				{
+					"context": {
+						"distinctId": "bob",
+						"groups": { "company": "globex" },
+						"groupProperties": { "company": { "seats": 40 } }
+					},
+					"expected": { "value": true, "payload": null, "reason": "match", "condition": 0 }
+				},
+				{
+					"context": { "distinctId": "ada", "groups": { "company": "globex" } },
+					"expected": { "value": false, "payload": null, "reason": "no_match" }
+				},
+				{
+					"context": { "distinctId": "ada" },
+					"expected": { "value": false, "payload": null, "reason": "no_group" }
+				}
+			]
+		},
+		{
+			"name": "a cohort filter",
+			"flag": {
+				"key": "vip",
+				"active": true,
+				"conditions": [{ "filters": [{ "type": "cohort", "cohort": "c-vips" }], "rollout": 100 }],
+				"variants": [],
+				"payloads": {}
+			},
+			"cases": [
+				{
+					"context": { "distinctId": "ada", "cohorts": ["c-vips"] },
+					"expected": { "value": true, "payload": null, "reason": "match", "condition": 0 }
+				},
+				{
+					"context": { "distinctId": "ada", "cohorts": [] },
+					"expected": { "value": false, "payload": null, "reason": "no_match" }
+				},
+				{ "context": { "distinctId": "ada" }, "expected": "inconclusive" }
+			]
+		},
+		{
+			"name": "an inactive flag",
+			"flag": {
+				"key": "off",
+				"active": false,
+				"conditions": [{ "filters": [], "rollout": 100 }],
+				"variants": [],
+				"payloads": { "true": 1 }
+			},
+			"cases": [
+				{
+					"context": { "distinctId": "ada" },
+					"expected": { "value": false, "payload": null, "reason": "inactive" }
+				}
+			]
+		}
+	]
+}
