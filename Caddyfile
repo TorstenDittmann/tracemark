@@ -1,7 +1,7 @@
 # One public hostname: event ingestion goes to the Rust service, everything else to the app.
 {$FOOTPRINT_HOST::80} {
-	# Add /v1/traces here once ingest accepts OTLP (AI observability phase).
-	@ingest path /e /e/*
+	# /v1/traces takes OpenTelemetry (OTLP/HTTP) spans from LLM instrumentation.
+	@ingest path /e /e/* /v1/traces
 	handle @ingest {
 		reverse_proxy ingest:8081
 	}

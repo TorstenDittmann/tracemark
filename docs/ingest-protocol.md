@@ -57,6 +57,14 @@ Unknown top-level fields are ignored, and `null` optional fields count as absent
 | `413` | `{"error": "payload_too_large"}` | Over the limits |
 | `503` | `{"error": "not_ready"}` or `{"error": "overloaded"}` | Project keys not loaded yet, or the write queue is full. SDKs retry with backoff |
 
+## `POST /v1/traces`
+
+OpenTelemetry trace export (OTLP/HTTP, protobuf or JSON) for LLM instrumentation. Spans become
+`$ai_*` events and then go through the same validation and enrichment as `POST /e` batches, except
+that location is not looked up. The key comes as `Authorization: Bearer fp_pub_…`, an
+`x-footprint-api-key` header or an `api_key` query parameter. Success is `200` with an empty
+`ExportTraceServiceResponse`; errors use the responses above. See [ai.md](ai.md#opentelemetry).
+
 ## Enrichment
 
 Before storing an event, ingest adds properties derived from the request. Properties the event already has are never overwritten.

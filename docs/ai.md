@@ -36,6 +36,44 @@ Properties, all optional except where noted:
 | `$ai_input_state`, `$ai_output_state` | span, trace | What the step took and returned, any JSON. |
 | `$ai_cost_usd` | generation, embedding | Added at ingest, see below. |
 
+## OpenTelemetry
+
+Instrumentation that exports OpenTelemetry traces can send them to footprint instead of using an
+SDK wrapper. `POST /v1/traces` on your footprint host takes OTLP/HTTP, as protobuf
+(`application/x-protobuf`) or JSON (`application/json`), optionally gzipped. Authenticate with the
+project's public key:
+
+```sh
+OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=https://footprint.example.com/v1/traces
+OTEL_EXPORTER_OTLP_TRACES_HEADERS="Authorization=Bearer fp_pub_…"
+```
+
+With the Vercel AI SDK, turn on telemetry per call and name the user in its metadata:
+
+```ts
+await generateText({
+  model,
+  prompt,
+  experimental_telemetry: { isEnabled: true, functionId: 'answer-question', metadata: { userId: user.id } }
+});
+```
+
+Each span becomes one event:
+
+- spans whose `gen_ai.operation.name` is `chat`, `text_completion` or `generate_content`, and the
+  Vercel AI SDK's `doGenerate` and `doStream` spans, become `$ai_generation`;
+- `embeddings` spans and the Vercel AI SDK's `doEmbed` spans become `$ai_embedding`;
+- other spans with `gen_ai.*`, `ai.*`, `llm.*` or `footprint.*` attributes become `$ai_span`;
+- all other spans, such as HTTP and database spans, are dropped.
+
+The trace and span ids become `$ai_trace_id`, `$ai_span_id` and `$ai_parent_id`; model, provider,
+token counts, messages and errors are read from the GenAI semantic conventions and the Vercel AI
+SDK's attributes. The person is the first of `footprint.distinct_id`, the Vercel AI SDK metadata
+`distinct_id` or `userId`, `user.id` and `enduser.id`, on the span or its resource; spans that name
+nobody are recorded for `otel:<service.name>`. Other Vercel AI SDK metadata becomes event
+properties. The event id is derived from the trace and span ids, so a retried export repeats the
+same ids.
+
 ## Cost
 
 Ingest adds `$ai_cost_usd`, `$ai_input_cost_usd` and `$ai_output_cost_usd` to each `$ai_generation`
