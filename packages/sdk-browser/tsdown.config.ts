@@ -2,7 +2,7 @@ import { defineConfig } from 'tsdown';
 
 export default defineConfig([
 	{
-		entry: { index: 'src/index.ts' },
+		entry: { index: 'src/index.ts', flags: 'src/flags-entry.ts' },
 		format: 'esm',
 		platform: 'browser',
 		target: 'es2020',
@@ -20,5 +20,16 @@ export default defineConfig([
 		minify: true,
 		clean: false,
 		outputOptions: { exports: 'default' }
+	},
+	{
+		// Script-tag build of the flags plugin: `window.footprintFlags.createFlags`.
+		entry: { 'footprint-flags': 'src/flags-entry.ts' },
+		format: 'iife',
+		platform: 'browser',
+		target: 'es2020',
+		globalName: 'footprintFlags',
+		dts: false,
+		minify: true,
+		clean: false
 	}
 ]);

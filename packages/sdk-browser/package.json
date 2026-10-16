@@ -15,7 +15,12 @@
 			"types": "./dist/index.d.ts",
 			"import": "./dist/index.js"
 		},
+		"./flags": {
+			"types": "./dist/flags.d.ts",
+			"import": "./dist/flags.js"
+		},
 		"./iife": "./dist/footprint.iife.js",
+		"./flags/iife": "./dist/footprint-flags.iife.js",
 		"./package.json": "./package.json"
 	},
 	"files": [
