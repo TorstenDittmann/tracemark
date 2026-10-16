@@ -319,3 +319,32 @@ export const experiments = sqliteTable(
 );
 
 export type Experiment = typeof experiments.$inferSelect;
+
+/**
+ * Triage state of an error issue. Issues themselves are `$exception` events grouped by
+ * fingerprint in ClickHouse; a row exists here once someone resolved or ignored one.
+ */
+export const errorIssues = sqliteTable(
+	'error_issues',
+	{
+		id: id(),
+		projectId: text('project_id')
+			.notNull()
+			.references(() => projects.id, { onDelete: 'cascade' }),
+		fingerprint: text('fingerprint').notNull(),
+		status: text('status', { enum: ['open', 'resolved', 'ignored'] })
+			.notNull()
+			.default('open'),
+		statusChangedAt: timestamp('status_changed_at')
+			.notNull()
+			.default(sql`(unixepoch('subsec') * 1000)`),
+		statusChangedBy: text('status_changed_by').references(() => users.id, {
+			onDelete: 'set null'
+		})
+	},
+	(table) => [
+		uniqueIndex('error_issues_project_fingerprint_idx').on(table.projectId, table.fingerprint)
+	]
+);
+
+export type ErrorIssue = typeof errorIssues.$inferSelect;

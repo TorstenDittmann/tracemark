@@ -66,3 +66,13 @@ Ingest fingerprints each `$exception` that doesn't bring its own `$exception_fin
 
 Minified function names can change between builds; when that splits an issue, set
 `$exception_fingerprint` yourself.
+
+## Issues
+
+Each fingerprint is an issue on the project's **Issues** page, listed by when it was last seen,
+with occurrences, people affected and a trend over the chosen range. An issue's page shows its
+chart over time, the latest occurrence's stack trace and causes, the people it hit most and its
+recent occurrences. Errors attributed to `$server` don't count as people.
+
+Issues are open until someone resolves or ignores them. A resolved issue that happens again
+opens again, marked as regressed; an ignored one stays ignored.
