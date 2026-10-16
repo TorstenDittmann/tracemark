@@ -1,0 +1,99 @@
+# The URL people open in the browser, e.g. https://analytics.example.com. Required.
+publicUrl: ""
+
+# Secrets shared by the app and ingest. Leave both empty to generate them on install (kept on
+# upgrade), or set existingSecret to a Secret with the keys INTERNAL_TOKEN and AUTH_SECRET.
+internalToken: ""
+authSecret: ""
+existingSecret: ""
+
+imagePullSecrets: []
+
+app:
+  image:
+    repository: ghcr.io/torstendittmann/footprint-app
+    # Defaults to the chart's appVersion.
+    tag: ""
+    pullPolicy: IfNotPresent
+  # The app keeps its configuration in a libSQL file on a volume, so it runs as one pod.
+  # It is replaced with the Recreate strategy so two pods never share the file.
+  persistence:
+    size: 5Gi
+    storageClass: ""
+    existingClaim: ""
+  # How the app learns the client's address for sign-in rate limiting, behind your ingress.
+  addressHeader: x-forwarded-for
+  xffDepth: 1
+  # Extra environment variables, e.g. SOURCEMAPS_DIR or SMTP settings.
+  env: []
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { memory: 1Gi }
+  podAnnotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+ingest:
+  image:
+    repository: ghcr.io/torstendittmann/footprint-ingest
+    tag: ""
+    pullPolicy: IfNotPresent
+  replicas: 1
+  addressHeader: x-forwarded-for
+  xffDepth: 1
+  # Optional MaxMind-format city database for location lookups, mounted from a volume you provide,
+  # e.g. { volume: { configMap: { name: geoip } }, file: dbip-city-lite.mmdb }.
+  geoip:
+    volume: {}
+    file: ""
+  # Ingest writes batches it cannot insert to this directory and replays them. An emptyDir keeps
+  # them across container restarts but not when the pod is deleted.
+  spill:
+    sizeLimit: 1Gi
+  env: []
+  resources:
+    requests: { cpu: 100m, memory: 64Mi }
+    limits: { memory: 512Mi }
+  podAnnotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+clickhouse:
+  # Run a single-node ClickHouse in the release. Set to false and fill in external to use your own.
+  enabled: true
+  image:
+    repository: clickhouse/clickhouse-server
+    tag: "25.8"
+    pullPolicy: IfNotPresent
+  user: footprint
+  # Generated on install when empty, or taken from existingSecret (key CLICKHOUSE_PASSWORD).
+  password: ""
+  existingSecret: ""
+  database: footprint
+  persistence:
+    size: 50Gi
+    storageClass: ""
+  resources:
+    requests: { cpu: 500m, memory: 1Gi }
+    limits: { memory: 4Gi }
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  external:
+    # e.g. https://abc123.eu-central-1.aws.clickhouse.cloud:8443
+    url: ""
+
+service:
+  type: ClusterIP
+
+# One hostname: /e and /v1/traces go to ingest, everything else to the app.
+ingress:
+  enabled: true
+  className: ""
+  annotations: {}
+  host: ""
+  tls: []
+  #  - secretName: footprint-tls
+  #    hosts: [analytics.example.com]

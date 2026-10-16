@@ -22,6 +22,8 @@ SDKs ──POST /e──▶ ingest (Rust) ──batched inserts──▶ ClickHo
 | `clickhouse/migrations/` | ClickHouse schema |
 | `docs/ingest-protocol.md` | The wire protocol between SDKs and ingest |
 | `docs/privacy.md` | Data retention, personal data export and deletion |
+| `docs/kubernetes.md` | Running footprint on Kubernetes with the Helm chart |
+| `deploy/helm/footprint/` | The Helm chart |
 | `docs/query-api.md` | The read API: queries, saved insights, events and persons |
 
 ## Self-hosting
@@ -32,6 +34,8 @@ docker compose up -d
 ```
 
 Open `http://localhost:8080`. The first visit asks you to create the owner account and an organization; after that, create a project to get its public key. Invite teammates from **Team**: footprint doesn't send email, so you copy each invitation's link and send it yourself. Everything is served on one port (default `8080`): `/e` goes to the ingest service, everything else to the app. Set `FOOTPRINT_HOST=analytics.example.com` and `PUBLIC_URL=https://analytics.example.com` to get automatic HTTPS. Sign-in uses [better-auth](https://www.better-auth.com).
+
+On Kubernetes, use the Helm chart in `deploy/helm/footprint`; see [docs/kubernetes.md](docs/kubernetes.md).
 
 ## Tracking events
 

@@ -1,0 +1,11 @@
+apiVersion: v2
+name: footprint
+description: Self-hosted product analytics, feature flags, error tracking and AI observability
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+home: https://github.com/TorstenDittmann/footprint
+sources:
+  - https://github.com/TorstenDittmann/footprint
+license: MIT
+keywords: [analytics, feature-flags, error-tracking, clickhouse]

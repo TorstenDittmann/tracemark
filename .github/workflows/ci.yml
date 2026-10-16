@@ -105,3 +105,17 @@ jobs:
           docker logs app
           test "$(curl -s -o /dev/null -w '%{redirect_url}' -H 'x-forwarded-proto: http' http://localhost:3000/)" = "http://localhost:3000/setup"
           docker exec app bun run migrate
+
+  helm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.18.4
+      - run: helm lint deploy/helm/footprint --strict --set publicUrl=https://analytics.example.com
+      - name: Render with the bundled and with an external ClickHouse
+        run: |
+          helm template fp deploy/helm/footprint --set publicUrl=https://analytics.example.com > /dev/null
+          helm template fp deploy/helm/footprint --set publicUrl=https://analytics.example.com \
+            --set clickhouse.enabled=false --set clickhouse.external.url=https://ch.example.com:8443 > /dev/null
