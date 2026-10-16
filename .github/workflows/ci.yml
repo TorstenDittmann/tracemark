@@ -19,6 +19,9 @@ jobs:
       - run: bun run test
       - run: bun run --filter '@footprint/browser' build
       - run: bun run --filter '@footprint/browser' size
+      - run: bun run --filter '@footprint/node' build
+      - run: bun run --filter '@footprint/react' build
+      - run: bun run --filter '@footprint/svelte' build
       - run: cd app && bun run build
 
   rust:

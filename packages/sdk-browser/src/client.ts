@@ -48,6 +48,8 @@ export interface WireEvent {
 export interface Plugin {
 	name: string;
 	setup(client: FootprintClient): void;
+	/** Called after `init`, and when the distinct id or groups change. */
+	changed?(reason: 'init' | 'identity' | 'groups'): void;
 }
 
 export interface FootprintClient {
@@ -63,6 +65,8 @@ export interface FootprintClient {
 	flush(): Promise<void>;
 	getDistinctId(): string | undefined;
 	getSessionId(): string | undefined;
+	/** Group type to key, as set by `group()`. */
+	getGroups(): Record<string, string>;
 	use(plugin: Plugin): FootprintClient;
 	/** Remove listeners, restore history methods and stop timers. Queued events are discarded. */
 	destroy(): void;
@@ -110,6 +114,16 @@ export function createClient(config?: Config): FootprintClient {
 	let lastPageUrl: string | undefined;
 	const plugins: Plugin[] = [];
 	const cleanups: (() => void)[] = [];
+
+	const notify = (reason: 'init' | 'identity' | 'groups') => {
+		for (const plugin of plugins) {
+			try {
+				plugin.changed?.(reason);
+			} catch (e) {
+				console.warn(`[footprint] plugin ${plugin.name} failed`, e);
+			}
+		}
+	};
 
 	const log = (...args: unknown[]) => {
 		if (cfg?.debug) console.log('[footprint]', ...args);
@@ -370,6 +384,7 @@ export function createClient(config?: Config): FootprintClient {
 			checkSession(Date.now(), false);
 			installAutocapture();
 			log('initialised', cfg);
+			notify('init');
 			return client;
 		},
 
@@ -393,6 +408,7 @@ export function createClient(config?: Config): FootprintClient {
 			state.anon = false;
 			save();
 			emit('$identify', wasAnon ? { $anon_distinct_id: prev } : undefined, { person });
+			notify('identity');
 		},
 
 		group(type, groupKey, properties) {
@@ -405,11 +421,13 @@ export function createClient(config?: Config): FootprintClient {
 				log(`max ${MAX_GROUPS} group types, ignoring`, type);
 				return;
 			}
+			const changed = state.groups[type] !== String(groupKey);
 			state.groups[type] = String(groupKey);
 			save();
 			if (properties && Object.keys(properties).length) {
 				emit('$groupidentify', { $group_type: type, $group_key: groupKey, $group_set: properties });
 			}
+			if (changed) notify('groups');
 		},
 
 		setPersonProperties(person) {
@@ -421,6 +439,7 @@ export function createClient(config?: Config): FootprintClient {
 			state = freshState(state.out);
 			lastPageUrl = undefined;
 			save();
+			notify('identity');
 		},
 
 		optOut() {
@@ -450,6 +469,10 @@ export function createClient(config?: Config): FootprintClient {
 
 		getDistinctId() {
 			return ready() ? state.id : undefined;
+		},
+
+		getGroups() {
+			return ready() ? { ...state.groups } : {};
 		},
 
 		getSessionId() {

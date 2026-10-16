@@ -68,3 +68,26 @@ An id's bucket is the first 13 hex digits of `sha1("<flag key>.<id>")`, divided 
 - For a flag with a group type, the id is that group's key, so everyone in a company gets the same answer.
 
 A condition includes the id when its bucket is below `rollout / 100`. Variants use a second bucket, salted with `.variant`, which walks the cumulative variant percentages.
+
+## Browser SDK
+
+The flags plugin ships with `@footprint/browser` as a separate entry, so pages without flags don't load it:
+
+```ts
+import { footprint } from '@footprint/browser';
+import { createFlags } from '@footprint/browser/flags';
+
+const flags = createFlags();
+footprint.init({ apiKey: 'fp_pub_…', host: 'https://footprint.example.com' }).use(flags);
+
+await flags.ready();
+if (flags.isEnabled('new-checkout')) showNewCheckout();
+const price = flags.getFlag('pricing') === 'test' ? flags.getPayload('pricing') : undefined;
+```
+
+- The plugin fetches flags after `init`, and again after `identify`, `reset` and a new `group`.
+- It keeps the last answer in localStorage and serves it on the next page load until the fresh one arrives. With `persistence: 'localStorage'` only.
+- Pass `bootstrap` with flags evaluated on your server to skip the first request.
+- The first read of each flag value per person captures `$feature_flag_called` with `$feature_flag` and `$feature_flag_response`. Experiments use these exposures. Turn them off with `sendExposures: false`.
+- Someone who opted out gets no requests, so only bootstrapped flags apply.
+- In cookieless mode every visitor shares one anonymous id until `identify`, so percentage rollouts only split identified people.

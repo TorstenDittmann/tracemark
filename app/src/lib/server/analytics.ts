@@ -11,6 +11,7 @@ import * as cohortPeople from './cohort-people';
 import { cohortSpec, getCohort, listCohorts } from './cohorts';
 import { getDb } from './db/index';
 import * as events from './events';
+import * as experimentResults from './experiment-results';
 import * as explore from './explore';
 import * as flagEvaluation from './flag-evaluation';
 import { projectFlags } from './flags';
@@ -166,3 +167,8 @@ export async function evaluateProjectFlags(projectId: string, request: flagEvalu
 		}).results;
 	}
 }
+
+export const experimentCounts = (
+	projectId: string,
+	query: Parameters<typeof experimentResults.experimentCounts>[2]
+) => experimentResults.experimentCounts(config(), projectId, query);

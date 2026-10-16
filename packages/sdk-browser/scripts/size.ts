@@ -2,15 +2,20 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
 
-const LIMIT = 10 * 1024;
+// Gzip budgets from the plan: the core under 10 KB, each plugin under 3 KB.
+const BUDGETS: Record<string, number> = {
+	'dist/footprint.iife.js': 10 * 1024,
+	'dist/footprint-flags.iife.js': 3 * 1024
+};
 let failed = false;
-for (const file of ['dist/footprint.iife.js', 'dist/index.js']) {
+for (const file of [...Object.keys(BUDGETS), 'dist/index.js', 'dist/flags.js']) {
 	const raw = readFileSync(join(import.meta.dirname, '..', file));
 	const gz = gzipSync(raw, { level: 9 }).length;
 	console.log(`${file}: ${raw.length} B raw, ${gz} B gzip (${(gz / 1024).toFixed(2)} KB)`);
-	if (file.endsWith('iife.js') && gz > LIMIT) failed = true;
+	const budget = BUDGETS[file];
+	if (budget !== undefined && gz > budget) {
+		console.error(`${file} exceeds its ${budget} B gzip budget`);
+		failed = true;
+	}
 }
-if (failed) {
-	console.error(`IIFE bundle exceeds ${LIMIT} B gzip budget`);
-	process.exit(1);
-}
+if (failed) process.exit(1);
