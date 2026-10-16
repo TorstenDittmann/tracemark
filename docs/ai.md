@@ -3,6 +3,54 @@
 footprint records LLM calls as events, like everything else: one `$ai_generation` per model call,
 grouped into traces. Cost, tokens and latency per model and per person come from those events.
 
+## Node SDK
+
+`@footprint/node/ai` records calls made through the Anthropic and OpenAI SDKs and the Vercel AI SDK,
+without changing what they return:
+
+```ts
+import Anthropic from '@anthropic-ai/sdk';
+import OpenAI from 'openai';
+import { wrapLanguageModel } from 'ai';
+import { openai as openaiModels } from '@ai-sdk/openai';
+import { Footprint } from '@footprint/node';
+import { createAi } from '@footprint/node/ai';
+
+const footprint = new Footprint({ apiKey: 'fp_pub_…', host: 'https://footprint.example.com' });
+const ai = createAi(footprint);
+
+const anthropic = ai.wrapAnthropic(new Anthropic());
+const openai = ai.wrapOpenAI(new OpenAI());
+const model = wrapLanguageModel({ model: openaiModels('gpt-4o'), middleware: ai.middleware() });
+```
+
+- Anthropic: `messages.create` (streamed or not) and `messages.stream`.
+- OpenAI: `chat.completions.create`, `responses.create` and `embeddings.create`. Streamed chat
+  completions ask for usage (`stream_options: { include_usage: true }`) unless you set
+  `stream_options`, so their last chunk carries the token counts and no choices.
+- Vercel AI SDK: every `generateText`, `streamText`, `generateObject` and `streamObject` call on the
+  wrapped model. The middleware targets AI SDK 7; pass `ai.middleware({ specificationVersion: 'v3' })`
+  for AI SDK 6 or `'v2'` for 5.
+
+Calls are recorded for `$server` unless you say who they're for. Group them into a trace, with
+steps of your own as spans, and everything inside is recorded for that person:
+
+```ts
+const answer = await ai.trace({ name: 'answer-question', distinctId: user.id, input: question }, async () => {
+  const docs = await ai.span({ name: 'retrieve', input: question }, () => search(question));
+  const reply = await anthropic.messages.create({ model: 'claude-sonnet-4-5', max_tokens: 1024, messages: [/* … */] });
+  return reply.content;
+});
+```
+
+The trace is recorded as a `$ai_trace` event with what the function returned (or threw), and each
+span as a `$ai_span`. Traces follow async calls through `AsyncLocalStorage`, so calls made deep
+inside the function join them without passing anything along.
+
+`createAi(footprint, { privacyMode: true })`, or `privacyMode: true` on a trace, leaves out inputs,
+outputs and trace state: only models, tokens, cost and timing are sent. `properties` and `groups`
+on either are added to every event.
+
 ## Events
 
 | Event | What it is |
