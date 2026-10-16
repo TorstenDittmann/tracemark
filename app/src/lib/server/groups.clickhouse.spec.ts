@@ -1,6 +1,10 @@
 // Runs against a real ClickHouse when CLICKHOUSE_TEST_URL is set (CI's migrations job does), skipped otherwise.
+import { copyFile, mkdtemp, readdir } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { ClickHouseConfig } from './clickhouse';
+import { clickhouseQuery } from './clickhouse';
 import {
 	clickhouseTestUrl,
 	createTestDatabase,
@@ -9,6 +13,7 @@ import {
 } from './clickhouse-test';
 import { recentEvents } from './explore';
 import { getGroup, groupTypes, listGroups } from './groups';
+import { migrateClickhouse } from './migrate';
 
 const project = '99999999-9999-4999-8999-999999999999';
 const now = new Date(Date.UTC(2026, 9, 16, 12, 30));
@@ -158,5 +163,45 @@ describe.skipIf(!clickhouseTestUrl)('groups in ClickHouse', () => {
 			'$groupidentify',
 			'$groupidentify'
 		]);
+	});
+});
+
+describe.skipIf(!clickhouseTestUrl)('groups migration', () => {
+	let upgraded: ClickHouseConfig | undefined;
+	afterAll(() => dropTestDatabase(upgraded));
+
+	it('backfills group properties from events sent before it', async () => {
+		const all = resolve(import.meta.dirname, '../../../../clickhouse/migrations');
+		const before = await mkdtemp(join(tmpdir(), 'footprint-migrations-'));
+		for (const file of await readdir(all)) {
+			if (file < '0003_groups.sql') await copyFile(join(all, file), join(before, file));
+		}
+		upgraded = {
+			url: clickhouseTestUrl ?? '',
+			user: process.env.CLICKHOUSE_TEST_USER ?? 'default',
+			password: process.env.CLICKHOUSE_TEST_PASSWORD ?? '',
+			database: `footprint_test_groups_upgrade_${Date.now()}`
+		};
+		await migrateClickhouse(upgraded, before);
+		await insertEvents(
+			upgraded,
+			[
+				{
+					projectId: project,
+					distinctId: 'ada',
+					event: '$groupidentify',
+					minutesAgo: 10,
+					properties: { $group_type: 'company', $group_key: 'acme', $group_set: { name: 'Acme' } },
+					groups: acme
+				}
+			],
+			now.getTime()
+		);
+		expect(await migrateClickhouse(upgraded, all)).toContain('0003_groups.sql');
+		const body = await clickhouseQuery(
+			upgraded,
+			`SELECT key, value FROM groups_properties FORMAT JSONEachRow`
+		);
+		expect(body.trim()).toBe('{"key":"name","value":"\\"Acme\\""}');
 	});
 });

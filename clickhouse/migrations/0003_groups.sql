@@ -25,6 +25,22 @@ WHERE event = '$groupidentify'
     AND group_key NOT IN ('', '\\N')
 GROUP BY project_id, group_type, group_key, key;
 
+-- Backfill from events sent before this migration; the view only sees new inserts. An event
+-- caught by both the view and the backfill is harmless, since the latest value wins either way.
+INSERT INTO group_properties
+SELECT
+    project_id,
+    toString(properties.`$group_type`) AS group_type,
+    toString(properties.`$group_key`) AS group_key,
+    kv.1 AS key,
+    argMaxState(kv.2, timestamp) AS value
+FROM events
+ARRAY JOIN JSONExtractKeysAndValuesRaw(JSONExtractRaw(toJSONString(properties), '$group_set')) AS kv
+WHERE event = '$groupidentify'
+    AND group_type NOT IN ('', '\\N')
+    AND group_key NOT IN ('', '\\N')
+GROUP BY project_id, group_type, group_key, key;
+
 -- Group properties with each key's latest value.
 CREATE VIEW IF NOT EXISTS groups_properties AS
 SELECT project_id, group_type, group_key, key, argMaxMerge(value) AS value
