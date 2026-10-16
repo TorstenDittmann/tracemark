@@ -20,6 +20,7 @@
       "devDependencies": {
         "@footprint/flags": "workspace:*",
         "@internationalized/date": "^3.12.4",
+        "@jridgewell/trace-mapping": "0.3.31",
         "@lucide/svelte": "^1.52.0",
         "@sveltejs/adapter-bun": "^1.0.0",
         "@sveltejs/kit": "^3.0.1",
@@ -38,6 +39,19 @@
         "typescript": "^6.0.3",
         "vite": "^8.3.0",
         "vitest": "^4.1.8",
+      },
+    },
+    "packages/cli": {
+      "name": "@footprint/cli",
+      "version": "0.0.0",
+      "bin": {
+        "footprint": "./dist/index.js",
+      },
+      "devDependencies": {
+        "@types/node": "22.20.3",
+        "tsdown": "0.23.0",
+        "typescript": "^6.0.3",
+        "vitest": "4.1.11",
       },
     },
     "packages/errors": {
@@ -224,6 +238,8 @@
     "@footprint/app": ["@footprint/app@workspace:app"],
 
     "@footprint/browser": ["@footprint/browser@workspace:packages/sdk-browser"],
+
+    "@footprint/cli": ["@footprint/cli@workspace:packages/cli"],
 
     "@footprint/errors": ["@footprint/errors@workspace:packages/errors"],
 

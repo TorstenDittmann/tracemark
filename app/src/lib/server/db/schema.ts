@@ -319,3 +319,62 @@ export const experiments = sqliteTable(
 );
 
 export type Experiment = typeof experiments.$inferSelect;
+
+/**
+ * Triage state of an error issue. Issues themselves are `$exception` events grouped by
+ * fingerprint in ClickHouse; a row exists here once someone resolved or ignored one.
+ */
+export const errorIssues = sqliteTable(
+	'error_issues',
+	{
+		id: id(),
+		projectId: text('project_id')
+			.notNull()
+			.references(() => projects.id, { onDelete: 'cascade' }),
+		fingerprint: text('fingerprint').notNull(),
+		status: text('status', { enum: ['open', 'resolved', 'ignored'] })
+			.notNull()
+			.default('open'),
+		statusChangedAt: timestamp('status_changed_at')
+			.notNull()
+			.default(sql`(unixepoch('subsec') * 1000)`),
+		statusChangedBy: text('status_changed_by').references(() => users.id, {
+			onDelete: 'set null'
+		})
+	},
+	(table) => [
+		uniqueIndex('error_issues_project_fingerprint_idx').on(table.projectId, table.fingerprint)
+	]
+);
+
+export type ErrorIssue = typeof errorIssues.$inferSelect;
+
+/**
+ * Source maps uploaded with `footprint sourcemaps upload`. The map itself is a gzipped file under
+ * SOURCEMAPS_DIR; `name` is the minified file's URL with `~` for any origin, e.g.
+ * `~/assets/index-B3xk9aZ1.js`.
+ */
+export const sourcemaps = sqliteTable(
+	'sourcemaps',
+	{
+		id: id(),
+		projectId: text('project_id')
+			.notNull()
+			.references(() => projects.id, { onDelete: 'cascade' }),
+		/** Empty when uploaded without a release; such maps match events of any release. */
+		release: text('release').notNull().default(''),
+		name: text('name').notNull(),
+		/** Uncompressed bytes. */
+		size: integer('size').notNull(),
+		createdAt: createdAt()
+	},
+	(table) => [
+		uniqueIndex('sourcemaps_project_release_name_idx').on(
+			table.projectId,
+			table.release,
+			table.name
+		)
+	]
+);
+
+export type Sourcemap = typeof sourcemaps.$inferSelect;

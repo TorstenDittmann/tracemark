@@ -17,6 +17,7 @@ import * as flagEvaluation from './flag-evaluation';
 import { projectFlags } from './flags';
 import * as groups from './groups';
 import * as insights from './insights';
+import * as issues from './issues';
 import * as persons from './persons';
 import type { SavedQuery } from './saved';
 import * as web from './web';
@@ -30,6 +31,7 @@ export type {
 	RetentionResult,
 	TrendsResult
 } from './insights';
+export type { IssueDetail, IssueList, IssueSummary } from './issues';
 export type { PersonDetail } from './persons';
 export type { WebAnalytics } from './web';
 
@@ -172,3 +174,12 @@ export const experimentCounts = (
 	projectId: string,
 	query: Parameters<typeof experimentResults.experimentCounts>[2]
 ) => experimentResults.experimentCounts(config(), projectId, query);
+
+export const listIssues = (projectId: string, options: Parameters<typeof issues.listIssues>[2]) =>
+	issues.listIssues(config(), projectId, options);
+
+export const issueDetail = (
+	projectId: string,
+	fingerprint: string,
+	options: Parameters<typeof issues.issueDetail>[3]
+) => issues.issueDetail(config(), projectId, fingerprint, options);

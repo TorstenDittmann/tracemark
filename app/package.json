@@ -24,6 +24,7 @@
 	"devDependencies": {
 		"@footprint/flags": "workspace:*",
 		"@internationalized/date": "^3.12.4",
+		"@jridgewell/trace-mapping": "0.3.31",
 		"@lucide/svelte": "^1.52.0",
 		"@sveltejs/adapter-bun": "^1.0.0",
 		"@sveltejs/kit": "^3.0.1",
