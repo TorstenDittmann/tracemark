@@ -119,3 +119,19 @@ jobs:
           helm template fp deploy/helm/footprint --set publicUrl=https://analytics.example.com > /dev/null
           helm template fp deploy/helm/footprint --set publicUrl=https://analytics.example.com \
             --set clickhouse.enabled=false --set clickhouse.external.url=https://ch.example.com:8443 > /dev/null
+
+  python:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ['3.9', '3.13']
+    defaults:
+      run:
+        working-directory: packages/sdk-python
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m unittest discover -s tests -v
+      - run: python -m compileall -q src
