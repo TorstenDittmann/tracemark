@@ -193,3 +193,29 @@ async fn without_a_database_or_headers_nothing_is_added() {
     assert_eq!(status, StatusCode::ACCEPTED);
     assert!(drain(&mut rx)[0].properties.is_empty());
 }
+
+#[tokio::test]
+async fn fingerprints_exceptions_only() {
+    let list = json!([{ "type": "TypeError", "value": "x is undefined" }]);
+    let mut exception = event(1, json!({ "$exception_list": list }));
+    exception["event"] = json!("$exception");
+    let mut custom = event(
+        2,
+        json!({ "$exception_list": list, "$exception_fingerprint": "mine" }),
+    );
+    custom["event"] = json!("$exception");
+    let pageview = event(3, json!({ "$exception_list": list }));
+    let props = enriched(
+        Enricher::new(None),
+        None,
+        None,
+        vec![exception, custom, pageview],
+    )
+    .await;
+    assert_eq!(
+        props[0]["$exception_fingerprint"],
+        json!(footprint_ingest::exceptions::fingerprint(Some(&list)))
+    );
+    assert_eq!(props[1]["$exception_fingerprint"], "mine");
+    assert!(!props[2].contains_key("$exception_fingerprint"));
+}

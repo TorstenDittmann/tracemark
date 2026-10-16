@@ -1,3 +1,4 @@
+import { exceptionList } from '@footprint/errors';
 import {
 	evaluate,
 	type FlagContext,
@@ -37,6 +38,24 @@ export interface FootprintOptions {
 	fetch?: typeof fetch;
 	/** Called with errors that would otherwise be swallowed, such as a failed send. */
 	onError?: (error: unknown) => void;
+	/** Your app's version, sent as `$release` with exceptions. */
+	release?: string;
+}
+
+/** The parts of Node's `process` used here; also present in Bun and Deno's Node mode. */
+interface Runtime {
+	on(event: string, listener: (error: unknown) => void): void;
+	off(event: string, listener: (error: unknown) => void): void;
+	exit(code: number): void;
+}
+
+const runtime = () => (globalThis as { process?: Runtime }).process;
+
+export interface ExceptionOptions {
+	/** Who ran into it. Defaults to `$server`, so errors outside a request count as one person. */
+	distinctId?: string;
+	properties?: Properties;
+	groups?: Record<string, string>;
 }
 
 export interface CaptureMessage {
@@ -78,8 +97,10 @@ const BATCH = 1000;
 
 /** A footprint client for servers. Create one per process and call `shutdown()` before exit. */
 export class Footprint {
-	readonly #options: Required<Omit<FootprintOptions, 'secretKey' | 'fetch' | 'onError'>> &
-		Pick<FootprintOptions, 'secretKey' | 'onError'>;
+	readonly #options: Required<
+		Omit<FootprintOptions, 'secretKey' | 'fetch' | 'onError' | 'release'>
+	> &
+		Pick<FootprintOptions, 'secretKey' | 'onError' | 'release'>;
 	readonly #fetch: typeof fetch;
 	#queue: WireEvent[] = [];
 	#sending: Promise<void> = Promise.resolve();
@@ -377,6 +398,51 @@ export class Footprint {
 	}
 
 	/** Stops the timers and sends what's queued. Call it before the process exits. */
+	/** Captures an error as a `$exception` event. */
+	captureException(error: unknown, options: ExceptionOptions = {}): void {
+		this.#exception(error, options, 'manual', true);
+	}
+
+	#exception(error: unknown, options: ExceptionOptions, mechanism: string, handled: boolean) {
+		this.capture({
+			distinctId: options.distinctId ?? '$server',
+			event: '$exception',
+			groups: options.groups,
+			properties: {
+				...options.properties,
+				$exception_list: exceptionList(error, { mechanism, handled }),
+				$exception_level: handled ? 'error' : 'fatal',
+				...(this.#options.release ? { $release: this.#options.release } : {})
+			}
+		});
+	}
+
+	/**
+	 * Captures errors nothing caught (`uncaughtException` and `unhandledRejection`), sends what's
+	 * queued, then exits with code 1 as Node would. Returns a function that removes the handlers.
+	 */
+	captureUncaughtExceptions(): () => void {
+		const crash = (mechanism: string) => async (error: unknown) => {
+			this.#exception(error, {}, mechanism, false);
+			try {
+				await this.shutdown();
+			} finally {
+				console.error(error);
+				runtime()?.exit(1);
+			}
+		};
+		const proc = runtime();
+		if (!proc) return () => {};
+		const onException = crash('uncaughtException');
+		const onRejection = crash('unhandledRejection');
+		proc.on('uncaughtException', onException);
+		proc.on('unhandledRejection', onRejection);
+		return () => {
+			proc.off('uncaughtException', onException);
+			proc.off('unhandledRejection', onRejection);
+		};
+	}
+
 	async shutdown(): Promise<void> {
 		this.#closed = true;
 		clearInterval(this.#flushTimer);

@@ -7,6 +7,6 @@ export default defineConfig({
 	target: 'es2022',
 	dts: true,
 	clean: true,
-	// The flag evaluator is bundled in, so the published package has no dependencies.
-	noExternal: ['@footprint/flags']
+	// The flag evaluator and stack parser are bundled in, so the published package has no dependencies.
+	noExternal: ['@footprint/flags', '@footprint/errors']
 });

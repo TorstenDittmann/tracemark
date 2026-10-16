@@ -3,6 +3,7 @@
 pub mod config;
 pub mod cookieless;
 pub mod enrich;
+pub mod exceptions;
 pub mod keys;
 pub mod protocol;
 pub mod routes;

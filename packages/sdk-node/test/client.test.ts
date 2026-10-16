@@ -320,3 +320,66 @@ it.skipIf(!existsSync(fixtureDir))('only sends event fields the fixtures use', a
 	await client.flush();
 	for (const key of Object.keys(events(sent)[0] ?? {})) expect(keys).toContain(key);
 });
+
+describe('exceptions', () => {
+	it('captures errors with the release and the person', async () => {
+		const { fetch, sent } = server();
+		const client = make(fetch, { release: '2.0.0' });
+		client.captureException(new TypeError('bad input', { cause: new Error('root') }), {
+			distinctId: 'ada',
+			properties: { route: '/checkout' }
+		});
+		client.captureException('plain string');
+		await client.flush();
+		const [first, second] = events(sent);
+		expect(first).toMatchObject({
+			event: '$exception',
+			distinct_id: 'ada',
+			properties: {
+				route: '/checkout',
+				$release: '2.0.0',
+				$exception_level: 'error',
+				$exception_list: [
+					{ type: 'TypeError', value: 'bad input', mechanism: { type: 'manual', handled: true } },
+					{ type: 'Error', value: 'root' }
+				]
+			}
+		});
+		const list = (first?.properties as Record<string, unknown> | undefined)?.$exception_list as {
+			stacktrace: { frames: { filename: string; in_app: boolean }[] };
+		}[];
+		const frames = list[0]?.stacktrace.frames;
+		expect(frames?.[0]).toMatchObject({ in_app: true });
+		expect(frames?.[0]?.filename).toContain('client.test.ts');
+		expect(second).toMatchObject({ distinct_id: '$server' });
+	});
+
+	it('captures uncaught errors, sends them and exits', async () => {
+		const { fetch, sent } = server();
+		const client = make(fetch);
+		const listeners = new Map<string, (error: unknown) => void>();
+		const exit = vi.fn();
+		vi.stubGlobal('process', {
+			on: (event: string, listener: (error: unknown) => void) => listeners.set(event, listener),
+			off: (event: string) => listeners.delete(event),
+			exit
+		});
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		const remove = client.captureUncaughtExceptions();
+		await listeners.get('unhandledRejection')?.(new Error('lost'));
+		vi.unstubAllGlobals();
+		expect(exit).toHaveBeenCalledWith(1);
+		expect(events(sent)).toMatchObject([
+			{
+				event: '$exception',
+				properties: {
+					$exception_level: 'fatal',
+					$exception_list: [
+						{ value: 'lost', mechanism: { type: 'unhandledRejection', handled: false } }
+					]
+				}
+			}
+		]);
+		remove();
+	});
+});

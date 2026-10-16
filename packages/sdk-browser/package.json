@@ -21,6 +21,11 @@
 		},
 		"./iife": "./dist/footprint.iife.js",
 		"./flags/iife": "./dist/footprint-flags.iife.js",
+		"./errors": {
+			"types": "./dist/errors.d.ts",
+			"import": "./dist/errors.js"
+		},
+		"./errors/iife": "./dist/footprint-errors.iife.js",
 		"./package.json": "./package.json"
 	},
 	"files": [
@@ -33,6 +38,7 @@
 		"size": "bun scripts/size.ts"
 	},
 	"devDependencies": {
+		"@footprint/errors": "workspace:*",
 		"@types/node": "22.20.3",
 		"happy-dom": "20.14.5",
 		"tsdown": "0.23.0",
