@@ -1,0 +1,46 @@
+{
+	"api_key": "fp_pub_test",
+	"batch": [
+		{
+			"uuid": "01927d0b-8c4a-7cc2-9f43-3c1b2b0e9a20",
+			"event": "$exception",
+			"distinct_id": "user_123",
+			"timestamp": "2026-10-16T12:00:00.000Z",
+			"properties": {
+				"$current_url": "https://example.com/checkout",
+				"$release": "1.4.0",
+				"$exception_level": "fatal",
+				"$exception_list": [
+					{
+						"type": "TypeError",
+						"value": "Cannot read properties of undefined (reading 'total')",
+						"mechanism": { "type": "onerror", "handled": false },
+						"stacktrace": {
+							"frames": [
+								{
+									"filename": "https://example.com/assets/index-B3xk9aZ1.js",
+									"function": "renderCart",
+									"lineno": 1,
+									"colno": 4821,
+									"in_app": true
+								},
+								{
+									"filename": "https://cdn.example.com/react-dom.js",
+									"function": "commitRoot",
+									"lineno": 1,
+									"colno": 99,
+									"in_app": false
+								}
+							]
+						}
+					},
+					{
+						"type": "Error",
+						"value": "cart not loaded",
+						"mechanism": { "type": "onerror", "handled": false }
+					}
+				]
+			}
+		}
+	]
+}

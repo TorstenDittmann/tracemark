@@ -5,10 +5,11 @@ import { gzipSync } from 'node:zlib';
 // Gzip budgets from the plan: the core under 10 KB, each plugin under 3 KB.
 const BUDGETS: Record<string, number> = {
 	'dist/footprint.iife.js': 10 * 1024,
-	'dist/footprint-flags.iife.js': 3 * 1024
+	'dist/footprint-flags.iife.js': 3 * 1024,
+	'dist/footprint-errors.iife.js': 3 * 1024
 };
 let failed = false;
-for (const file of [...Object.keys(BUDGETS), 'dist/index.js', 'dist/flags.js']) {
+for (const file of [...Object.keys(BUDGETS), 'dist/index.js', 'dist/flags.js', 'dist/errors.js']) {
 	const raw = readFileSync(join(import.meta.dirname, '..', file));
 	const gz = gzipSync(raw, { level: 9 }).length;
 	console.log(`${file}: ${raw.length} B raw, ${gz} B gzip (${(gz / 1024).toFixed(2)} KB)`);

@@ -12,6 +12,7 @@ use serde::Deserialize;
 use serde_json::{Map, Value};
 
 use crate::cookieless::{self, PLACEHOLDER};
+use crate::exceptions;
 use crate::protocol::Row;
 
 /// Event properties that override the request's values, for server SDKs sending
@@ -136,6 +137,9 @@ impl Enricher {
 
         for row in rows {
             let props = &mut row.properties;
+            if row.event == exceptions::EVENT {
+                exceptions::add_fingerprint(props);
+            }
             let ip = match props.remove(IP_PROPERTY) {
                 Some(Value::String(ip)) => parse_ip(ip.trim()),
                 _ => request.ip,
