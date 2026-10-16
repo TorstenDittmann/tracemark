@@ -33,16 +33,28 @@ export async function recentEvents(
 	config: ClickHouseConfig,
 	projectId: string,
 	query: ActivityQuery,
-	options: { before?: ActivityCursor; limit?: number; now?: Date } = {}
+	options: {
+		before?: ActivityCursor;
+		limit?: number;
+		now?: Date;
+		/** Only these distinct ids, from any time rather than the lookback window. */
+		distinctIds?: string[];
+	} = {}
 ): Promise<ActivityPage> {
 	const limit = options.limit ?? ACTIVITY_PAGE_SIZE;
 	const now = options.now ?? new Date();
-	const params: Record<string, string> = {
+	const params: Record<string, string | string[]> = {
 		project: projectId,
 		from: chTime(new Date(now.getTime() - LOOKBACK_DAYS * 86_400_000)),
 		limit: String(limit + 1)
 	};
 	const conditions: string[] = [];
+	if (options.distinctIds) {
+		params.ids = options.distinctIds;
+		conditions.push('e.distinct_id IN {ids:Array(String)}');
+	} else {
+		conditions.push(`e.timestamp >= {from:DateTime64(3, 'UTC')}`);
+	}
 	if (query.event !== undefined) {
 		params.event = query.event;
 		conditions.push('e.event = {event:String}');
@@ -70,7 +82,6 @@ export async function recentEvents(
 		LEFT JOIN (SELECT alias, person FROM person_distinct_ids WHERE project_id = {project:UUID}) AS a
 			ON a.alias = e.distinct_id
 		WHERE e.project_id = {project:UUID}
-			AND e.timestamp >= {from:DateTime64(3, 'UTC')}
 			${conditions.map((condition) => `AND ${condition}`).join('\n\t\t\t')}
 		ORDER BY e.timestamp DESC, e.uuid DESC
 		LIMIT {limit:UInt32}

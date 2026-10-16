@@ -8,6 +8,7 @@ import type { ClickHouseConfig } from './clickhouse';
 import * as events from './events';
 import * as explore from './explore';
 import * as insights from './insights';
+import * as persons from './persons';
 import type { SavedQuery } from './saved';
 import * as web from './web';
 
@@ -19,6 +20,7 @@ export type {
 	RetentionResult,
 	TrendsResult
 } from './insights';
+export type { PersonDetail } from './persons';
 export type { WebAnalytics } from './web';
 
 export type SavedResult =
@@ -80,3 +82,11 @@ export const eventDefinitions = (projectId: string) =>
 
 export const propertyDefinitions = (projectId: string, event?: string) =>
 	explore.propertyDefinitions(config(), projectId, { event });
+
+export const listPersons = (
+	projectId: string,
+	options?: Parameters<typeof persons.listPersons>[2]
+) => persons.listPersons(config(), projectId, options);
+
+export const getPerson = (projectId: string, distinctId: string) =>
+	persons.getPerson(config(), projectId, distinctId);
