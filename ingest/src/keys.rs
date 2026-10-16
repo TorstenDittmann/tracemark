@@ -1,9 +1,10 @@
-//! Public API key → project id cache, refreshed by polling the app.
+//! Public API key → project id cache and cookieless salts, refreshed by polling the app.
 
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
+use chrono::NaiveDate;
 use serde::Deserialize;
 use uuid::Uuid;
 
@@ -17,10 +18,27 @@ pub enum Lookup {
 
 type KeyMap = HashMap<String, Uuid>;
 
+/// What one poll of the app returns.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Snapshot {
+    pub keys: KeyMap,
+    /// Cookieless salts by UTC day (`YYYY-MM-DD`): today's and tomorrow's.
+    pub salts: HashMap<String, String>,
+}
+
+impl From<KeyMap> for Snapshot {
+    fn from(keys: KeyMap) -> Self {
+        Self {
+            keys,
+            salts: HashMap::new(),
+        }
+    }
+}
+
 #[derive(Clone, Default)]
 pub struct KeyStore {
     /// `None` until the first successful poll.
-    keys: Arc<RwLock<Option<Arc<KeyMap>>>>,
+    snapshot: Arc<RwLock<Option<Arc<Snapshot>>>>,
 }
 
 impl KeyStore {
@@ -28,31 +46,43 @@ impl KeyStore {
         Self::default()
     }
 
-    pub fn from_map(keys: HashMap<String, Uuid>) -> Self {
+    pub fn from_map(keys: impl Into<Snapshot>) -> Self {
         let store = Self::new();
         store.replace(keys);
         store
     }
 
-    pub fn replace(&self, keys: HashMap<String, Uuid>) {
-        *self.keys.write().unwrap_or_else(|e| e.into_inner()) = Some(Arc::new(keys));
+    pub fn replace(&self, snapshot: impl Into<Snapshot>) {
+        *self.snapshot.write().unwrap_or_else(|e| e.into_inner()) = Some(Arc::new(snapshot.into()));
+    }
+
+    fn current(&self) -> Option<Arc<Snapshot>> {
+        self.snapshot
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
     }
 
     pub fn lookup(&self, public_key: &str) -> Lookup {
-        let guard = self.keys.read().unwrap_or_else(|e| e.into_inner());
-        match guard.as_deref() {
+        match self.current() {
             None => Lookup::NotReady,
-            Some(keys) => keys
+            Some(snapshot) => snapshot
+                .keys
                 .get(public_key)
                 .map_or(Lookup::Unknown, |id| Lookup::Found(*id)),
         }
     }
 
+    /// The cookieless salt for `day`, if the app has handed it out.
+    pub fn salt(&self, day: NaiveDate) -> Option<String> {
+        self.current()?
+            .salts
+            .get(&day.format("%Y-%m-%d").to_string())
+            .cloned()
+    }
+
     pub fn is_ready(&self) -> bool {
-        self.keys
-            .read()
-            .unwrap_or_else(|e| e.into_inner())
-            .is_some()
+        self.current().is_some()
     }
 }
 
@@ -67,6 +97,8 @@ pub enum FetchError {
 #[derive(Deserialize)]
 struct ProjectsResponse {
     projects: Vec<Project>,
+    #[serde(default)]
+    salts: HashMap<String, String>,
 }
 
 #[derive(Deserialize)]
@@ -82,7 +114,7 @@ pub struct KeySource {
 }
 
 impl KeySource {
-    pub async fn fetch(&self) -> Result<HashMap<String, Uuid>, FetchError> {
+    pub async fn fetch(&self) -> Result<Snapshot, FetchError> {
         let response = self
             .client
             .get(format!("{}/internal/projects", self.app_internal_url))
@@ -94,11 +126,14 @@ impl KeySource {
             return Err(FetchError::Status(response.status()));
         }
         let body: ProjectsResponse = response.json().await?;
-        Ok(body
-            .projects
-            .into_iter()
-            .map(|p| (p.public_key, p.id))
-            .collect())
+        Ok(Snapshot {
+            keys: body
+                .projects
+                .into_iter()
+                .map(|p| (p.public_key, p.id))
+                .collect(),
+            salts: body.salts,
+        })
     }
 }
 
@@ -108,9 +143,9 @@ pub async fn poll(source: KeySource, store: KeyStore, refresh: Duration) {
     let mut retry = Duration::from_millis(500);
     while !store.is_ready() {
         match source.fetch().await {
-            Ok(keys) => {
-                tracing::info!(projects = keys.len(), "loaded project keys");
-                store.replace(keys);
+            Ok(snapshot) => {
+                tracing::info!(projects = snapshot.keys.len(), "loaded project keys");
+                store.replace(snapshot);
             }
             Err(error) => {
                 tracing::warn!(%error, retry_in = ?retry, "initial project key fetch failed");
@@ -126,9 +161,9 @@ pub async fn poll(source: KeySource, store: KeyStore, refresh: Duration) {
     loop {
         interval.tick().await;
         match source.fetch().await {
-            Ok(keys) => {
-                tracing::debug!(projects = keys.len(), "refreshed project keys");
-                store.replace(keys);
+            Ok(snapshot) => {
+                tracing::debug!(projects = snapshot.keys.len(), "refreshed project keys");
+                store.replace(snapshot);
             }
             Err(error) => tracing::warn!(%error, "project key refresh failed; keeping last keys"),
         }
@@ -148,5 +183,18 @@ mod tests {
         store.replace(HashMap::from([("fp_pub_x".to_owned(), id)]));
         assert_eq!(store.lookup("fp_pub_x"), Lookup::Found(id));
         assert_eq!(store.lookup("fp_pub_y"), Lookup::Unknown);
+    }
+
+    #[test]
+    fn salts_are_looked_up_by_utc_day() {
+        let store = KeyStore::new();
+        let day = NaiveDate::from_ymd_opt(2026, 10, 16).unwrap();
+        assert_eq!(store.salt(day), None);
+        store.replace(Snapshot {
+            keys: HashMap::new(),
+            salts: HashMap::from([("2026-10-16".to_owned(), "abc".to_owned())]),
+        });
+        assert_eq!(store.salt(day).as_deref(), Some("abc"));
+        assert_eq!(store.salt(day.succ_opt().unwrap()), None);
     }
 }

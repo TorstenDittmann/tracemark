@@ -58,12 +58,16 @@ export interface WebAnalytics {
 	breakdowns: Record<Dimension, WebBreakdownRow[]>;
 }
 
+/** Idle time after which a visitor without a session id starts a new session. */
+const SESSION_GAP_SECONDS = 30 * 60;
+
 const str = (path: string) => `ifNull(e.properties.\`${path}\`.:String, '')`;
 
 /**
  * One row per session in the window, built from `$pageview` and `$pageleave` events. Visitors
  * are people: an anonymous id linked to an identified one by `$identify` counts once. Events
- * without a session id are grouped per distinct_id and day. Bot traffic is left out.
+ * without a session id (cookieless SDKs) are split into sessions per person wherever 30 minutes
+ * pass without an event. Bot traffic is left out.
  */
 function sessionsQuery(filters: WebFilters): string {
 	const conditions = (Object.keys(filters) as Dimension[]).map((key) =>
@@ -89,11 +93,19 @@ function sessionsQuery(filters: WebFilters): string {
 				argMinIf(browser, ts, is_pageview) AS browser,
 				argMinIf(os, ts, is_pageview) AS os
 			FROM (
+				SELECT *, if(sid = '', concat(person, '/', toString(sum(gap) OVER (
+					PARTITION BY person, sid ORDER BY ts ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+				))), sid) AS session
+				FROM (
+				SELECT *, dateDiff('second', lagInFrame(ts, 1, ts) OVER (
+					PARTITION BY person, sid ORDER BY ts ROWS BETWEEN 1 PRECEDING AND CURRENT ROW
+				), ts) > ${SESSION_GAP_SECONDS} AS gap
+				FROM (
 				SELECT
 					e.timestamp AS ts,
 					e.event = '$pageview' AS is_pageview,
 					if(a.person = '', e.distinct_id, a.person) AS person,
-					if(e.session_id = '', concat(e.distinct_id, '/', toString(toDate(e.timestamp))), e.session_id) AS session,
+					e.session_id AS sid,
 					${str('$pathname')} AS pathname,
 					if(${str('$referring_domain')} = '$direct', '', ${str('$referring_domain')}) AS referrer,
 					${str('utm_source')} AS utm_source,
@@ -110,6 +122,8 @@ function sessionsQuery(filters: WebFilters): string {
 					AND e.event IN ('$pageview', '$pageleave')
 					AND e.timestamp >= {from:DateTime64(3, 'UTC')}
 					AND e.timestamp < {to:DateTime64(3, 'UTC')}
+				)
+				)
 			)
 			GROUP BY session
 		)

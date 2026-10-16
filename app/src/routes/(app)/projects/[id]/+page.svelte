@@ -96,7 +96,10 @@ async function copy(label: string, text: string) {
 			<Card.Title>Install the browser SDK</Card.Title>
 			<Card.Description>
 				Add <code class="font-mono">@footprint/browser</code> with your package manager, then
-				initialize it once on page load. Page views are captured automatically.
+				initialize it once on page load. Page views are captured automatically. Add
+				<code class="font-mono">cookieless: true</code>
+				to store nothing on your visitors' devices; they are then counted by a hash that changes
+				daily.
 			</Card.Description>
 		</Card.Header>
 		<Card.Content class="grid gap-2">

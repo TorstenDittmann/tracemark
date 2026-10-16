@@ -149,6 +149,15 @@ export const projects = sqliteTable('projects', {
 	createdAt: createdAt()
 });
 
+/**
+ * Random salts for cookieless visitor hashes, one per UTC day. Old days are deleted so a
+ * hash can not be recomputed from an IP address and user agent later.
+ */
+export const dailySalts = sqliteTable('daily_salts', {
+	day: text('day').primaryKey(),
+	salt: text('salt').notNull()
+});
+
 export type User = typeof users.$inferSelect;
 export type Organization = typeof organizations.$inferSelect;
 export type Member = typeof members.$inferSelect;

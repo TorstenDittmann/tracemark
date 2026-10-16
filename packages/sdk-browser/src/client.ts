@@ -9,8 +9,15 @@ export interface Config {
 	host: string;
 	/** Capture `$pageview` on load and on SPA navigations, and `$pageleave` on pagehide. Default `true`. */
 	autocapturePageviews?: boolean;
-	/** Where ids are kept. `'memory'` is cookieless: nothing survives a reload. Default `'localStorage'`. */
+	/** Where ids are kept. `'memory'` keeps nothing across reloads. Default `'localStorage'`. */
 	persistence?: Persistence;
+	/**
+	 * Store nothing on the device. Anonymous visitors are counted by a hash of IP address, user
+	 * agent and a salt that rotates daily, computed by ingest; sessions are derived from 30-minute
+	 * gaps. Identified users keep their id until the page unloads. Implies `persistence: 'memory'`.
+	 * Default `false`.
+	 */
+	cookieless?: boolean;
 	/** Default `2000`. */
 	flushIntervalMs?: number;
 	/** Default `50`. */
@@ -78,6 +85,8 @@ interface State {
 	out?: boolean;
 }
 
+/** Placeholder distinct_id that ingest replaces with the daily visitor hash. */
+export const COOKIELESS_ID = '$cookieless';
 export const SESSION_IDLE_MS = 30 * 60 * 1000;
 export const SESSION_MAX_MS = 24 * 60 * 60 * 1000;
 export const MAX_QUEUE = 1000;
@@ -256,9 +265,10 @@ export function createClient(config?: Config): FootprintClient {
 			event,
 			distinct_id: extra?.distinctId ?? state.id,
 			timestamp: new Date(now).toISOString(),
-			session_id: state.sid,
 			properties: { ...defaultProperties(), ...properties }
 		};
+		// Cookieless sessions are derived server-side, a per-page-load id would split them.
+		if (!cfg?.cookieless) ev.session_id = state.sid;
 		const person = extra?.person;
 		if (person && (person.set || person.set_once)) {
 			ev.person = {};
@@ -316,7 +326,8 @@ export function createClient(config?: Config): FootprintClient {
 
 	const freshState = (out?: boolean): State => {
 		const now = Date.now();
-		return { id: uuidv7(now), anon: true, sid: uuidv7(now), ss: now, la: now, groups: {}, out };
+		const id = cfg?.cookieless ? COOKIELESS_ID : uuidv7(now);
+		return { id, anon: true, sid: uuidv7(now), ss: now, la: now, groups: {}, out };
 	};
 
 	const client: FootprintClient = {
@@ -341,9 +352,11 @@ export function createClient(config?: Config): FootprintClient {
 				maxBatchSize: 50,
 				debug: false,
 				respectDnt: false,
+				cookieless: false,
 				...c,
 				host: c.host.replace(/\/+$/, '')
 			};
+			if (cfg.cookieless) cfg.persistence = 'memory';
 			store = createStore(cfg.persistence);
 			key = `fp_${cfg.apiKey}`;
 			let loaded: Partial<State> | null = null;
@@ -440,7 +453,7 @@ export function createClient(config?: Config): FootprintClient {
 		},
 
 		getSessionId() {
-			if (!ready()) return undefined;
+			if (!ready() || cfg?.cookieless) return undefined;
 			checkSession(Date.now(), false);
 			return state.sid;
 		},
