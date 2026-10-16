@@ -12,7 +12,7 @@ import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ parent, url }) => {
 	const { project } = await parent();
-	const { saved, storedQuery, dashboards } = await loadSaved(project.id, url, 'funnel');
+	const { saved, storedQuery, dashboards, cohorts } = await loadSaved(project.id, url, 'funnel');
 	const query = parseFunnelParam(url.searchParams.get('q') ?? storedQuery);
 	let result: FunnelResult | null = null;
 	let events: EventName[] = [];
@@ -26,7 +26,7 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 	} catch (err) {
 		console.error('insights unavailable:', err);
 	}
-	return { query, result, events, properties, saved, dashboards };
+	return { query, result, events, properties, saved, dashboards, cohorts };
 };
 
 export const actions: Actions = insightActions('funnel');

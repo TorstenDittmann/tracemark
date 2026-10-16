@@ -1,4 +1,5 @@
 <script lang="ts">
+import CohortSelect from '#lib/components/insights/cohort-select.svelte';
 import { selectClass, showQuery, withCurrent } from '#lib/components/insights/editor.svelte.js';
 import FiltersEditor from '#lib/components/insights/filters-editor.svelte';
 import RangePicker from '#lib/components/insights/range-picker.svelte';
@@ -68,6 +69,15 @@ const allProperties = $derived(data.properties.map((p) => p.name));
 				filters={data.query.filters}
 				properties={allProperties}
 				onchange={(filters) => update((q) => (q.filters = filters))}
+			/>
+			<CohortSelect
+				value={data.query.cohort}
+				cohorts={data.cohorts}
+				onchange={(cohort) =>
+					update((q) => {
+						if (cohort) q.cohort = cohort;
+						else delete q.cohort;
+					})}
 			/>
 			<div>
 				<RangePicker

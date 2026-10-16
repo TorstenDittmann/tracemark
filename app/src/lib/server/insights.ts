@@ -1,11 +1,10 @@
+import type { CohortSpec } from '../cohorts';
 import {
-	type FunnelGroup,
 	type FunnelQuery,
 	type FunnelResult,
 	MAX_LINES,
 	needsProperty,
 	type PropertyFilter,
-	type RetentionCohort,
 	type RetentionQuery,
 	type RetentionResult,
 	retentionPeriod,
@@ -18,6 +17,8 @@ import {
 	WINDOWS
 } from '../insights';
 import { type ClickHouseConfig, clickhouseQuery } from './clickhouse';
+import { cohortPeopleSql } from './cohort-people';
+import { compareSql } from './compare';
 import { chTime, timeWindow } from './web';
 
 export type { FunnelResult, RetentionResult, TrendsResult };
@@ -29,25 +30,7 @@ function property(name: string): string {
 }
 
 export function filterSql(filter: PropertyFilter, param: string): string {
-	const value = `toString(${property(filter.property)})`;
-	switch (filter.operator) {
-		case 'eq':
-			return `${value} = {${param}:String}`;
-		case 'neq':
-			return `${value} != {${param}:String}`;
-		case 'contains':
-			return `positionCaseInsensitive(${value}, {${param}:String}) > 0`;
-		case 'not_contains':
-			return `positionCaseInsensitive(${value}, {${param}:String}) = 0`;
-		case 'gt':
-			return `toFloat64OrNull(${value}) > toFloat64OrNull({${param}:String})`;
-		case 'lt':
-			return `toFloat64OrNull(${value}) < toFloat64OrNull({${param}:String})`;
-		case 'is_set':
-			return `${value} != ''`;
-		case 'is_not_set':
-			return `${value} = ''`;
-	}
+	return compareSql(`toString(${property(filter.property)})`, filter.operator, param);
 }
 
 /**
@@ -57,7 +40,8 @@ export function filterSql(filter: PropertyFilter, param: string): string {
 function eventsSource(
 	projectId: string,
 	window: { from: Date; to: Date },
-	filters: PropertyFilter[]
+	filters: PropertyFilter[],
+	cohort?: CohortSpec
 ): { sql: string; params: Record<string, string> } {
 	const params: Record<string, string> = {
 		project: projectId,
@@ -68,6 +52,7 @@ function eventsSource(
 		if (filter.value !== undefined) params[`v${i}`] = filter.value;
 		return ` AND ${filterSql(filter, `v${i}`)}`;
 	});
+	if (cohort) conditions.push(` AND ${PERSON} IN (${cohortPeopleSql(cohort, params)})`);
 	return {
 		sql: `FROM events AS e
 			LEFT JOIN (SELECT alias, person FROM person_distinct_ids WHERE project_id = {project:UUID}) AS a
@@ -106,10 +91,11 @@ export async function trends(
 	config: ClickHouseConfig,
 	projectId: string,
 	query: TrendsQuery,
-	now?: Date
+	now?: Date,
+	cohort?: CohortSpec
 ): Promise<TrendsResult> {
 	const { bucket, bucketFn, from, to, buckets } = timeWindow(query.range, now);
-	const source = eventsSource(projectId, { from, to }, query.filters);
+	const source = eventsSource(projectId, { from, to }, query.filters, cohort);
 	const perSeries = Math.max(1, Math.floor(MAX_LINES / query.series.length));
 
 	const results = await Promise.all(
@@ -184,10 +170,11 @@ export async function funnel(
 	config: ClickHouseConfig,
 	projectId: string,
 	query: FunnelQuery,
-	now?: Date
+	now?: Date,
+	cohort?: CohortSpec
 ): Promise<FunnelResult> {
 	const { from, to } = timeWindow(query.range, now);
-	const source = eventsSource(projectId, { from, to }, query.filters);
+	const source = eventsSource(projectId, { from, to }, query.filters, cohort);
 	const params: Record<string, string> = {
 		...source.params,
 		window: String(WINDOWS[query.window].ms)
@@ -196,6 +183,7 @@ export async function funnel(
 		params[`s${i}`] = step;
 	});
 	const conditions = query.steps.map((_, i) => `event = {s${i}:String}`).join(', ');
+	// strict_once: one event counts for one step only, so a repeated step needs a second event.
 	const breakdown = query.breakdown ? `toString(${property(query.breakdown)})` : `''`;
 	const body = await clickhouseQuery(
 		config,
@@ -203,7 +191,7 @@ export async function funnel(
 			SELECT
 				person,
 				argMinIf(value, ts, event = {s0:String}) AS value,
-				windowFunnel({window:UInt64})(toUInt64(toUnixTimestamp64Milli(ts)), ${conditions}) AS level
+				windowFunnel({window:UInt64}, 'strict_once')(toUInt64(toUnixTimestamp64Milli(ts)), ${conditions}) AS level
 			FROM (
 				SELECT ${PERSON} AS person, e.timestamp AS ts, e.event AS event, ${breakdown} AS value
 				${source.sql}
@@ -249,7 +237,8 @@ export async function retention(
 	config: ClickHouseConfig,
 	projectId: string,
 	query: RetentionQuery,
-	now?: Date
+	now?: Date,
+	cohort?: CohortSpec
 ): Promise<RetentionResult> {
 	const period = retentionPeriod(query.range);
 	const window = timeWindow(query.range, now);
@@ -263,7 +252,7 @@ export async function retention(
 		starts.push(new Date(t).toISOString().replace('.000Z', 'Z'));
 	}
 
-	const source = eventsSource(projectId, window, query.filters);
+	const source = eventsSource(projectId, window, query.filters, cohort);
 	const trunc = period === 'day' ? 'toStartOfDay(e.timestamp)' : 'toStartOfWeek(e.timestamp, 1)';
 	const body = await clickhouseQuery(
 		config,

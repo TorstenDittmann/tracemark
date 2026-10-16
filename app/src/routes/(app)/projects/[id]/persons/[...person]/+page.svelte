@@ -1,10 +1,13 @@
 <script lang="ts">
 import EventList from '#lib/components/events/event-list.svelte';
+import { selectClass } from '#lib/components/insights/editor.svelte.js';
+import { Button } from '#lib/components/ui/button/index.js';
 import * as Card from '#lib/components/ui/card/index.js';
 import { personName } from '#lib/persons.js';
+import { enhance } from '$app/forms';
 import type { PageProps } from './$types';
 
-let { data }: PageProps = $props();
+let { data, form }: PageProps = $props();
 
 const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 
@@ -98,6 +101,26 @@ function display(value: unknown): string {
 						{/if}
 					</Card.Content>
 				</Card.Root>
+				{#if data.cohorts.length}
+					<Card.Root class="min-w-0 gap-3">
+						<Card.Header>
+							<Card.Title>Add to a cohort</Card.Title>
+						</Card.Header>
+						<Card.Content class="grid gap-2">
+							<form method="POST" action="?/addToCohort" use:enhance class="flex flex-wrap gap-2">
+								<select name="cohort" class={selectClass} aria-label="Static cohort">
+									{#each data.cohorts as cohort (cohort.id)}
+										<option value={cohort.id}>{cohort.name}</option>
+									{/each}
+								</select>
+								<Button type="submit" size="sm" variant="outline">Add</Button>
+							</form>
+							{#if form?.message}
+								<p class="text-sm text-muted-foreground" role="status">{form.message}</p>
+							{/if}
+						</Card.Content>
+					</Card.Root>
+				{/if}
 				<Card.Root class="min-w-0 gap-3">
 					<Card.Header>
 						<Card.Title>Distinct ids</Card.Title>

@@ -4,11 +4,15 @@ import type { LayoutProps } from './$types';
 
 let { data, children }: LayoutProps = $props();
 
-const tabs = $derived([
+const tabs: { href: string; label: string; also?: string }[] = $derived([
 	{ href: `/projects/${data.project.id}`, label: 'Overview' },
 	{ href: `/projects/${data.project.id}/web`, label: 'Web analytics' },
 	{ href: `/projects/${data.project.id}/events`, label: 'Events' },
-	{ href: `/projects/${data.project.id}/persons`, label: 'People' },
+	{
+		href: `/projects/${data.project.id}/persons`,
+		label: 'People',
+		also: `/projects/${data.project.id}/cohorts`
+	},
 	{ href: `/projects/${data.project.id}/groups`, label: 'Groups' },
 	{ href: `/projects/${data.project.id}/insights`, label: 'Insights' },
 	{ href: `/projects/${data.project.id}/dashboards`, label: 'Dashboards' },
@@ -24,7 +28,8 @@ const tabs = $derived([
 				{@const active =
 					tab.href === `/projects/${data.project.id}`
 						? page.url.pathname === tab.href
-						: page.url.pathname.startsWith(tab.href)}
+						: page.url.pathname.startsWith(tab.href) ||
+							(tab.also !== undefined && page.url.pathname.startsWith(tab.also))}
 				<a
 					href={tab.href}
 					class={[
