@@ -7,5 +7,7 @@ export const load: LayoutServerLoad = async ({ locals, params }) => {
 	if (!locals.user) redirect(303, '/login');
 	const row = await getProjectForUser(getDb(), locals.user.id, params.id);
 	if (!row) error(404, 'Project not found');
-	return { project: row.project, role: row.role };
+	// The secret key is only shown to managers, on the settings page.
+	const { secretKey: _secret, ...project } = row.project;
+	return { project, role: row.role };
 };

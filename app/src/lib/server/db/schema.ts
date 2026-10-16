@@ -1,5 +1,12 @@
 import { sql } from 'drizzle-orm';
-import { index, integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import {
+	index,
+	integer,
+	primaryKey,
+	sqliteTable,
+	text,
+	uniqueIndex
+} from 'drizzle-orm/sqlite-core';
 
 // Tables named after better-auth models (users, sessions, accounts, verifications, and the
 // organization plugin's organizations, members, invitations) are managed through better-auth;
@@ -144,6 +151,8 @@ export const projects = sqliteTable('projects', {
 	name: text('name').notNull(),
 	/** Write-only key embedded in SDKs; safe to expose in browsers. */
 	publicKey: text('public_key').notNull().unique(),
+	/** Server-only key for reading flag definitions; never sent to browsers. */
+	secretKey: text('secret_key').unique(),
 	/** Days of events to keep; null keeps everything. */
 	retentionDays: integer('retention_days'),
 	createdAt: createdAt()
@@ -233,3 +242,48 @@ export const cohorts = sqliteTable(
 );
 
 export type Cohort = typeof cohorts.$inferSelect;
+
+/**
+ * A feature flag. `definition` is the JSON of everything a `FlagDefinition` holds besides its
+ * key and active state: group type, conditions, variants and payloads.
+ */
+export const featureFlags = sqliteTable(
+	'feature_flags',
+	{
+		id: id(),
+		projectId: text('project_id')
+			.notNull()
+			.references(() => projects.id, { onDelete: 'cascade' }),
+		key: text('key').notNull(),
+		description: text('description').notNull().default(''),
+		active: integer('active', { mode: 'boolean' }).notNull().default(false),
+		definition: text('definition').notNull(),
+		/** Bumped on every change; matches the latest `flag_versions` row. */
+		version: integer('version').notNull().default(1),
+		createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+		createdAt: createdAt(),
+		updatedAt: updatedAt()
+	},
+	(table) => [uniqueIndex('feature_flags_project_key_idx').on(table.projectId, table.key)]
+);
+
+/** Every saved state of a flag, for its history. */
+export const flagVersions = sqliteTable(
+	'flag_versions',
+	{
+		id: id(),
+		flagId: text('flag_id')
+			.notNull()
+			.references(() => featureFlags.id, { onDelete: 'cascade' }),
+		version: integer('version').notNull(),
+		description: text('description').notNull(),
+		active: integer('active', { mode: 'boolean' }).notNull(),
+		definition: text('definition').notNull(),
+		changedBy: text('changed_by').references(() => users.id, { onDelete: 'set null' }),
+		createdAt: createdAt()
+	},
+	(table) => [uniqueIndex('flag_versions_flag_version_idx').on(table.flagId, table.version)]
+);
+
+export type FeatureFlag = typeof featureFlags.$inferSelect;
+export type FlagVersion = typeof flagVersions.$inferSelect;

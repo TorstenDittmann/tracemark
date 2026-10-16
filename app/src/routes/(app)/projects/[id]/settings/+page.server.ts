@@ -7,9 +7,17 @@ import {
 	getProjectForUser,
 	renameProject,
 	rotatePublicKey,
+	rotateSecretKey,
 	validateProjectName
 } from '#lib/server/projects.js';
-import type { Actions, RequestEvent } from './$types';
+import type { Actions, PageServerLoad, RequestEvent } from './$types';
+
+export const load: PageServerLoad = async ({ locals, params }) => {
+	if (!locals.user) redirect(303, '/login');
+	const row = await getProjectForUser(getDb(), locals.user.id, params.id);
+	if (!row) error(404, 'Project not found');
+	return { secretKey: canManage(row.role) ? row.project.secretKey : null };
+};
 
 /** Actions don't run layout loads, so each one checks access itself. */
 async function access({ locals, params }: RequestEvent, managersOnly: boolean) {
@@ -35,6 +43,15 @@ export const actions: Actions = {
 		const project = await access(event, true);
 		await rotatePublicKey(getDb(), project.id);
 		return { action: 'rotate', message: 'New key created. Update your SDK setup.' };
+	},
+
+	rotateSecret: async (event) => {
+		const project = await access(event, true);
+		await rotateSecretKey(getDb(), project.id);
+		return {
+			action: 'rotateSecret',
+			message: 'New secret key created. Update your server SDK setup.'
+		};
 	},
 
 	delete: async (event) => {

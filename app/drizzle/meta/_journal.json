@@ -36,6 +36,13 @@
       "when": 1792172813560,
       "tag": "0004_cohorts",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1792174830652,
+      "tag": "0005_flags",
+      "breakpoints": true
     }
   ]
 }
