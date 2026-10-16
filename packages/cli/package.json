@@ -1,0 +1,27 @@
+{
+	"name": "@footprint/cli",
+	"version": "0.0.0",
+	"description": "Command line tools for footprint, self-hosted product analytics",
+	"license": "MIT",
+	"type": "module",
+	"bin": {
+		"footprint": "./dist/index.js"
+	},
+	"files": [
+		"dist"
+	],
+	"engines": {
+		"node": ">=20"
+	},
+	"scripts": {
+		"build": "tsdown",
+		"test": "vitest run",
+		"typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json"
+	},
+	"devDependencies": {
+		"@types/node": "22.20.3",
+		"tsdown": "0.23.0",
+		"typescript": "^6.0.3",
+		"vitest": "4.1.11"
+	}
+}

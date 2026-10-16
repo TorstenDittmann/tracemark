@@ -348,3 +348,33 @@ export const errorIssues = sqliteTable(
 );
 
 export type ErrorIssue = typeof errorIssues.$inferSelect;
+
+/**
+ * Source maps uploaded with `footprint sourcemaps upload`. The map itself is a gzipped file under
+ * SOURCEMAPS_DIR; `name` is the minified file's URL with `~` for any origin, e.g.
+ * `~/assets/index-B3xk9aZ1.js`.
+ */
+export const sourcemaps = sqliteTable(
+	'sourcemaps',
+	{
+		id: id(),
+		projectId: text('project_id')
+			.notNull()
+			.references(() => projects.id, { onDelete: 'cascade' }),
+		/** Empty when uploaded without a release; such maps match events of any release. */
+		release: text('release').notNull().default(''),
+		name: text('name').notNull(),
+		/** Uncompressed bytes. */
+		size: integer('size').notNull(),
+		createdAt: createdAt()
+	},
+	(table) => [
+		uniqueIndex('sourcemaps_project_release_name_idx').on(
+			table.projectId,
+			table.release,
+			table.name
+		)
+	]
+);
+
+export type Sourcemap = typeof sourcemaps.$inferSelect;

@@ -22,6 +22,7 @@ jobs:
       - run: bun run --filter '@footprint/node' build
       - run: bun run --filter '@footprint/react' build
       - run: bun run --filter '@footprint/svelte' build
+      - run: bun run --filter '@footprint/cli' build
       - run: cd app && bun run build
 
   rust:

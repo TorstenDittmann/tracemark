@@ -12,7 +12,8 @@ export default defineConfig({
 				runes: ({ filename }) =>
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 			},
-			adapter: adapter()
+			// Source map uploads are one file per request and can be large; BODY_SIZE_LIMIT overrides.
+			adapter: adapter({ serverOptions: { maxRequestBodySize: 32 * 1024 * 1024 } })
 		})
 	],
 	test: {

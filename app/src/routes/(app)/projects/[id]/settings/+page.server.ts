@@ -10,13 +10,22 @@ import {
 	rotateSecretKey,
 	validateProjectName
 } from '#lib/server/projects.js';
+import {
+	deleteProjectSourcemaps,
+	deleteSourcemapRelease,
+	sourcemapReleases
+} from '#lib/server/sourcemaps.js';
+import { sourcemapsDir } from '#lib/server/sourcemaps-dir.js';
 import type { Actions, PageServerLoad, RequestEvent } from './$types';
 
 export const load: PageServerLoad = async ({ locals, params }) => {
 	if (!locals.user) redirect(303, '/login');
 	const row = await getProjectForUser(getDb(), locals.user.id, params.id);
 	if (!row) error(404, 'Project not found');
-	return { secretKey: canManage(row.role) ? row.project.secretKey : null };
+	return {
+		secretKey: canManage(row.role) ? row.project.secretKey : null,
+		sourcemaps: await sourcemapReleases(getDb(), row.project.id)
+	};
 };
 
 /** Actions don't run layout loads, so each one checks access itself. */
@@ -54,6 +63,16 @@ export const actions: Actions = {
 		};
 	},
 
+	deleteSourcemaps: async (event) => {
+		const project = await access(event, true);
+		const release = String((await event.request.formData()).get('release') ?? '');
+		const count = await deleteSourcemapRelease(getDb(), sourcemapsDir(), project.id, release);
+		return {
+			action: 'deleteSourcemaps',
+			message: `Deleted ${count} source ${count === 1 ? 'map' : 'maps'}.`
+		};
+	},
+
 	delete: async (event) => {
 		const project = await access(event, true);
 		const confirm = String((await event.request.formData()).get('confirm') ?? '');
@@ -61,6 +80,9 @@ export const actions: Actions = {
 			return fail(400, { action: 'delete', message: 'Type the project name to confirm.' });
 		}
 		await deleteProject(getDb(), project.id);
+		await deleteProjectSourcemaps(sourcemapsDir(), project.id).catch((err) =>
+			console.error(`could not delete source maps of project ${project.id}:`, err)
+		);
 		try {
 			await deleteProjectEvents(project.id);
 		} catch (err) {

@@ -1,14 +1,39 @@
 <script lang="ts">
-import { type ExceptionEntry, frameLocation } from '#lib/issues.js';
+import {
+	type ExceptionEntry,
+	frameLocation,
+	originalLocation,
+	type StackFrame
+} from '#lib/issues.js';
 
 let { exceptions }: { exceptions: ExceptionEntry[] } = $props();
 
 let showAll = $state(false);
 
+/** The frame whose source opens by default: the first app frame of the error itself. */
+const opened = $derived(
+	exceptions[0]?.frames.findIndex((frame) => frame.inApp && frame.original?.context) ?? -1
+);
+
 const hidden = $derived(
 	exceptions.reduce((sum, entry) => sum + entry.frames.filter((frame) => !frame.inApp).length, 0)
 );
 </script>
+
+{#snippet label(
+	frame: StackFrame
+)}
+	<span class={frame.inApp ? 'font-semibold' : ''}>
+		{frame.function || frame.original?.name || '<anonymous>'}
+	</span>
+	{#if frame.original}
+		<span class="text-muted-foreground" title="Minified: {frameLocation(frame)}">
+			{originalLocation(frame.original)}
+		</span>
+	{:else}
+		<span class="text-muted-foreground">{frameLocation(frame)}</span>
+	{/if}
+{/snippet}
 
 <div class="grid gap-4">
 	{#each exceptions as entry, i (i)}
@@ -33,16 +58,33 @@ const hidden = $derived(
 					<!-- Innermost call first, like the stack the runtime printed. -->
 					{#each entry.frames as frame, j (j)}
 						{#if frame.inApp || showAll}
-							<li
-								class={[
-									'flex gap-2 border-t px-3 py-1.5 whitespace-nowrap first:border-t-0',
-									frame.inApp ? '' : 'text-muted-foreground'
-								]}
-							>
-								<span class={frame.inApp ? 'font-semibold' : ''}>
-									{frame.function || '<anonymous>'}
-								</span>
-								<span class="text-muted-foreground">{frameLocation(frame)}</span>
+							<li class={['border-t first:border-t-0', frame.inApp ? '' : 'text-muted-foreground']}>
+								{#if frame.original?.context}
+									{@const context = frame.original.context}
+									<details open={i === 0 && j === opened}>
+										<summary
+											class="flex cursor-pointer gap-2 px-3 py-1.5 whitespace-nowrap hover:bg-muted/50"
+										>
+											{@render label(frame)}
+										</summary>
+										<pre class="overflow-x-auto border-t bg-muted/40 py-1.5"><code
+												>{#each context.lines as line, k (k)}{@const number = context.start + k}<span
+														class={[
+	'block px-3',
+	number === frame.original.line
+		? 'bg-destructive/10 font-semibold text-foreground'
+		: 'text-muted-foreground'
+]}
+														><span class="inline-block w-10 pr-3 text-right select-none opacity-60">{number}</span
+														>{line}</span
+													>{/each}</code
+											></pre>
+									</details>
+								{:else}
+									<div class="flex gap-2 px-3 py-1.5 whitespace-nowrap">
+										{@render label(frame)}
+									</div>
+								{/if}
 							</li>
 						{/if}
 					{/each}

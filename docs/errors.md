@@ -76,3 +76,34 @@ recent occurrences. Errors attributed to `$server` don't count as people.
 
 Issues are open until someone resolves or ignores them. A resolved issue that happens again
 opens again, marked as regressed; an ignored one stays ignored.
+
+## Source maps
+
+Upload your build's source maps and issue pages show the original file, line and surrounding
+source for minified frames. Use the project's secret key (Settings) in CI, after building:
+
+```sh
+npx @footprint/cli sourcemaps upload ./dist \
+  --host https://footprint.example.com \
+  --secret-key "$FOOTPRINT_SECRET_KEY" \
+  --release "$GIT_SHA" \
+  --delete-after
+```
+
+- Every script under the folder with a map is uploaded: the map its `sourceMappingURL` names, a
+  `<script>.map` beside it, or an inline map. Enable maps in your bundler first (Vite:
+  `build.sourcemap: true`).
+- Each map is stored under the URL its script is served from: `--url-prefix` plus the script's
+  path in the folder. The default `~/` means the site root on any origin, so `dist/assets/app.js`
+  matches frames from `https://shop.example.com/assets/app.js`. Use `~/static/` or a full URL
+  such as `https://cdn.example.com/app/` when the folder is served from elsewhere.
+- `--release` must match the SDK's `release`. A map uploaded without a release is used for events
+  of any release that has no map of its own.
+- `--delete-after` removes the map files once uploaded, so you don't deploy them publicly.
+
+Uploading a map again for the same release and file replaces it. Settings lists uploads per
+release, where you can delete them. Maps are stored gzipped in `SOURCEMAPS_DIR`, by default a
+`sourcemaps` folder beside the database file (`/data/sourcemaps` in the Docker image). Uploads go
+to `POST /sourcemaps?name=…&release=…` with the map as the body, optionally with
+`content-encoding: gzip`, and are limited to 32 MB per request (`BODY_SIZE_LIMIT`) and 64 MB
+uncompressed.

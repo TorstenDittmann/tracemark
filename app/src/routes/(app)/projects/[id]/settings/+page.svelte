@@ -12,6 +12,13 @@ let showSecret = $state(false);
 
 const canManage = $derived(data.role === 'owner' || data.role === 'admin');
 const messageFor = (action: string) => (form?.action === action ? form.message : null);
+
+const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+function formatBytes(bytes: number): string {
+	if (bytes < 1024) return `${bytes} B`;
+	if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+	return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
 </script>
 
 <svelte:head>
@@ -77,8 +84,8 @@ const messageFor = (action: string) => (form?.action === action ? form.message :
 		<Card.Header>
 			<Card.Title>Secret key</Card.Title>
 			<Card.Description>
-				For server SDKs that evaluate feature flags locally. Keep it on your servers; never put it
-				in a browser or app.
+				For server SDKs that evaluate feature flags locally and for uploading source maps. Keep it
+				on your servers and in CI; never put it in a browser or app.
 			</Card.Description>
 		</Card.Header>
 		<Card.Content class="grid gap-3">
@@ -113,6 +120,73 @@ const messageFor = (action: string) => (form?.action === action ? form.message :
 			{/if}
 			{#if messageFor('rotateSecret')}
 				<p class="text-sm text-muted-foreground" role="status">{messageFor('rotateSecret')}</p>
+			{/if}
+		</Card.Content>
+	</Card.Root>
+
+	<Card.Root class="min-w-0">
+		<Card.Header>
+			<Card.Title>Source maps</Card.Title>
+			<Card.Description>
+				Uploaded with
+				<code class="font-mono">npx @footprint/cli sourcemaps upload ./dist --release 1.4.0</code>,
+				so issues show your original source. See docs/errors.md.
+			</Card.Description>
+		</Card.Header>
+		<Card.Content class="grid gap-3">
+			{#if data.sourcemaps.length}
+				<div class="relative overflow-x-auto">
+					<table class="w-full text-sm">
+						<thead class="text-left text-xs text-muted-foreground">
+							<tr>
+								<th class="py-2 pr-4 font-normal">Release</th>
+								<th class="px-4 py-2 text-right font-normal">Files</th>
+								<th class="px-4 py-2 text-right font-normal">Size</th>
+								<th class="px-4 py-2 font-normal">Uploaded</th>
+								<th class="py-2 pl-4"><span class="sr-only">Actions</span></th>
+							</tr>
+						</thead>
+						<tbody>
+							{#each data.sourcemaps as upload (upload.release)}
+								<tr class="border-t">
+									<td class="max-w-60 truncate py-2 pr-4 font-mono">
+										{#if upload.release}
+											{upload.release}
+										{:else}
+											<span class="font-sans text-muted-foreground">Any release</span>
+										{/if}
+									</td>
+									<td class="px-4 py-2 text-right tabular-nums">{upload.files}</td>
+									<td class="px-4 py-2 text-right whitespace-nowrap tabular-nums">
+										{formatBytes(upload.size)}
+									</td>
+									<td class="px-4 py-2 whitespace-nowrap text-muted-foreground">
+										{dateFormat.format(upload.uploadedAt)}
+									</td>
+									<td class="py-2 pl-4 text-right">
+										{#if canManage}
+											<form
+												method="POST"
+												action="?/deleteSourcemaps"
+												use:enhance={({ cancel }) => {
+													if (!confirm('Delete the source maps of this release?')) cancel();
+												}}
+											>
+												<input type="hidden" name="release" value={upload.release}>
+												<Button type="submit" variant="ghost" size="sm">Delete</Button>
+											</form>
+										{/if}
+									</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+			{:else}
+				<p class="text-sm text-muted-foreground">No source maps uploaded yet.</p>
+			{/if}
+			{#if messageFor('deleteSourcemaps')}
+				<p class="text-sm text-muted-foreground" role="status">{messageFor('deleteSourcemaps')}</p>
 			{/if}
 		</Card.Content>
 	</Card.Root>

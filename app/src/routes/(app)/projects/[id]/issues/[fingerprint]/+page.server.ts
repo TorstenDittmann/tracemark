@@ -4,6 +4,8 @@ import { type IssueDetail, issueDetail } from '#lib/server/analytics.js';
 import { getDb } from '#lib/server/db/index.js';
 import { issueStatuses, setIssueStatus } from '#lib/server/issue-status.js';
 import { getProjectForUser } from '#lib/server/projects.js';
+import { symbolicate } from '#lib/server/sourcemaps.js';
+import { sourcemapsDir } from '#lib/server/sourcemaps-dir.js';
 import { parseRange } from '#lib/web.js';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -20,6 +22,18 @@ export const load: PageServerLoad = async ({ parent, params, url }) => {
 	}
 	if (!issue) error(404, 'Issue not found');
 	const stored = await issueStatuses(getDb(), project.id, [issue.fingerprint]);
+	try {
+		issue.exceptions = await symbolicate(
+			getDb(),
+			sourcemapsDir(),
+			project.id,
+			issue.release,
+			issue.exceptions
+		);
+	} catch (err) {
+		// The minified frames are still worth showing.
+		console.error('symbolication failed:', err);
+	}
 	return {
 		range,
 		issue,

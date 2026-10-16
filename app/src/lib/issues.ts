@@ -41,6 +41,18 @@ export interface StackFrame {
 	lineno?: number;
 	colno?: number;
 	inApp: boolean;
+	/** Where the frame points in the original source, from an uploaded source map. */
+	original?: OriginalPosition;
+}
+
+export interface OriginalPosition {
+	source: string;
+	line: number;
+	column?: number;
+	/** The identifier at that position, when the map names it. */
+	name?: string;
+	/** Source lines around `line`; `start` is the first one's number. */
+	context?: { start: number; lines: string[] };
 }
 
 export interface ExceptionEntry {
@@ -89,6 +101,13 @@ export function parseExceptionList(value: unknown): ExceptionEntry[] {
 /** `file:line:col`, leaving out what is unknown. */
 export function frameLocation(frame: StackFrame): string {
 	return [frame.filename || '<unknown>', frame.lineno, frame.colno]
+		.filter((part) => part !== undefined)
+		.join(':');
+}
+
+/** The original `source:line:col` of a mapped frame. */
+export function originalLocation(position: OriginalPosition): string {
+	return [position.source, position.line, position.column]
 		.filter((part) => part !== undefined)
 		.join(':');
 }
