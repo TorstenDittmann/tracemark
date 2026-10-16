@@ -26,6 +26,11 @@ function pageHref(before: string | null): string {
 
 <div class="grid gap-4">
 	<PeopleNav projectId={data.project.id} />
+	{#if page.url.searchParams.has('deleted')}
+		<p class="text-sm text-muted-foreground" role="status">
+			Deleted the person and their events. They may still show up here for a few seconds.
+		</p>
+	{/if}
 	<search>
 		<form method="GET" class="flex max-w-md gap-2">
 			<Input

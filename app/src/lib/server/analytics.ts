@@ -11,6 +11,7 @@ import type { ClickHouseConfig } from './clickhouse';
 import * as cohortPeople from './cohort-people';
 import { cohortSpec, getCohort, listCohorts } from './cohorts';
 import { getDb } from './db/index';
+import { projects as projectsTable } from './db/schema';
 import * as events from './events';
 import * as experimentResults from './experiment-results';
 import * as explore from './explore';
@@ -20,6 +21,7 @@ import * as groups from './groups';
 import * as insights from './insights';
 import * as issues from './issues';
 import * as persons from './persons';
+import * as privacy from './privacy';
 import type { SavedQuery } from './saved';
 import * as web from './web';
 
@@ -63,6 +65,33 @@ export const projectEventStats = (projectId: string) =>
 
 export const deleteProjectEvents = (projectId: string) =>
 	events.deleteProjectEvents(config(), projectId);
+
+export const personEvents = (projectId: string, distinctIds: string[]) =>
+	privacy.personEvents(config(), projectId, distinctIds);
+
+export const deletePersonData = (projectId: string, person: string, distinctIds: string[]) =>
+	privacy.deletePersonData(config(), projectId, person, distinctIds);
+
+/** Deletes events past each project's retention now, then every few hours. Returns a stop function. */
+export function startRetentionSweeps(): () => void {
+	const sweep = async () => {
+		try {
+			const list = await getDb()
+				.select({ id: projectsTable.id, retentionDays: projectsTable.retentionDays })
+				.from(projectsTable);
+			const swept = await privacy.sweepRetention(config(), list);
+			if (swept) console.log(`retention: removed old events in ${swept} project(s)`);
+		} catch (err) {
+			console.error('retention sweep failed:', err);
+		}
+	};
+	const first = setTimeout(sweep, 60_000);
+	const timer = setInterval(sweep, privacy.SWEEP_EVERY_MS);
+	return () => {
+		clearTimeout(first);
+		clearInterval(timer);
+	};
+}
 
 export const webAnalytics = (projectId: string, options: Parameters<typeof web.webAnalytics>[2]) =>
 	web.webAnalytics(config(), projectId, options);

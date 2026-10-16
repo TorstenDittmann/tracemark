@@ -9,6 +9,7 @@ import type { PageProps } from './$types';
 
 let { data, form }: PageProps = $props();
 
+const canManage = $derived(data.role === 'owner' || data.role === 'admin');
 const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 
 const name = $derived(data.person ? personName(data.person.person, data.person.properties) : '');
@@ -121,6 +122,43 @@ function display(value: unknown): string {
 						</Card.Content>
 					</Card.Root>
 				{/if}
+				<Card.Root class="min-w-0 gap-3">
+					<Card.Header>
+						<Card.Title>Personal data</Card.Title>
+						<Card.Description>
+							For access and erasure requests. Deleting removes this person's events, properties and
+							cohort memberships for good.
+						</Card.Description>
+					</Card.Header>
+					<Card.Content class="flex flex-wrap gap-2">
+						<Button
+							variant="outline"
+							size="sm"
+							href="/projects/{data.project.id}/person-export?person={encodeURIComponent(
+								person.person
+							)}"
+							download
+						>
+							Export JSON
+						</Button>
+						{#if canManage}
+							<form
+								method="POST"
+								action="?/delete"
+								use:enhance={({ cancel }) => {
+									if (
+										!confirm(
+											`Delete ${name} and all ${person.events.toLocaleString()} of their events? This cannot be undone.`
+										)
+									)
+										cancel();
+								}}
+							>
+								<Button type="submit" size="sm" variant="destructive">Delete person</Button>
+							</form>
+						{/if}
+					</Card.Content>
+				</Card.Root>
 				<Card.Root class="min-w-0 gap-3">
 					<Card.Header>
 						<Card.Title>Distinct ids</Card.Title>

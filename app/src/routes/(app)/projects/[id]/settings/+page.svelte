@@ -1,8 +1,10 @@
 <script lang="ts">
+import { selectClass } from '#lib/components/insights/editor.svelte.js';
 import { Button } from '#lib/components/ui/button/index.js';
 import * as Card from '#lib/components/ui/card/index.js';
 import { Input } from '#lib/components/ui/input/index.js';
 import { Label } from '#lib/components/ui/label/index.js';
+import { RETENTION_DAYS, retentionLabel } from '#lib/retention.js';
 import { enhance } from '$app/forms';
 import type { PageProps } from './$types';
 
@@ -333,6 +335,49 @@ function formatBytes(bytes: number): string {
 		</Card.Content>
 	</Card.Root>
 
+	<Card.Root>
+		<Card.Header>
+			<Card.Title>Data retention</Card.Title>
+			<Card.Description>
+				Events older than this are deleted for good, every few hours. People and their properties
+				stay.
+			</Card.Description>
+		</Card.Header>
+		<Card.Content>
+			<form
+				method="POST"
+				action="?/setRetention"
+				class="flex flex-wrap gap-2"
+				use:enhance={({ formData, cancel }) => {
+					const days = Number(formData.get('retention'));
+					const current = data.project.retentionDays;
+					if (days && (current === null || days < current)) {
+						const label = retentionLabel(days).toLowerCase();
+						if (!confirm(`Delete every event older than ${label}? This cannot be undone.`))
+							cancel();
+					}
+					return async ({ update }) => update({ reset: false });
+				}}
+			>
+				<Label for="retention" class="sr-only">Keep events for</Label>
+				<select id="retention" name="retention" disabled={!canManage} class={selectClass}>
+					<option value="forever" selected={data.project.retentionDays === null}>
+						{retentionLabel(null)}
+					</option>
+					{#each RETENTION_DAYS as days (days)}
+						<option value={days} selected={data.project.retentionDays === days}>
+							{retentionLabel(days)}
+						</option>
+					{/each}
+				</select>
+				<Button type="submit" variant="outline" disabled={!canManage}>Save</Button>
+			</form>
+			{#if messageFor('setRetention')}
+				<p class="mt-2 text-sm text-muted-foreground" role="status">{messageFor('setRetention')}</p>
+			{/if}
+		</Card.Content>
+	</Card.Root>
+
 	<Card.Root class="border-destructive/40">
 		<Card.Header>
 			<Card.Title>Delete project</Card.Title>
@@ -370,7 +415,7 @@ function formatBytes(bytes: number): string {
 
 	{#if !canManage}
 		<p class="text-sm text-muted-foreground">
-			Only organization owners and admins can rotate keys or delete projects.
+			Only organization owners and admins can rotate keys, change retention or delete projects.
 		</p>
 	{/if}
 </div>

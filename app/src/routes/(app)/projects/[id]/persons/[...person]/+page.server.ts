@@ -4,13 +4,14 @@ import { type ActivityPage, parseCursor } from '#lib/explore.js';
 import { personHref } from '#lib/persons.js';
 import {
 	addCohortPeople,
+	deletePersonData,
 	getPerson,
 	type PersonDetail,
 	recentEvents
 } from '#lib/server/analytics.js';
 import { getCohort, listCohorts } from '#lib/server/cohorts.js';
 import { getDb } from '#lib/server/db/index.js';
-import { getProjectForUser } from '#lib/server/projects.js';
+import { canManage, getProjectForUser } from '#lib/server/projects.js';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ parent, params, url }) => {
@@ -53,5 +54,16 @@ export const actions: Actions = {
 		if (cohort?.kind !== 'static') return fail(400, { message: 'Choose a static cohort.' });
 		await addCohortPeople(row.project.id, cohort.id, [params.person]);
 		return { message: `Added to ${cohort.name}.` };
+	},
+
+	delete: async ({ locals, params }) => {
+		if (!locals.user) redirect(303, '/login');
+		const row = await getProjectForUser(getDb(), locals.user.id, params.id);
+		if (!row) error(404, 'Project not found');
+		if (!canManage(row.role)) error(403, 'Only organization owners and admins can do this');
+		const person = await getPerson(row.project.id, params.person);
+		if (!person) error(404, 'Person not found');
+		await deletePersonData(row.project.id, person.person, person.distinctIds);
+		redirect(303, `/projects/${row.project.id}/persons?deleted=1`);
 	}
 };

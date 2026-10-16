@@ -1,7 +1,12 @@
-import type { Handle } from '@sveltejs/kit/hooks';
+import type { Handle, ServerInit } from '@sveltejs/kit/hooks';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
+import { startRetentionSweeps } from '#lib/server/analytics.js';
 import { getAuth } from '#lib/server/auth/instance.js';
 import { building } from '$app/env';
+
+export const init: ServerInit = () => {
+	if (!building) startRetentionSweeps();
+};
 
 export const handle: Handle = async ({ event, resolve }) => {
 	event.locals.user = null;
