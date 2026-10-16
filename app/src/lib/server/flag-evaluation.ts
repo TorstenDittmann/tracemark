@@ -33,7 +33,8 @@ function rows<T>(body: string): T[] {
 /** Text of a property value, as ClickHouse reads it for cohort filters. */
 function text(value: unknown): string {
 	if (value === undefined || value === null) return '';
-	return typeof value === 'string' ? value : JSON.stringify(value);
+	// JSON.stringify gives undefined for values JSON can't hold, such as functions.
+	return typeof value === 'string' ? value : (JSON.stringify(value) ?? '');
 }
 
 function toMatch(filter: PropertyFilter): PropertyMatch {
@@ -112,7 +113,17 @@ export async function flagContext(
 	const propertyMembership = cohorts
 		.filter((c) => c.kind === 'properties')
 		.filter((c) =>
-			c.filters.every((filter) => matches(text(personProperties[filter.property]), toMatch(filter)))
+			c.filters.every((filter) =>
+				matches(
+					// Own properties only: `constructor` or `toString` must read as missing.
+					text(
+						Object.hasOwn(personProperties, filter.property)
+							? personProperties[filter.property]
+							: undefined
+					),
+					toMatch(filter)
+				)
+			)
 		)
 		.map((c) => c.id);
 

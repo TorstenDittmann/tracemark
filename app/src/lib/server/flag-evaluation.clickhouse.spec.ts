@@ -91,6 +91,20 @@ describe.skipIf(!clickhouseTestUrl)('flag evaluation with ClickHouse', () => {
 		expect(context.cohorts?.sort()).toEqual([vips, pros].sort());
 	});
 
+	it('reads inherited names like constructor as missing in property cohorts', async () => {
+		const inherited = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
+		const unset = 'abcdefab-cdef-4abc-8def-abcdefabcdef';
+		const context = await flagContext(config, project, { distinctId: 'bob' }, [
+			{
+				kind: 'properties',
+				id: inherited,
+				filters: [{ property: 'constructor', operator: 'contains', value: 'Object' }]
+			},
+			{ kind: 'properties', id: unset, filters: [{ property: 'toString', operator: 'is_not_set' }] }
+		]);
+		expect(context.cohorts).toEqual([unset]);
+	});
+
 	it('evaluates flags against it', async () => {
 		const flags = [
 			flag('pro', [{ type: 'person', property: 'plan', operator: 'eq', value: 'pro' }]),
