@@ -152,7 +152,7 @@ export const projects = sqliteTable('projects', {
 	name: text('name').notNull(),
 	/** Write-only key embedded in SDKs; safe to expose in browsers. */
 	publicKey: text('public_key').notNull().unique(),
-	/** Server-only key for reading flag definitions; never sent to browsers. */
+	/** Server-only key for flag definitions, source map uploads and the query API; never sent to browsers. */
 	secretKey: text('secret_key').unique(),
 	/** Days of events to keep; null keeps everything. */
 	retentionDays: integer('retention_days'),

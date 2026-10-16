@@ -98,8 +98,9 @@ function formatBytes(bytes: number): string {
 		<Card.Header>
 			<Card.Title>Secret key</Card.Title>
 			<Card.Description>
-				For server SDKs that evaluate feature flags locally and for uploading source maps. Keep it
-				on your servers and in CI; never put it in a browser or app.
+				For server SDKs that evaluate feature flags locally, for uploading source maps and for the
+				query API, which can read all of this project's data. Keep it on your servers and in CI;
+				never put it in a browser or app.
 			</Card.Description>
 		</Card.Header>
 		<Card.Content class="grid gap-3">
@@ -121,7 +122,9 @@ function formatBytes(bytes: number): string {
 					method="POST"
 					action="?/rotateSecret"
 					use:enhance={({ cancel }) => {
-						if (!confirm('Rotate the secret key? Servers using the old key stop getting flags.'))
+						if (
+							!confirm('Rotate the secret key? Servers and scripts using the old key stop working.')
+						)
 							cancel();
 					}}
 				>
