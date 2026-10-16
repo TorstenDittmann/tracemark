@@ -1,11 +1,15 @@
 import {
+	type FunnelQuery,
 	MAX_LINES,
 	needsProperty,
 	type PropertyFilter,
+	type RetentionQuery,
+	retentionPeriod,
 	type Series,
 	seriesLabel,
 	type TrendsQuery,
-	validName
+	validName,
+	WINDOWS
 } from '../insights';
 import { type ClickHouseConfig, clickhouseQuery } from './clickhouse';
 import { chTime, timeWindow } from './web';
@@ -56,6 +60,37 @@ function filterSql(filter: PropertyFilter, param: string): string {
 	}
 }
 
+/**
+ * The FROM, JOIN and WHERE shared by every insight: a project's events in a time window with
+ * property filters applied, joined to people. Selects can use `e.*` and `person`.
+ */
+function eventsSource(
+	projectId: string,
+	window: { from: Date; to: Date },
+	filters: PropertyFilter[]
+): { sql: string; params: Record<string, string> } {
+	const params: Record<string, string> = {
+		project: projectId,
+		from: chTime(window.from),
+		to: chTime(window.to)
+	};
+	const conditions = filters.map((filter, i) => {
+		if (filter.value !== undefined) params[`v${i}`] = filter.value;
+		return ` AND ${filterSql(filter, `v${i}`)}`;
+	});
+	return {
+		sql: `FROM events AS e
+			LEFT JOIN (SELECT alias, person FROM person_distinct_ids WHERE project_id = {project:UUID}) AS a
+				ON a.alias = e.distinct_id
+			WHERE e.project_id = {project:UUID}
+				AND e.timestamp >= {from:DateTime64(3, 'UTC')}
+				AND e.timestamp < {to:DateTime64(3, 'UTC')}${conditions.join('')}`,
+		params
+	};
+}
+
+const PERSON = `if(a.person = '', e.distinct_id, a.person)`;
+
 function aggregate(series: Series): string {
 	switch (series.math) {
 		case 'total':
@@ -84,15 +119,7 @@ export async function trends(
 	now?: Date
 ): Promise<TrendsResult> {
 	const { bucket, bucketFn, from, to, buckets } = timeWindow(query.range, now);
-	const params: Record<string, string> = {
-		project: projectId,
-		from: chTime(from),
-		to: chTime(to)
-	};
-	const filters = query.filters.map((filter, i) => {
-		if (filter.value !== undefined) params[`v${i}`] = filter.value;
-		return ` AND ${filterSql(filter, `v${i}`)}`;
-	});
+	const source = eventsSource(projectId, { from, to }, query.filters);
 	const perSeries = Math.max(1, Math.floor(MAX_LINES / query.series.length));
 
 	const results = await Promise.all(
@@ -107,16 +134,11 @@ export async function trends(
 				`WITH base AS (
 					SELECT
 						${bucketFn}(e.timestamp) AS bucket,
-						if(a.person = '', e.distinct_id, a.person) AS person,
+						${PERSON} AS person,
 						${breakdown} AS value,
 						${num} AS num
-					FROM events AS e
-					LEFT JOIN (SELECT alias, person FROM person_distinct_ids WHERE project_id = {project:UUID}) AS a
-						ON a.alias = e.distinct_id
-					WHERE e.project_id = {project:UUID}
+					${source.sql}
 						AND e.event = {event:String}
-						AND e.timestamp >= {from:DateTime64(3, 'UTC')}
-						AND e.timestamp < {to:DateTime64(3, 'UTC')}${filters.join('')}
 				),
 				top AS (SELECT value FROM base GROUP BY value ORDER BY count() DESC, value LIMIT ${perSeries})
 				SELECT
@@ -128,7 +150,7 @@ export async function trends(
 				GROUP BY GROUPING SETS ((bucket, value), (value))
 				SETTINGS group_by_use_nulls = 1
 				FORMAT JSONEachRow`,
-				{ params: { ...params, event: series.event } }
+				{ params: { ...source.params, event: series.event } }
 			);
 			const lines = new Map<string, TrendLine>();
 			for (const line of body.split('\n').filter(Boolean)) {
@@ -161,6 +183,166 @@ export async function trends(
 	);
 
 	return { bucket, buckets, lines: results.flat() };
+}
+
+export interface FunnelGroup {
+	/** The breakdown value; absent without a breakdown. */
+	breakdown?: string;
+	/** People who reached each step, in step order. */
+	counts: number[];
+}
+
+export interface FunnelResult {
+	steps: string[];
+	/** The whole funnel, then up to MAX_LINES breakdown groups by people entering it. */
+	total: FunnelGroup;
+	groups: FunnelGroup[];
+}
+
+/**
+ * People who did the steps in order, each within the conversion window of their first step.
+ * Other events in between are allowed. A breakdown groups people by the property on their first
+ * step event.
+ */
+export async function funnel(
+	config: ClickHouseConfig,
+	projectId: string,
+	query: FunnelQuery,
+	now?: Date
+): Promise<FunnelResult> {
+	const { from, to } = timeWindow(query.range, now);
+	const source = eventsSource(projectId, { from, to }, query.filters);
+	const params: Record<string, string> = {
+		...source.params,
+		window: String(WINDOWS[query.window].ms)
+	};
+	query.steps.forEach((step, i) => {
+		params[`s${i}`] = step;
+	});
+	const conditions = query.steps.map((_, i) => `event = {s${i}:String}`).join(', ');
+	const breakdown = query.breakdown ? `toString(${property(query.breakdown)})` : `''`;
+	const body = await clickhouseQuery(
+		config,
+		`SELECT value, level, count() AS people FROM (
+			SELECT
+				person,
+				argMinIf(value, ts, event = {s0:String}) AS value,
+				windowFunnel({window:UInt64})(toUInt64(toUnixTimestamp64Milli(ts)), ${conditions}) AS level
+			FROM (
+				SELECT ${PERSON} AS person, e.timestamp AS ts, e.event AS event, ${breakdown} AS value
+				${source.sql}
+					AND e.event IN (${query.steps.map((_, i) => `{s${i}:String}`).join(', ')})
+			)
+			GROUP BY person
+		)
+		WHERE level > 0
+		GROUP BY value, level
+		FORMAT JSONEachRow`,
+		{ params }
+	);
+
+	const empty = () => query.steps.map(() => 0);
+	const total = empty();
+	const byValue = new Map<string, number[]>();
+	for (const line of body.split('\n').filter(Boolean)) {
+		const row = JSON.parse(line) as { value: string; level: number; people: string };
+		const counts = byValue.get(row.value) ?? empty();
+		byValue.set(row.value, counts);
+		// Reaching level n means every step up to n was done.
+		for (let i = 0; i < row.level; i++) {
+			counts[i] += Number(row.people);
+			total[i] += Number(row.people);
+		}
+	}
+	const groups = query.breakdown
+		? [...byValue]
+				.map(([breakdown, counts]) => ({ breakdown, counts }))
+				.sort((a, b) => b.counts[0] - a.counts[0] || (a.breakdown < b.breakdown ? -1 : 1))
+				.slice(0, MAX_LINES)
+		: [];
+	return { steps: query.steps, total: { counts: total }, groups };
+}
+
+export interface RetentionCohort {
+	/** Period start, ISO 8601 in UTC. */
+	start: string;
+	/** People who did the start event first in this period. */
+	size: number;
+	/** People who came back, for each later period that has begun: index 0 is one period later. */
+	returned: number[];
+}
+
+export interface RetentionResult {
+	period: 'day' | 'week';
+	cohorts: RetentionCohort[];
+}
+
+const DAY_MS = 86_400_000;
+
+/**
+ * Cohorts of people by the day or week (Monday, UTC) they first did the start event in the
+ * range, and how many did the returning event in each later period.
+ */
+export async function retention(
+	config: ClickHouseConfig,
+	projectId: string,
+	query: RetentionQuery,
+	now?: Date
+): Promise<RetentionResult> {
+	const period = retentionPeriod(query.range);
+	const window = timeWindow(query.range, now);
+	// Weekly cohorts start on the Monday on or before the window start.
+	const firstDay = window.from.getTime();
+	const first =
+		period === 'day' ? firstDay : firstDay - ((new Date(firstDay).getUTCDay() + 6) % 7) * DAY_MS;
+	const step = period === 'day' ? DAY_MS : 7 * DAY_MS;
+	const starts: string[] = [];
+	for (let t = first; t <= window.to.getTime(); t += step) {
+		starts.push(new Date(t).toISOString().replace('.000Z', 'Z'));
+	}
+
+	const source = eventsSource(projectId, window, query.filters);
+	const trunc = period === 'day' ? 'toStartOfDay(e.timestamp)' : 'toStartOfWeek(e.timestamp, 1)';
+	const body = await clickhouseQuery(
+		config,
+		`WITH
+			cohorts AS (
+				SELECT ${PERSON} AS person, min(${trunc}) AS cohort
+				${source.sql} AND e.event = {start:String}
+				GROUP BY person
+			),
+			visits AS (
+				SELECT DISTINCT ${PERSON} AS person, ${trunc} AS visited
+				${source.sql} AND e.event = {returning:String}
+			)
+		SELECT formatDateTime(cohort, '%Y-%m-%dT%H:%i:%SZ', 'UTC') AS start, 0 AS n, count() AS people
+		FROM cohorts GROUP BY cohort
+		UNION ALL
+		SELECT
+			formatDateTime(c.cohort, '%Y-%m-%dT%H:%i:%SZ', 'UTC') AS start,
+			dateDiff('${period}', c.cohort, v.visited) AS n,
+			uniqExact(c.person) AS people
+		FROM cohorts AS c INNER JOIN visits AS v ON v.person = c.person
+		WHERE v.visited > c.cohort
+		GROUP BY c.cohort, n
+		FORMAT JSONEachRow`,
+		{ params: { ...source.params, start: query.start, returning: query.returning } }
+	);
+
+	const cohorts = starts.map((start, i) => ({
+		start,
+		size: 0,
+		returned: starts.slice(i + 1).map(() => 0)
+	}));
+	const byStart = new Map(cohorts.map((cohort) => [cohort.start, cohort]));
+	for (const line of body.split('\n').filter(Boolean)) {
+		const row = JSON.parse(line) as { start: string; n: number; people: string };
+		const cohort = byStart.get(row.start);
+		if (!cohort) continue;
+		if (row.n === 0) cohort.size = Number(row.people);
+		else if (row.n <= cohort.returned.length) cohort.returned[row.n - 1] = Number(row.people);
+	}
+	return { period, cohorts };
 }
 
 export interface EventName {

@@ -134,3 +134,109 @@ export function seriesLabel(series: Series): string {
 			return `${event} · ${series.math} of ${series.property}`;
 	}
 }
+
+export const WINDOWS = {
+	'1h': { label: '1 hour', ms: 3_600_000 },
+	'1d': { label: '1 day', ms: 86_400_000 },
+	'7d': { label: '7 days', ms: 7 * 86_400_000 },
+	'14d': { label: '14 days', ms: 14 * 86_400_000 },
+	'30d': { label: '30 days', ms: 30 * 86_400_000 }
+} as const;
+
+export type ConversionWindow = keyof typeof WINDOWS;
+
+export interface FunnelQuery {
+	/** Events in order; a person converts by doing each one after the previous. */
+	steps: string[];
+	/** Time from the first step in which the rest must happen. */
+	window: ConversionWindow;
+	range: Range;
+	/** Property of the first step to compare groups by. */
+	breakdown?: string;
+	filters: PropertyFilter[];
+}
+
+export const MIN_STEPS = 2;
+export const MAX_STEPS = 10;
+
+export const DEFAULT_FUNNEL: FunnelQuery = {
+	steps: ['$pageview', '$identify'],
+	window: '1d',
+	range: '30d',
+	filters: []
+};
+
+function parseFilters(input: unknown): PropertyFilter[] {
+	return parseTrends({ filters: input }).filters;
+}
+
+/** Reads a funnel from untrusted JSON. Invalid parts are dropped rather than rejected. */
+export function parseFunnel(input: unknown): FunnelQuery {
+	if (!isRecord(input)) return DEFAULT_FUNNEL;
+	const steps = (Array.isArray(input.steps) ? input.steps : [])
+		.filter(validName)
+		.slice(0, MAX_STEPS);
+	return {
+		steps: steps.length >= MIN_STEPS ? steps : DEFAULT_FUNNEL.steps,
+		window:
+			typeof input.window === 'string' && Object.hasOwn(WINDOWS, input.window)
+				? (input.window as ConversionWindow)
+				: DEFAULT_FUNNEL.window,
+		range: parseRange(typeof input.range === 'string' ? input.range : DEFAULT_FUNNEL.range),
+		breakdown: validName(input.breakdown) ? input.breakdown : undefined,
+		filters: parseFilters(input.filters)
+	};
+}
+
+export function parseFunnelParam(value: string | null): FunnelQuery {
+	if (!value) return DEFAULT_FUNNEL;
+	try {
+		return parseFunnel(JSON.parse(value));
+	} catch {
+		return DEFAULT_FUNNEL;
+	}
+}
+
+export interface RetentionQuery {
+	/** The event that puts a person in a cohort, by the period they first did it in the range. */
+	start: string;
+	/** The event that counts as coming back in a later period. */
+	returning: string;
+	/** Daily cohorts for 7 and 30 days, weekly for 90. */
+	range: Exclude<Range, '24h'>;
+	filters: PropertyFilter[];
+}
+
+export const RETENTION_RANGES: RetentionQuery['range'][] = ['7d', '30d', '90d'];
+
+export const DEFAULT_RETENTION: RetentionQuery = {
+	start: '$pageview',
+	returning: '$pageview',
+	range: '30d',
+	filters: []
+};
+
+export function retentionPeriod(range: RetentionQuery['range']): 'day' | 'week' {
+	return range === '90d' ? 'week' : 'day';
+}
+
+/** Reads a retention query from untrusted JSON. Invalid parts fall back to defaults. */
+export function parseRetention(input: unknown): RetentionQuery {
+	if (!isRecord(input)) return DEFAULT_RETENTION;
+	const range = parseRange(typeof input.range === 'string' ? input.range : DEFAULT_RETENTION.range);
+	return {
+		start: validName(input.start) ? input.start : DEFAULT_RETENTION.start,
+		returning: validName(input.returning) ? input.returning : DEFAULT_RETENTION.returning,
+		range: range === '24h' ? '7d' : range,
+		filters: parseFilters(input.filters)
+	};
+}
+
+export function parseRetentionParam(value: string | null): RetentionQuery {
+	if (!value) return DEFAULT_RETENTION;
+	try {
+		return parseRetention(JSON.parse(value));
+	} catch {
+		return DEFAULT_RETENTION;
+	}
+}

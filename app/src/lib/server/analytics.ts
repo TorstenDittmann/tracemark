@@ -10,7 +10,13 @@ import * as insights from './insights';
 import * as web from './web';
 
 export type { EventStats } from './events';
-export type { EventName, PropertyName, TrendsResult } from './insights';
+export type {
+	EventName,
+	FunnelResult,
+	PropertyName,
+	RetentionResult,
+	TrendsResult
+} from './insights';
 export type { WebAnalytics } from './web';
 
 function config(): ClickHouseConfig {
@@ -37,3 +43,9 @@ export const trends = (projectId: string, query: Parameters<typeof insights.tren
 export const eventNames = (projectId: string) => insights.eventNames(config(), projectId);
 
 export const propertyNames = (projectId: string) => insights.propertyNames(config(), projectId);
+
+export const funnel = (projectId: string, query: Parameters<typeof insights.funnel>[2]) =>
+	insights.funnel(config(), projectId, query);
+
+export const retention = (projectId: string, query: Parameters<typeof insights.retention>[2]) =>
+	insights.retention(config(), projectId, query);

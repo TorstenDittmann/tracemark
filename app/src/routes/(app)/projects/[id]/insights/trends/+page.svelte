@@ -1,41 +1,28 @@
 <script lang="ts">
 import LineChart from '#lib/components/charts/line-chart.svelte';
+import BreakdownSelect from '#lib/components/insights/breakdown-select.svelte';
+import {
+	selectClass as select,
+	showQuery,
+	withCurrent
+} from '#lib/components/insights/editor.svelte.js';
+import FiltersEditor from '#lib/components/insights/filters-editor.svelte';
+import RangePicker from '#lib/components/insights/range-picker.svelte';
 import { Button } from '#lib/components/ui/button/index.js';
 import * as Card from '#lib/components/ui/card/index.js';
 import {
 	type Aggregation,
 	MATHS,
-	MAX_FILTERS,
 	MAX_SERIES,
 	needsProperty,
-	OPERATORS,
-	type Operator,
 	type TrendsQuery
 } from '#lib/insights.js';
-import { RANGES, type Range } from '#lib/web.js';
-import { goto } from '$app/navigation';
-import { page } from '$app/state';
+import { RANGES } from '#lib/web.js';
 import type { PageProps } from './$types';
 
 let { data }: PageProps = $props();
 
-const ranges = Object.keys(RANGES) as Range[];
-const select =
-	'h-8 min-w-0 rounded-md border border-input bg-transparent px-2 text-sm shadow-xs dark:bg-input/30';
-
-/** Applies a change to a copy of the current query and loads it. */
-function update(change: (query: TrendsQuery) => void) {
-	const next = structuredClone($state.snapshot(data.query)) as TrendsQuery;
-	change(next);
-	const url = new URL(page.url.href);
-	url.searchParams.set('q', JSON.stringify(next));
-	goto(`${url.pathname}${url.search}`, { reset: false });
-}
-
-/** Known names plus the current one, so a value missing from recent data still shows. */
-function withCurrent(names: string[], current: string | undefined): string[] {
-	return current && !names.includes(current) ? [current, ...names] : names;
-}
+const update = (change: (query: TrendsQuery) => void) => showQuery(data.query, change);
 
 const eventOptions = $derived(data.events.map((e) => e.event));
 const allProperties = $derived(data.properties.map((p) => p.name));
@@ -148,107 +135,22 @@ const lines = $derived(
 				{/if}
 			</section>
 
-			<section class="grid gap-2">
-				<h3 class="text-sm font-medium">Filters</h3>
-				{#each data.query.filters as filter, i (i)}
-					<div class="flex flex-wrap items-center gap-2">
-						<select
-							class={select}
-							aria-label="Filter property"
-							value={filter.property}
-							onchange={(e) => update((q) => (q.filters[i].property = e.currentTarget.value))}
-						>
-							{#each withCurrent(allProperties, filter.property) as property (property)}
-								<option value={property}>{property}</option>
-							{/each}
-						</select>
-						<select
-							class={select}
-							aria-label="Operator"
-							value={filter.operator}
-							onchange={(e) =>
-								update((q) => {
-									const operator = e.currentTarget.value as Operator;
-									q.filters[i].operator = operator;
-									if (operator === 'is_set' || operator === 'is_not_set') delete q.filters[i].value;
-									else q.filters[i].value ??= '';
-								})}
-						>
-							{#each Object.entries(OPERATORS) as [value, label] (value)}
-								<option {value}>{label}</option>
-							{/each}
-						</select>
-						{#if filter.value !== undefined}
-							<input
-								class="{select} w-40"
-								aria-label="Value"
-								value={filter.value}
-								onchange={(e) => update((q) => (q.filters[i].value = e.currentTarget.value))}
-							>
-						{/if}
-						<Button
-							variant="ghost"
-							size="sm"
-							onclick={() => update((q) => q.filters.splice(i, 1))}
-							aria-label="Remove filter"
-						>
-							Remove
-						</Button>
-					</div>
-				{/each}
-				{#if data.query.filters.length < MAX_FILTERS && allProperties.length}
-					<div>
-						<Button
-							variant="outline"
-							size="sm"
-							onclick={() =>
-								update((q) =>
-									q.filters.push({ property: allProperties[0], operator: 'eq', value: '' })
-								)}
-						>
-							Add filter
-						</Button>
-					</div>
-				{/if}
-			</section>
+			<FiltersEditor
+				filters={data.query.filters}
+				properties={allProperties}
+				onchange={(filters) => update((q) => (q.filters = filters))}
+			/>
 
 			<div class="flex flex-wrap items-center gap-4">
-				<label class="flex items-center gap-2 text-sm">
-					<span class="font-medium">Breakdown</span>
-					<select
-						class={select}
-						value={data.query.breakdown ?? ''}
-						onchange={(e) =>
-							update((q) => {
-								if (e.currentTarget.value) q.breakdown = e.currentTarget.value;
-								else delete q.breakdown;
-							})}
-					>
-						<option value="">None</option>
-						{#each withCurrent(allProperties, data.query.breakdown) as property (property)}
-							<option value={property}>{property}</option>
-						{/each}
-					</select>
-				</label>
-				<fieldset class="inline-flex rounded-md border p-0.5 text-sm">
-					<legend class="sr-only">Date range</legend>
-					{#each ranges as range (range)}
-						<button
-							type="button"
-							title={RANGES[range].label}
-							aria-pressed={data.query.range === range}
-							onclick={() => update((q) => (q.range = range))}
-							class={[
-								'rounded px-2.5 py-1',
-								data.query.range === range
-									? 'bg-secondary font-medium text-secondary-foreground'
-									: 'text-muted-foreground hover:text-foreground'
-							]}
-						>
-							{range}
-						</button>
-					{/each}
-				</fieldset>
+				<BreakdownSelect
+					value={data.query.breakdown}
+					properties={allProperties}
+					onchange={(breakdown) => update((q) => (q.breakdown = breakdown))}
+				/>
+				<RangePicker
+					value={data.query.range}
+					onchange={(range) => update((q) => (q.range = range))}
+				/>
 			</div>
 		</Card.Content>
 	</Card.Root>
