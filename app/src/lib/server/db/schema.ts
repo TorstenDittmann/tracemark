@@ -213,3 +213,23 @@ export type Member = typeof members.$inferSelect;
 export type Project = typeof projects.$inferSelect;
 export type Insight = typeof insights.$inferSelect;
 export type Dashboard = typeof dashboards.$inferSelect;
+
+export const cohorts = sqliteTable(
+	'cohorts',
+	{
+		id: id(),
+		projectId: text('project_id')
+			.notNull()
+			.references(() => projects.id, { onDelete: 'cascade' }),
+		name: text('name').notNull(),
+		kind: text('kind', { enum: ['static', 'properties'] }).notNull(),
+		/** Person property filters (JSON) for a `properties` cohort; static members live in ClickHouse. */
+		filters: text('filters').notNull().default('[]'),
+		createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+		createdAt: createdAt(),
+		updatedAt: updatedAt()
+	},
+	(table) => [index('cohorts_project_id_idx').on(table.projectId)]
+);
+
+export type Cohort = typeof cohorts.$inferSelect;

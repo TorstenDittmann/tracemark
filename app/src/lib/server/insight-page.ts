@@ -1,5 +1,6 @@
 // Loading and saving for the insight editor pages, shared by trends, funnels and retention.
 import { error, fail, type RequestEvent, redirect } from '@sveltejs/kit';
+import { listCohorts } from './cohorts';
 import { getDb } from './db/index';
 import { getProjectForUser } from './projects';
 import {
@@ -13,7 +14,7 @@ import {
 	validateName
 } from './saved';
 
-/** The saved insight named by `?insight=`, if it is this kind and in the project, and the project's dashboards. */
+/** The saved insight named by `?insight=`, if it is this kind and in the project, and the project's dashboards and cohorts. */
 export async function loadSaved(projectId: string, url: URL, kind: InsightKind) {
 	const db = getDb();
 	const id = url.searchParams.get('insight');
@@ -23,7 +24,8 @@ export async function loadSaved(projectId: string, url: URL, kind: InsightKind) 
 		saved: saved ? { id: saved.id, name: saved.name } : null,
 		/** The stored query, used when the URL has none. */
 		storedQuery: saved ? saved.query : null,
-		dashboards: (await listDashboards(db, projectId)).map(({ id, name }) => ({ id, name }))
+		dashboards: (await listDashboards(db, projectId)).map(({ id, name }) => ({ id, name })),
+		cohorts: (await listCohorts(db, projectId)).map(({ id, name }) => ({ id, name }))
 	};
 }
 

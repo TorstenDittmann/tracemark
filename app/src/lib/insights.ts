@@ -44,6 +44,8 @@ export interface TrendsQuery {
 	range: Range;
 	breakdown?: string;
 	filters: PropertyFilter[];
+	/** Only people in this cohort. */
+	cohort?: string;
 }
 
 export const MAX_SERIES = 5;
@@ -66,6 +68,19 @@ export function validName(value: unknown): value is string {
 		// biome-ignore lint/suspicious/noControlCharactersInRegex: rejecting them is the point
 		!/[`\\\u0000-\u001f]/.test(value)
 	);
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** A cohort id from untrusted input, or undefined. */
+export function parseCohortId(value: unknown): string | undefined {
+	return typeof value === 'string' && UUID.test(value) ? value.toLowerCase() : undefined;
+}
+
+/** `{ cohort }` when the input names one, so queries without a cohort stay unchanged. */
+function cohortOf(input: Record<string, unknown>): { cohort?: string } {
+	const cohort = parseCohortId(input.cohort);
+	return cohort ? { cohort } : {};
 }
 
 export const DEFAULT_TRENDS: TrendsQuery = {
@@ -110,7 +125,8 @@ export function parseTrends(input: unknown): TrendsQuery {
 		series: series.length ? series : DEFAULT_TRENDS.series,
 		range: parseRange(typeof input.range === 'string' ? input.range : null),
 		breakdown: validName(input.breakdown) ? input.breakdown : undefined,
-		filters
+		filters,
+		...cohortOf(input)
 	};
 }
 
@@ -154,6 +170,8 @@ export interface FunnelQuery {
 	/** Property of the first step to compare groups by. */
 	breakdown?: string;
 	filters: PropertyFilter[];
+	/** Only people in this cohort. */
+	cohort?: string;
 }
 
 export const MIN_STEPS = 2;
@@ -185,7 +203,8 @@ export function parseFunnel(input: unknown): FunnelQuery {
 				: DEFAULT_FUNNEL.window,
 		range: parseRange(typeof input.range === 'string' ? input.range : DEFAULT_FUNNEL.range),
 		breakdown: validName(input.breakdown) ? input.breakdown : undefined,
-		filters: parsePropertyFilters(input.filters)
+		filters: parsePropertyFilters(input.filters),
+		...cohortOf(input)
 	};
 }
 
@@ -206,6 +225,8 @@ export interface RetentionQuery {
 	/** Daily cohorts for 7 and 30 days, weekly for 90. */
 	range: Exclude<Range, '24h'>;
 	filters: PropertyFilter[];
+	/** Only people in this cohort. */
+	cohort?: string;
 }
 
 export const RETENTION_RANGES: RetentionQuery['range'][] = ['7d', '30d', '90d'];
@@ -229,7 +250,8 @@ export function parseRetention(input: unknown): RetentionQuery {
 		start: validName(input.start) ? input.start : DEFAULT_RETENTION.start,
 		returning: validName(input.returning) ? input.returning : DEFAULT_RETENTION.returning,
 		range: range === '24h' ? '7d' : range,
-		filters: parsePropertyFilters(input.filters)
+		filters: parsePropertyFilters(input.filters),
+		...cohortOf(input)
 	};
 }
 

@@ -1,5 +1,6 @@
 <script lang="ts">
 import BreakdownSelect from '#lib/components/insights/breakdown-select.svelte';
+import CohortSelect from '#lib/components/insights/cohort-select.svelte';
 import {
 	selectClass as select,
 	showQuery,
@@ -133,6 +134,15 @@ const numericProperties = $derived(data.properties.filter((p) => p.numeric).map(
 				filters={data.query.filters}
 				properties={allProperties}
 				onchange={(filters) => update((q) => (q.filters = filters))}
+			/>
+			<CohortSelect
+				value={data.query.cohort}
+				cohorts={data.cohorts}
+				onchange={(cohort) =>
+					update((q) => {
+						if (cohort) q.cohort = cohort;
+						else delete q.cohort;
+					})}
 			/>
 
 			<div class="flex flex-wrap items-center gap-4">

@@ -4,7 +4,11 @@ import {
 	CLICKHOUSE_URL,
 	CLICKHOUSE_USER
 } from '$app/env/private';
+import type { CohortSpec } from '../cohorts';
 import type { ClickHouseConfig } from './clickhouse';
+import * as cohortPeople from './cohort-people';
+import { cohortSpec, getCohort } from './cohorts';
+import { getDb } from './db/index';
 import * as events from './events';
 import * as explore from './explore';
 import * as groups from './groups';
@@ -30,6 +34,13 @@ export type SavedResult =
 	| (Extract<SavedQuery, { kind: 'funnel' }> & { result: insights.FunnelResult })
 	| (Extract<SavedQuery, { kind: 'retention' }> & { result: insights.RetentionResult });
 
+/** The cohort an insight narrows to. A deleted cohort matches nobody rather than everybody. */
+export async function cohortFor(projectId: string, id?: string): Promise<CohortSpec | undefined> {
+	if (!id) return undefined;
+	const cohort = await getCohort(getDb(), projectId, id);
+	return cohort ? cohortSpec(cohort) : { kind: 'static', id };
+}
+
 function config(): ClickHouseConfig {
 	return {
 		url: CLICKHOUSE_URL,
@@ -48,18 +59,27 @@ export const deleteProjectEvents = (projectId: string) =>
 export const webAnalytics = (projectId: string, options: Parameters<typeof web.webAnalytics>[2]) =>
 	web.webAnalytics(config(), projectId, options);
 
-export const trends = (projectId: string, query: Parameters<typeof insights.trends>[2]) =>
-	insights.trends(config(), projectId, query);
+export const trends = async (projectId: string, query: Parameters<typeof insights.trends>[2]) =>
+	insights.trends(config(), projectId, query, undefined, await cohortFor(projectId, query.cohort));
 
 export const eventNames = (projectId: string) => insights.eventNames(config(), projectId);
 
 export const propertyNames = (projectId: string) => insights.propertyNames(config(), projectId);
 
-export const funnel = (projectId: string, query: Parameters<typeof insights.funnel>[2]) =>
-	insights.funnel(config(), projectId, query);
+export const funnel = async (projectId: string, query: Parameters<typeof insights.funnel>[2]) =>
+	insights.funnel(config(), projectId, query, undefined, await cohortFor(projectId, query.cohort));
 
-export const retention = (projectId: string, query: Parameters<typeof insights.retention>[2]) =>
-	insights.retention(config(), projectId, query);
+export const retention = async (
+	projectId: string,
+	query: Parameters<typeof insights.retention>[2]
+) =>
+	insights.retention(
+		config(),
+		projectId,
+		query,
+		undefined,
+		await cohortFor(projectId, query.cohort)
+	);
 
 /** Runs a saved insight's query; the result type follows its kind. */
 export async function runSaved(projectId: string, saved: SavedQuery): Promise<SavedResult> {
@@ -103,3 +123,18 @@ export const listGroups = (
 
 export const getGroup = (projectId: string, type: string, key: string) =>
 	groups.getGroup(config(), projectId, type, key);
+
+export const cohortSize = (projectId: string, cohort: CohortSpec) =>
+	cohortPeople.cohortSize(config(), projectId, cohort);
+
+export const addCohortPeople = (projectId: string, cohortId: string, distinctIds: string[]) =>
+	cohortPeople.addCohortPeople(config(), projectId, cohortId, distinctIds);
+
+export const removeCohortPerson = (projectId: string, cohortId: string, person: string) =>
+	cohortPeople.removeCohortPerson(config(), projectId, cohortId, person);
+
+export const deleteCohortPeople = (projectId: string, cohortId: string) =>
+	cohortPeople.deleteCohortPeople(config(), projectId, cohortId);
+
+export const personPropertyNames = (projectId: string) =>
+	persons.personPropertyNames(config(), projectId);

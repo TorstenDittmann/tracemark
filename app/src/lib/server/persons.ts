@@ -1,6 +1,8 @@
+import type { CohortSpec } from '../cohorts';
 import { LOOKBACK_DAYS } from '../explore';
 import type { PersonCursor, PersonPage, PersonSummary } from '../persons';
 import { type ClickHouseConfig, clickhouseQuery } from './clickhouse';
+import { cohortPeopleSql } from './cohort-people';
 import { PERSON } from './insights';
 import { chTime } from './web';
 
@@ -51,7 +53,14 @@ export async function propertiesOf(
 export async function listPersons(
 	config: ClickHouseConfig,
 	projectId: string,
-	options: { search?: string; before?: PersonCursor; limit?: number; now?: Date } = {}
+	options: {
+		search?: string;
+		before?: PersonCursor;
+		limit?: number;
+		now?: Date;
+		/** Only people in this cohort. */
+		cohort?: CohortSpec;
+	} = {}
 ): Promise<PersonPage> {
 	const limit = options.limit ?? PAGE_SIZE;
 	const now = options.now ?? new Date();
@@ -69,6 +78,7 @@ export async function listPersons(
 				WHERE project_id = {project:UUID} AND positionCaseInsensitive(value, {search:String}) > 0
 			))`);
 	}
+	if (options.cohort) having.push(`person IN (${cohortPeopleSql(options.cohort, params)})`);
 	if (options.before) {
 		params.before = chTime(new Date(options.before.lastSeen));
 		params.beforePerson = options.before.person;
@@ -184,4 +194,21 @@ export async function getPerson(
 		firstSeen: stats?.first_seen ? isoTime(stats.first_seen) : null,
 		lastSeen: stats?.last_seen ? isoTime(stats.last_seen) : null
 	};
+}
+
+/** Person property names in the project, sorted. */
+export async function personPropertyNames(
+	config: ClickHouseConfig,
+	projectId: string
+): Promise<string[]> {
+	const body = await clickhouseQuery(
+		config,
+		`SELECT DISTINCT key FROM person_properties
+		WHERE project_id = {project:UUID}
+		ORDER BY key
+		LIMIT 1000
+		FORMAT JSONEachRow`,
+		{ params: { project: projectId } }
+	);
+	return rows<{ key: string }>(body).map((row) => row.key);
 }

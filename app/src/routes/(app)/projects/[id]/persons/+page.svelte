@@ -1,4 +1,5 @@
 <script lang="ts">
+import PeopleNav from '#lib/components/people/people-nav.svelte';
 import { Button } from '#lib/components/ui/button/index.js';
 import * as Card from '#lib/components/ui/card/index.js';
 import { Input } from '#lib/components/ui/input/index.js';
@@ -24,6 +25,7 @@ function pageHref(before: string | null): string {
 </svelte:head>
 
 <div class="grid gap-4">
+	<PeopleNav projectId={data.project.id} />
 	<search>
 		<form method="GET" class="flex max-w-md gap-2">
 			<Input
