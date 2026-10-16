@@ -81,6 +81,8 @@ describe('formatting', () => {
 		expect(formatDuration(0.85)).toBe('850 ms');
 		expect(formatDuration(2.44)).toBe('2.4 s');
 		expect(formatDuration(185)).toBe('3m 05s');
+		expect(formatDuration(59.96)).toBe('1m 00s');
+		expect(formatDuration(119.6)).toBe('2m 00s');
 	});
 
 	it('reads messages from every provider’s shape', () => {

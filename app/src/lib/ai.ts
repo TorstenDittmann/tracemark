@@ -121,9 +121,9 @@ export function formatTokens(tokens: number): string {
 /** Seconds as `850 ms`, `2.4 s` or `3m 05s`. */
 export function formatDuration(seconds: number): string {
 	if (seconds < 1) return `${Math.round(seconds * 1000)} ms`;
-	if (seconds < 60) return `${seconds.toFixed(1)} s`;
-	const minutes = Math.floor(seconds / 60);
-	return `${minutes}m ${String(Math.round(seconds % 60)).padStart(2, '0')}s`;
+	if (Math.round(seconds * 10) < 600) return `${seconds.toFixed(1)} s`;
+	const total = Math.round(seconds);
+	return `${Math.floor(total / 60)}m ${String(total % 60).padStart(2, '0')}s`;
 }
 
 export interface Message {
