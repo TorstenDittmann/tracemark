@@ -69,6 +69,15 @@ Unknown top-level fields are ignored, and `null` optional fields count as absent
 | `$exception` | Error (`$exception_type`, `$exception_message`, `$exception_stack`) |
 | `$feature_flag_called` | Flag exposure (`$feature_flag`, `$feature_flag_response`) |
 
+## People and identity
+
+A person is one identified `distinct_id` plus every anonymous id linked to it.
+
+- A `$identify` event with `properties.$anon_distinct_id` links that anonymous id to the event's `distinct_id`. Events sent under the anonymous id before and after the link count toward the same person.
+- An anonymous id belongs to the first id it was identified as. A later `$identify` naming the same anonymous id is ignored for linking.
+- Identified ids are never merged with each other. Switching from one identified id to another (without a reset to a new anonymous id) starts a different person, so SDKs send `$anon_distinct_id` only when the previous id was anonymous.
+- `person.set` keeps the newest value per key by event `timestamp`, across all of a person's ids. `person.set_once` keeps the oldest and is used only for keys `set` never wrote.
+
 ## Internal: project keys
 
 The ingest service never reads the app database. It polls the app:
