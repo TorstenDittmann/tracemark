@@ -60,6 +60,17 @@
         "vitest": "4.1.11",
       },
     },
+    "packages/sdk-node": {
+      "name": "@footprint/node",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@footprint/flags": "workspace:*",
+        "@types/node": "22.20.3",
+        "tsdown": "0.23.0",
+        "typescript": "^6.0.3",
+        "vitest": "4.1.11",
+      },
+    },
   },
   "packages": {
     "@better-auth/core": ["@better-auth/core@1.7.7", "", { "dependencies": { "@opentelemetry/semantic-conventions": "^1.41.1", "@standard-schema/spec": "^1.1.0", "zod": "^4.5.4" }, "peerDependencies": { "@better-auth/utils": "0.4.2", "@better-fetch/fetch": "1.3.2", "@opentelemetry/api": "^1.9.0", "better-call": "1.4.0", "jose": "^6.1.0", "kysely": "^0.28.5 || ^0.29.0", "nanostores": "^1.0.1" }, "optionalPeers": ["@opentelemetry/api"] }, "sha512-srgFzHEjB2WWlokFz1i4BfG41sNhsA105Pukgqu6RrEh5A+LSkzf1mCHydVipkjt9l5qswtBMi7IL6ouHbZL4Q=="],
@@ -167,6 +178,8 @@
     "@footprint/browser": ["@footprint/browser@workspace:packages/sdk-browser"],
 
     "@footprint/flags": ["@footprint/flags@workspace:packages/flags"],
+
+    "@footprint/node": ["@footprint/node@workspace:packages/sdk-node"],
 
     "@internationalized/date": ["@internationalized/date@3.12.4", "", { "dependencies": { "@swc/helpers": "^0.5.0" } }, "sha512-M1dEn4c1U1HsSlaVR8upZtSqvXrTkHDfv18H01uCSJyjVLDxnBR38v/fMxecmlwXKR4i9HeZcmgQAPE6A+aGJQ=="],
 
