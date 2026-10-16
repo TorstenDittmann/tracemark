@@ -1,0 +1,134 @@
+{{- $fullname := include "footprint.fullname" . -}}
+{{- if not .Values.app.persistence.existingClaim }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $fullname }}-app
+  labels:
+    {{- include "footprint.labels" . | nindent 4 }}
+  annotations:
+    # Keeps accounts, projects and flags when the release is uninstalled.
+    helm.sh/resource-policy: keep
+spec:
+  accessModes: [ReadWriteOnce]
+  {{- with .Values.app.persistence.storageClass }}
+  storageClassName: {{ . | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.app.persistence.size }}
+---
+{{- end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullname }}-app
+  labels:
+    {{- include "footprint.labels" . | nindent 4 }}
+    app.kubernetes.io/component: app
+spec:
+  # One pod: the libSQL file must never be opened by two.
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "footprint.selector" (dict "ctx" . "component" "app") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "footprint.selector" (dict "ctx" . "component" "app") | nindent 8 }}
+      annotations:
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- with .Values.app.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.clickhouse.enabled }}
+      initContainers:
+        # The app applies ClickHouse migrations on start, so it waits for ClickHouse first.
+        - name: wait-for-clickhouse
+          image: {{ include "footprint.image" (dict "ctx" . "image" .Values.clickhouse.image) }}
+          command: [sh, -c, "until wget -q -O- {{ include "footprint.clickhouseUrl" . }}/ping; do sleep 2; done"]
+      {{- end }}
+      containers:
+        - name: app
+          image: {{ include "footprint.image" (dict "ctx" . "image" .Values.app.image) }}
+          imagePullPolicy: {{ .Values.app.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 3000
+          env:
+            {{- include "footprint.clickhouseEnv" . | nindent 12 }}
+            - name: AUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "footprint.secretName" . }}
+                  key: AUTH_SECRET
+            - name: PUBLIC_URL
+              value: {{ required "publicUrl is required, e.g. https://analytics.example.com" .Values.publicUrl | quote }}
+            - name: PROTOCOL_HEADER
+              value: x-forwarded-proto
+            - name: HOST_HEADER
+              value: x-forwarded-host
+            {{- with .Values.app.addressHeader }}
+            - name: ADDRESS_HEADER
+              value: {{ . | quote }}
+            - name: XFF_DEPTH
+              value: {{ $.Values.app.xffDepth | quote }}
+            {{- end }}
+            {{- with .Values.app.env }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          startupProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 20
+          {{- with .Values.app.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ default (printf "%s-app" $fullname) .Values.app.persistence.existingClaim }}
+      {{- with .Values.app.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.app.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.app.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullname }}-app
+  labels:
+    {{- include "footprint.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    {{- include "footprint.selector" (dict "ctx" . "component" "app") | nindent 4 }}
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http

@@ -1,9 +1,13 @@
 import type { AddressInfo } from 'node:net';
+import { Elysia } from 'elysia';
 import express from 'express';
+import Fastify from 'fastify';
 import { Hono } from 'hono';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Footprint } from '../src';
+import { footprint as elysiaFootprint } from '../src/elysia';
 import { footprint as expressFootprint, footprintErrorHandler } from '../src/express';
+import { footprint as fastifyFootprint } from '../src/fastify';
 import { getFootprint, footprint as honoFootprint } from '../src/hono';
 
 const HOST = 'https://footprint.example.com';
@@ -171,6 +175,71 @@ describe('express', () => {
 		expect(error?.properties.$exception_list[0]).toMatchObject({
 			value: 'kaput',
 			mechanism: { type: 'express', handled: false }
+		});
+	});
+});
+
+describe('fastify', () => {
+	it('gives handlers the visitor scope and captures errors', async () => {
+		const { client, events } = setup();
+		const app = Fastify();
+		await app.register(fastifyFootprint(client));
+		// Registered in a child context: the plugin's hooks still apply to it.
+		await app.register(async (child) => {
+			child.get('/flags', async (request) => request.footprint.getAllFlags());
+			child.get('/boom', async () => {
+				throw new Error('kaput');
+			});
+		});
+		const ok = await app.inject({ url: '/flags', headers: { cookie: COOKIE, host: 'shop.test' } });
+		expect(ok.json()).toEqual({ beta: true });
+		const failed = await app.inject({
+			url: '/boom?x=1',
+			headers: { cookie: COOKIE, host: 'shop.test' }
+		});
+		expect(failed.statusCode).toBe(500);
+		await app.close();
+		await client.flush();
+		const [error] = exceptions(events);
+		expect(error?.distinct_id).toBe('visitor-1');
+		expect(error?.properties).toMatchObject({
+			$current_url: 'http://shop.test/boom?x=1',
+			$request_method: 'GET'
+		});
+		expect(error?.properties.$exception_list[0]).toMatchObject({
+			value: 'kaput',
+			mechanism: { type: 'fastify', handled: false }
+		});
+	});
+});
+
+describe('elysia', () => {
+	it('gives handlers the visitor scope and captures unexpected errors', async () => {
+		const { client, events } = setup();
+		const app = new Elysia()
+			.use(elysiaFootprint(client))
+			.get('/flags', ({ footprint }) => footprint.getAllFlags())
+			.get('/me', ({ footprint }) => footprint.distinctId ?? 'nobody')
+			.get('/boom', () => {
+				throw new Error('kaput');
+			});
+		const request = (path: string, headers: Record<string, string> = {}) =>
+			app.handle(new Request(`http://shop.test${path}`, { headers }));
+		expect(await (await request('/flags', { cookie: COOKIE })).json()).toEqual({ beta: true });
+		expect(await (await request('/me')).text()).toBe('nobody');
+		expect((await request('/missing')).status).toBe(404);
+		expect((await request('/boom', { cookie: COOKIE })).status).toBe(500);
+		await client.flush();
+		const errors = exceptions(events);
+		expect(errors).toHaveLength(1);
+		expect(errors[0]?.distinct_id).toBe('visitor-1');
+		expect(errors[0]?.properties).toMatchObject({
+			$current_url: 'http://shop.test/boom',
+			$request_method: 'GET'
+		});
+		expect(errors[0]?.properties.$exception_list[0]).toMatchObject({
+			value: 'kaput',
+			mechanism: { type: 'elysia', handled: false }
 		});
 	});
 });

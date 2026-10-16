@@ -1,0 +1,108 @@
+{{- $fullname := include "footprint.fullname" . -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullname }}-ingest
+  labels:
+    {{- include "footprint.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ingest
+spec:
+  replicas: {{ .Values.ingest.replicas }}
+  selector:
+    matchLabels:
+      {{- include "footprint.selector" (dict "ctx" . "component" "ingest") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "footprint.selector" (dict "ctx" . "component" "ingest") | nindent 8 }}
+      annotations:
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- with .Values.ingest.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: ingest
+          image: {{ include "footprint.image" (dict "ctx" . "image" .Values.ingest.image) }}
+          imagePullPolicy: {{ .Values.ingest.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8081
+          env:
+            {{- include "footprint.clickhouseEnv" . | nindent 12 }}
+            - name: APP_INTERNAL_URL
+              value: http://{{ $fullname }}-app:3000
+            - name: LOG_FORMAT
+              value: json
+            {{- with .Values.ingest.addressHeader }}
+            - name: ADDRESS_HEADER
+              value: {{ . | quote }}
+            - name: XFF_DEPTH
+              value: {{ $.Values.ingest.xffDepth | quote }}
+            {{- end }}
+            {{- if .Values.ingest.geoip.file }}
+            - name: GEOIP_DB
+              value: /geoip/{{ .Values.ingest.geoip.file }}
+            {{- end }}
+            {{- with .Values.ingest.env }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          volumeMounts:
+            - name: spill
+              mountPath: /app/spill
+            {{- if .Values.ingest.geoip.file }}
+            - name: geoip
+              mountPath: /geoip
+              readOnly: true
+            {{- end }}
+          readinessProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 20
+          {{- with .Values.ingest.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      volumes:
+        - name: spill
+          emptyDir:
+            sizeLimit: {{ .Values.ingest.spill.sizeLimit }}
+        {{- if .Values.ingest.geoip.file }}
+        - name: geoip
+          {{- toYaml (required "ingest.geoip.volume is required with ingest.geoip.file" .Values.ingest.geoip.volume) | nindent 10 }}
+        {{- end }}
+      {{- with .Values.ingest.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.ingest.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.ingest.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullname }}-ingest
+  labels:
+    {{- include "footprint.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    {{- include "footprint.selector" (dict "ctx" . "component" "ingest") | nindent 4 }}
+  ports:
+    - name: http
+      port: 8081
+      targetPort: http

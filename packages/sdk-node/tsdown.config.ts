@@ -1,7 +1,14 @@
 import { defineConfig } from 'tsdown';
 
 export default defineConfig({
-	entry: { index: 'src/index.ts', hono: 'src/hono.ts', express: 'src/express.ts', ai: 'src/ai.ts' },
+	entry: {
+		index: 'src/index.ts',
+		hono: 'src/hono.ts',
+		express: 'src/express.ts',
+		fastify: 'src/fastify.ts',
+		elysia: 'src/elysia.ts',
+		ai: 'src/ai.ts'
+	},
 	format: 'esm',
 	platform: 'neutral',
 	target: 'es2022',
@@ -11,6 +18,6 @@ export default defineConfig({
 	deps: {
 		alwaysBundle: ['@footprint/flags', '@footprint/errors'],
 		// Only the AI helpers import a Node built-in (AsyncLocalStorage), which Bun and Deno provide too.
-		neverBundle: [/^node:/]
+		neverBundle: [/^node:/, 'elysia', 'fastify']
 	}
 });
