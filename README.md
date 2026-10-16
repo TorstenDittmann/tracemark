@@ -18,6 +18,8 @@ SDKs ──POST /e──▶ ingest (Rust) ──batched inserts──▶ ClickHo
 | `ingest/` | Rust service that validates, batches and writes events to ClickHouse |
 | `app/` | SvelteKit app on Bun: dashboard, flags and query APIs, migrations |
 | `packages/sdk-browser/` | `@footprint/browser`, the browser SDK (~3 KB gzipped) |
+| `packages/sdk-python/` | `footprint-sdk`, the Python server SDK ([docs](docs/sdk-python.md)) |
+| `packages/sdk-go/` | The Go server SDK ([docs](docs/sdk-go.md)) |
 | `packages/schema/fixtures/` | Request bodies every SDK and the ingest service test against |
 | `clickhouse/migrations/` | ClickHouse schema |
 | `docs/ingest-protocol.md` | The wire protocol between SDKs and ingest |
