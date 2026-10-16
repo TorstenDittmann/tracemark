@@ -43,12 +43,16 @@ export function validateName(name: string): string | null {
 	return null;
 }
 
+// SQLite doesn't enforce the kind enum, so rows with an unknown kind (hand-edited, or from a
+// newer version) are left out rather than breaking the pages that list them.
+
 export async function listInsights(db: Db, projectId: string) {
-	return db
+	const rows = await db
 		.select()
 		.from(insights)
 		.where(eq(insights.projectId, projectId))
 		.orderBy(desc(insights.updatedAt));
+	return rows.filter((row) => isInsightKind(row.kind));
 }
 
 export async function getInsight(db: Db, projectId: string, insightId: string) {
@@ -56,7 +60,7 @@ export async function getInsight(db: Db, projectId: string, insightId: string) {
 		.select()
 		.from(insights)
 		.where(and(eq(insights.projectId, projectId), eq(insights.id, insightId)));
-	return row ?? null;
+	return row && isInsightKind(row.kind) ? row : null;
 }
 
 export async function createInsight(
@@ -138,12 +142,13 @@ export async function deleteDashboard(db: Db, projectId: string, dashboardId: st
 
 /** A dashboard's insights in order. */
 export async function dashboardItems(db: Db, dashboardId: string) {
-	return db
+	const rows = await db
 		.select({ insight: insights, position: dashboardInsights.position })
 		.from(dashboardInsights)
 		.innerJoin(insights, eq(insights.id, dashboardInsights.insightId))
 		.where(eq(dashboardInsights.dashboardId, dashboardId))
 		.orderBy(asc(dashboardInsights.position));
+	return rows.filter((row) => isInsightKind(row.insight.kind));
 }
 
 /**

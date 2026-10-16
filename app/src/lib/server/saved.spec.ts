@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_FUNNEL, DEFAULT_TRENDS } from '../insights';
-import { organizations, users } from './db/schema';
+import { dashboardInsights, insights, organizations, users } from './db/schema';
 import { createProject, deleteProject } from './projects';
 import {
 	addToDashboard,
@@ -61,6 +61,39 @@ describe('saved insights', () => {
 		expect(await getInsight(db, project.id, insight.id)).not.toBeNull();
 		await deleteInsight(db, project.id, insight.id);
 		expect(await getInsight(db, project.id, insight.id)).toBeNull();
+	});
+
+	it('leave out rows with an unknown kind', async () => {
+		const { db, user, project } = await setup();
+		const dashboard = await createDashboard(db, project.id, 'Growth');
+		const good = await createInsight(db, {
+			projectId: project.id,
+			name: 'Good',
+			saved: parseSavedQuery('trends', '{}'),
+			userId: user.id
+		});
+		const [bad] = await db
+			.insert(insights)
+			// SQLite accepts any text here, as a hand-edited row would.
+			.values({
+				projectId: project.id,
+				name: 'Bad',
+				kind: 'paths' as 'trends',
+				query: '{}',
+				createdBy: user.id
+			})
+			.returning();
+		await addToDashboard(db, project.id, dashboard.id, good.id);
+		await db.insert(dashboardInsights).values({
+			dashboardId: dashboard.id,
+			insightId: bad.id,
+			position: 1
+		});
+		expect((await listInsights(db, project.id)).map((row) => row.name)).toEqual(['Good']);
+		expect(await getInsight(db, project.id, bad.id)).toBeNull();
+		expect((await dashboardItems(db, dashboard.id)).map((row) => row.insight.name)).toEqual([
+			'Good'
+		]);
 	});
 });
 
