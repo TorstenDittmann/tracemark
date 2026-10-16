@@ -6,6 +6,7 @@ import {
 } from '$app/env/private';
 import type { ClickHouseConfig } from './clickhouse';
 import * as events from './events';
+import * as explore from './explore';
 import * as insights from './insights';
 import type { SavedQuery } from './saved';
 import * as web from './web';
@@ -67,3 +68,15 @@ export async function runSaved(projectId: string, saved: SavedQuery): Promise<Sa
 			return { ...saved, result: await retention(projectId, saved.query) };
 	}
 }
+
+export const recentEvents = (
+	projectId: string,
+	query: Parameters<typeof explore.recentEvents>[2],
+	options?: Parameters<typeof explore.recentEvents>[3]
+) => explore.recentEvents(config(), projectId, query, options);
+
+export const eventDefinitions = (projectId: string) =>
+	explore.eventDefinitions(config(), projectId);
+
+export const propertyDefinitions = (projectId: string, event?: string) =>
+	explore.propertyDefinitions(config(), projectId, { event });

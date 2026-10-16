@@ -28,7 +28,7 @@ function property(name: string): string {
 	return `e.properties.\`${name}\``;
 }
 
-function filterSql(filter: PropertyFilter, param: string): string {
+export function filterSql(filter: PropertyFilter, param: string): string {
 	const value = `toString(${property(filter.property)})`;
 	switch (filter.operator) {
 		case 'eq':
@@ -79,7 +79,7 @@ function eventsSource(
 	};
 }
 
-const PERSON = `if(a.person = '', e.distinct_id, a.person)`;
+export const PERSON = `if(a.person = '', e.distinct_id, a.person)`;
 
 function aggregate(series: Series): string {
 	switch (series.math) {

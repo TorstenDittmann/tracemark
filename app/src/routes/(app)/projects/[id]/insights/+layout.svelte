@@ -13,13 +13,13 @@ const kinds = $derived([
 </script>
 
 <div class="grid gap-4">
-	<nav class="flex gap-1 text-sm" aria-label="Insight type">
+	<nav class="flex gap-1 overflow-x-auto text-sm" aria-label="Insight type">
 		{#each kinds as kind (kind.href)}
 			{@const active = page.url.pathname === kind.href}
 			<a
 				href={kind.href}
 				class={[
-					'rounded-md px-3 py-1.5',
+					'rounded-md px-3 py-1.5 whitespace-nowrap',
 					active ? 'bg-secondary font-medium' : 'text-muted-foreground hover:text-foreground'
 				]}
 				aria-current={active ? 'page' : undefined}

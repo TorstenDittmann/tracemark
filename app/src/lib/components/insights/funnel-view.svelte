@@ -67,7 +67,7 @@ const converted = $derived(counts.at(-1) ?? 0);
 	{/if}
 
 	{#if !compact && result.groups.length}
-		<div class="overflow-x-auto">
+		<div class="relative overflow-x-auto">
 			<table class="w-full text-sm">
 				<thead class="text-left text-xs text-muted-foreground">
 					<tr>

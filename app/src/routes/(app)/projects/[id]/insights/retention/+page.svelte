@@ -84,7 +84,7 @@ const allProperties = $derived(data.properties.map((p) => p.name));
 			Insights are unavailable because ClickHouse could not be reached.
 		</p>
 	{:else}
-		<Card.Root class="py-4">
+		<Card.Root class="min-w-0 py-4">
 			<Card.Content class="px-4">
 				<RetentionView result={data.result} start={data.query.start} />
 			</Card.Content>

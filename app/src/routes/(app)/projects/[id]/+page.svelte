@@ -37,7 +37,7 @@ async function copy(label: string, text: string) {
 
 <div class="grid gap-6">
 	<div class="grid gap-4 sm:grid-cols-3">
-		<Card.Root class="gap-2">
+		<Card.Root class="min-w-0 gap-2">
 			<Card.Header>
 				<Card.Description>Events in the last 24 hours</Card.Description>
 				<Card.Title class="text-3xl tabular-nums">
@@ -45,7 +45,7 @@ async function copy(label: string, text: string) {
 				</Card.Title>
 			</Card.Header>
 		</Card.Root>
-		<Card.Root class="gap-2">
+		<Card.Root class="min-w-0 gap-2">
 			<Card.Header>
 				<Card.Description>People in the last 24 hours</Card.Description>
 				<Card.Title class="text-3xl tabular-nums">
@@ -53,7 +53,7 @@ async function copy(label: string, text: string) {
 				</Card.Title>
 			</Card.Header>
 		</Card.Root>
-		<Card.Root class="gap-2">
+		<Card.Root class="min-w-0 gap-2">
 			<Card.Header>
 				<Card.Description>Last event</Card.Description>
 				<Card.Title class="text-xl">
@@ -74,7 +74,7 @@ async function copy(label: string, text: string) {
 		</p>
 	{/if}
 
-	<Card.Root>
+	<Card.Root class="min-w-0">
 		<Card.Header>
 			<Card.Title>Public key</Card.Title>
 			<Card.Description>
@@ -91,7 +91,7 @@ async function copy(label: string, text: string) {
 		</Card.Content>
 	</Card.Root>
 
-	<Card.Root>
+	<Card.Root class="min-w-0">
 		<Card.Header>
 			<Card.Title>Install the browser SDK</Card.Title>
 			<Card.Description>

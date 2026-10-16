@@ -7,6 +7,7 @@ let { data, children }: LayoutProps = $props();
 const tabs = $derived([
 	{ href: `/projects/${data.project.id}`, label: 'Overview' },
 	{ href: `/projects/${data.project.id}/web`, label: 'Web analytics' },
+	{ href: `/projects/${data.project.id}/events`, label: 'Events' },
 	{ href: `/projects/${data.project.id}/insights`, label: 'Insights' },
 	{ href: `/projects/${data.project.id}/dashboards`, label: 'Dashboards' },
 	{ href: `/projects/${data.project.id}/settings`, label: 'Settings' }
@@ -16,7 +17,7 @@ const tabs = $derived([
 <div class="grid gap-6">
 	<div class="grid gap-3">
 		<h1 class="text-2xl font-semibold tracking-tight">{data.project.name}</h1>
-		<nav class="flex gap-1 border-b text-sm">
+		<nav class="flex gap-1 overflow-x-auto text-sm shadow-[inset_0_-1px_0_var(--border)]">
 			{#each tabs as tab (tab.href)}
 				{@const active =
 					tab.href === `/projects/${data.project.id}`
@@ -25,7 +26,7 @@ const tabs = $derived([
 				<a
 					href={tab.href}
 					class={[
-						'-mb-px border-b-2 px-3 py-2',
+						'border-b-2 px-3 py-2 whitespace-nowrap',
 						active
 							? 'border-primary font-medium'
 							: 'border-transparent text-muted-foreground hover:text-foreground'

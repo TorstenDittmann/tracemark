@@ -166,7 +166,8 @@ export const DEFAULT_FUNNEL: FunnelQuery = {
 	filters: []
 };
 
-function parseFilters(input: unknown): PropertyFilter[] {
+/** Reads property filters from untrusted JSON, dropping invalid ones. */
+export function parsePropertyFilters(input: unknown): PropertyFilter[] {
 	return parseTrends({ filters: input }).filters;
 }
 
@@ -184,7 +185,7 @@ export function parseFunnel(input: unknown): FunnelQuery {
 				: DEFAULT_FUNNEL.window,
 		range: parseRange(typeof input.range === 'string' ? input.range : DEFAULT_FUNNEL.range),
 		breakdown: validName(input.breakdown) ? input.breakdown : undefined,
-		filters: parseFilters(input.filters)
+		filters: parsePropertyFilters(input.filters)
 	};
 }
 
@@ -228,7 +229,7 @@ export function parseRetention(input: unknown): RetentionQuery {
 		start: validName(input.start) ? input.start : DEFAULT_RETENTION.start,
 		returning: validName(input.returning) ? input.returning : DEFAULT_RETENTION.returning,
 		range: range === '24h' ? '7d' : range,
-		filters: parseFilters(input.filters)
+		filters: parsePropertyFilters(input.filters)
 	};
 }
 
