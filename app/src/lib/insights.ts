@@ -240,3 +240,51 @@ export function parseRetentionParam(value: string | null): RetentionQuery {
 		return DEFAULT_RETENTION;
 	}
 }
+
+// Results, as the server queries return them.
+
+export interface TrendLine {
+	/** Index into the query's series. */
+	series: number;
+	label: string;
+	/** The breakdown value, when the query has a breakdown. */
+	breakdown?: string;
+	/** One value per bucket. */
+	data: number[];
+	/** The aggregate over the whole range (not the sum of `data` for unique users or averages). */
+	total: number;
+}
+
+export interface TrendsResult {
+	bucket: 'hour' | 'day';
+	buckets: string[];
+	lines: TrendLine[];
+}
+
+export interface FunnelGroup {
+	/** The breakdown value; absent without a breakdown. */
+	breakdown?: string;
+	/** People who reached each step, in step order. */
+	counts: number[];
+}
+
+export interface FunnelResult {
+	steps: string[];
+	/** The whole funnel, then up to MAX_LINES breakdown groups by people entering it. */
+	total: FunnelGroup;
+	groups: FunnelGroup[];
+}
+
+export interface RetentionCohort {
+	/** Period start, ISO 8601 in UTC. */
+	start: string;
+	/** People who did the start event first in this period. */
+	size: number;
+	/** People who came back, for each later period that has begun: index 0 is one period later. */
+	returned: number[];
+}
+
+export interface RetentionResult {
+	period: 'day' | 'week';
+	cohorts: RetentionCohort[];
+}

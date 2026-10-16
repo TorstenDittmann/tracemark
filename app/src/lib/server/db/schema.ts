@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { index, integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 // Tables named after better-auth models (users, sessions, accounts, verifications, and the
 // organization plugin's organizations, members, invitations) are managed through better-auth;
@@ -149,6 +149,55 @@ export const projects = sqliteTable('projects', {
 	createdAt: createdAt()
 });
 
+/** A named trends, funnel or retention query. `query` is the JSON the editors put in the URL. */
+export const insights = sqliteTable(
+	'insights',
+	{
+		id: id(),
+		projectId: text('project_id')
+			.notNull()
+			.references(() => projects.id, { onDelete: 'cascade' }),
+		name: text('name').notNull(),
+		kind: text('kind', { enum: ['trends', 'funnel', 'retention'] }).notNull(),
+		query: text('query').notNull(),
+		createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+		createdAt: createdAt(),
+		updatedAt: updatedAt()
+	},
+	(table) => [index('insights_project_id_idx').on(table.projectId)]
+);
+
+export const dashboards = sqliteTable(
+	'dashboards',
+	{
+		id: id(),
+		projectId: text('project_id')
+			.notNull()
+			.references(() => projects.id, { onDelete: 'cascade' }),
+		name: text('name').notNull(),
+		createdAt: createdAt()
+	},
+	(table) => [index('dashboards_project_id_idx').on(table.projectId)]
+);
+
+/** Insights on a dashboard, in `position` order. */
+export const dashboardInsights = sqliteTable(
+	'dashboard_insights',
+	{
+		dashboardId: text('dashboard_id')
+			.notNull()
+			.references(() => dashboards.id, { onDelete: 'cascade' }),
+		insightId: text('insight_id')
+			.notNull()
+			.references(() => insights.id, { onDelete: 'cascade' }),
+		position: integer('position').notNull()
+	},
+	(table) => [
+		primaryKey({ columns: [table.dashboardId, table.insightId] }),
+		index('dashboard_insights_insight_id_idx').on(table.insightId)
+	]
+);
+
 /**
  * Random salts for cookieless visitor hashes, one per UTC day. Old days are deleted so a
  * hash can not be recomputed from an IP address and user agent later.
@@ -162,3 +211,5 @@ export type User = typeof users.$inferSelect;
 export type Organization = typeof organizations.$inferSelect;
 export type Member = typeof members.$inferSelect;
 export type Project = typeof projects.$inferSelect;
+export type Insight = typeof insights.$inferSelect;
+export type Dashboard = typeof dashboards.$inferSelect;

@@ -1,36 +1,26 @@
 import {
+	type FunnelGroup,
 	type FunnelQuery,
+	type FunnelResult,
 	MAX_LINES,
 	needsProperty,
 	type PropertyFilter,
+	type RetentionCohort,
 	type RetentionQuery,
+	type RetentionResult,
 	retentionPeriod,
 	type Series,
 	seriesLabel,
+	type TrendLine,
 	type TrendsQuery,
+	type TrendsResult,
 	validName,
 	WINDOWS
 } from '../insights';
 import { type ClickHouseConfig, clickhouseQuery } from './clickhouse';
 import { chTime, timeWindow } from './web';
 
-export interface TrendLine {
-	/** Index into the query's series. */
-	series: number;
-	label: string;
-	/** The breakdown value, when the query has a breakdown. */
-	breakdown?: string;
-	/** One value per bucket. */
-	data: number[];
-	/** The aggregate over the whole range (not the sum of `data` for unique users or averages). */
-	total: number;
-}
-
-export interface TrendsResult {
-	bucket: 'hour' | 'day';
-	buckets: string[];
-	lines: TrendLine[];
-}
+export type { FunnelResult, RetentionResult, TrendsResult };
 
 /** An event property as a ClickHouse expression. Names are validated, so quoting is enough. */
 function property(name: string): string {
@@ -185,20 +175,6 @@ export async function trends(
 	return { bucket, buckets, lines: results.flat() };
 }
 
-export interface FunnelGroup {
-	/** The breakdown value; absent without a breakdown. */
-	breakdown?: string;
-	/** People who reached each step, in step order. */
-	counts: number[];
-}
-
-export interface FunnelResult {
-	steps: string[];
-	/** The whole funnel, then up to MAX_LINES breakdown groups by people entering it. */
-	total: FunnelGroup;
-	groups: FunnelGroup[];
-}
-
 /**
  * People who did the steps in order, each within the conversion window of their first step.
  * Other events in between are allowed. A breakdown groups people by the property on their first
@@ -261,20 +237,6 @@ export async function funnel(
 				.slice(0, MAX_LINES)
 		: [];
 	return { steps: query.steps, total: { counts: total }, groups };
-}
-
-export interface RetentionCohort {
-	/** Period start, ISO 8601 in UTC. */
-	start: string;
-	/** People who did the start event first in this period. */
-	size: number;
-	/** People who came back, for each later period that has begun: index 0 is one period later. */
-	returned: number[];
-}
-
-export interface RetentionResult {
-	period: 'day' | 'week';
-	cohorts: RetentionCohort[];
 }
 
 const DAY_MS = 86_400_000;

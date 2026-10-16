@@ -7,6 +7,7 @@ import {
 import type { ClickHouseConfig } from './clickhouse';
 import * as events from './events';
 import * as insights from './insights';
+import type { SavedQuery } from './saved';
 import * as web from './web';
 
 export type { EventStats } from './events';
@@ -18,6 +19,11 @@ export type {
 	TrendsResult
 } from './insights';
 export type { WebAnalytics } from './web';
+
+export type SavedResult =
+	| (Extract<SavedQuery, { kind: 'trends' }> & { result: insights.TrendsResult })
+	| (Extract<SavedQuery, { kind: 'funnel' }> & { result: insights.FunnelResult })
+	| (Extract<SavedQuery, { kind: 'retention' }> & { result: insights.RetentionResult });
 
 function config(): ClickHouseConfig {
 	return {
@@ -49,3 +55,15 @@ export const funnel = (projectId: string, query: Parameters<typeof insights.funn
 
 export const retention = (projectId: string, query: Parameters<typeof insights.retention>[2]) =>
 	insights.retention(config(), projectId, query);
+
+/** Runs a saved insight's query; the result type follows its kind. */
+export async function runSaved(projectId: string, saved: SavedQuery): Promise<SavedResult> {
+	switch (saved.kind) {
+		case 'trends':
+			return { ...saved, result: await trends(projectId, saved.query) };
+		case 'funnel':
+			return { ...saved, result: await funnel(projectId, saved.query) };
+		case 'retention':
+			return { ...saved, result: await retention(projectId, saved.query) };
+	}
+}
