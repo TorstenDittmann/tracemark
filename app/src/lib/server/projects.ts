@@ -1,7 +1,7 @@
 import { and, asc, eq } from 'drizzle-orm';
 import type { Db } from './db/client';
 import { members, organizations, projects } from './db/schema';
-import { generatePublicKey } from './keys';
+import { generatePublicKey, generateSecretKey } from './keys';
 
 /** Owners and admins manage keys and can delete projects; members can view and rename. */
 export function canManage(role: string): boolean {
@@ -59,7 +59,12 @@ export async function getMembership(db: Db, userId: string, organizationId: stri
 export async function createProject(db: Db, organizationId: string, name: string) {
 	const [project] = await db
 		.insert(projects)
-		.values({ organizationId, name, publicKey: generatePublicKey() })
+		.values({
+			organizationId,
+			name,
+			publicKey: generatePublicKey(),
+			secretKey: generateSecretKey()
+		})
 		.returning();
 	if (!project) throw new Error('failed to create project');
 	return project;
@@ -74,6 +79,26 @@ export async function rotatePublicKey(db: Db, projectId: string): Promise<string
 	const publicKey = generatePublicKey();
 	await db.update(projects).set({ publicKey }).where(eq(projects.id, projectId));
 	return publicKey;
+}
+
+/** Replaces the secret key; server SDKs using the old one stop getting flag definitions. */
+export async function rotateSecretKey(db: Db, projectId: string): Promise<string> {
+	const secretKey = generateSecretKey();
+	await db.update(projects).set({ secretKey }).where(eq(projects.id, projectId));
+	return secretKey;
+}
+
+/** The project a public key belongs to, or null. */
+export async function projectByPublicKey(db: Db, publicKey: string) {
+	const [row] = await db.select().from(projects).where(eq(projects.publicKey, publicKey));
+	return row ?? null;
+}
+
+/** The project a secret key belongs to, or null. */
+export async function projectBySecretKey(db: Db, secretKey: string) {
+	if (!secretKey.startsWith('fp_sec_')) return null;
+	const [row] = await db.select().from(projects).where(eq(projects.secretKey, secretKey));
+	return row ?? null;
 }
 
 export async function deleteProject(db: Db, projectId: string) {

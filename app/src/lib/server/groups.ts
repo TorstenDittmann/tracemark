@@ -50,7 +50,7 @@ export async function groupTypes(
 }
 
 /** Each group's properties, values parsed from JSON. */
-async function groupProperties(
+export async function groupProperties(
 	config: ClickHouseConfig,
 	projectId: string,
 	type: string,

@@ -22,6 +22,7 @@
 		"drizzle-orm": "^0.45.3"
 	},
 	"devDependencies": {
+		"@footprint/flags": "workspace:*",
 		"@internationalized/date": "^3.12.4",
 		"@lucide/svelte": "^1.52.0",
 		"@sveltejs/adapter-bun": "^1.0.0",

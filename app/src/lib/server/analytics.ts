@@ -1,3 +1,4 @@
+import { evaluateAll } from '@footprint/flags';
 import {
 	CLICKHOUSE_DATABASE,
 	CLICKHOUSE_PASSWORD,
@@ -7,10 +8,12 @@ import {
 import type { CohortSpec } from '../cohorts';
 import type { ClickHouseConfig } from './clickhouse';
 import * as cohortPeople from './cohort-people';
-import { cohortSpec, getCohort } from './cohorts';
+import { cohortSpec, getCohort, listCohorts } from './cohorts';
 import { getDb } from './db/index';
 import * as events from './events';
 import * as explore from './explore';
+import * as flagEvaluation from './flag-evaluation';
+import { projectFlags } from './flags';
 import * as groups from './groups';
 import * as insights from './insights';
 import * as persons from './persons';
@@ -138,3 +141,28 @@ export const deleteCohortPeople = (projectId: string, cohortId: string) =>
 
 export const personPropertyNames = (projectId: string) =>
 	persons.personPropertyNames(config(), projectId);
+
+/**
+ * Every flag of a project evaluated for one request. When ClickHouse can't be reached, flags
+ * are evaluated from what the request sent alone, with no cohort members.
+ */
+export async function evaluateProjectFlags(projectId: string, request: flagEvaluation.FlagRequest) {
+	const db = getDb();
+	const flags = await projectFlags(db, projectId);
+	const referenced = new Set(flagEvaluation.referencedCohorts(flags));
+	const cohorts = referenced.size
+		? (await listCohorts(db, projectId)).filter((c) => referenced.has(c.id)).map(cohortSpec)
+		: [];
+	try {
+		return await flagEvaluation.evaluateFlags(config(), projectId, flags, request, cohorts);
+	} catch (err) {
+		console.error('flags evaluated without stored properties:', err);
+		return evaluateAll(flags, {
+			distinctId: request.distinctId,
+			personProperties: request.personProperties,
+			groups: request.groups,
+			groupProperties: request.groupProperties,
+			cohorts: []
+		}).results;
+	}
+}

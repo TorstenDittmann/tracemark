@@ -8,6 +8,7 @@ import type { PageProps } from './$types';
 
 let { data, form }: PageProps = $props();
 let confirmName = $state('');
+let showSecret = $state(false);
 
 const canManage = $derived(data.role === 'owner' || data.role === 'admin');
 const messageFor = (action: string) => (form?.action === action ? form.message : null);
@@ -68,6 +69,50 @@ const messageFor = (action: string) => (form?.action === action ? form.message :
 			</form>
 			{#if messageFor('rotate')}
 				<p class="mt-2 text-sm text-muted-foreground" role="status">{messageFor('rotate')}</p>
+			{/if}
+		</Card.Content>
+	</Card.Root>
+
+	<Card.Root>
+		<Card.Header>
+			<Card.Title>Secret key</Card.Title>
+			<Card.Description>
+				For server SDKs that evaluate feature flags locally. Keep it on your servers; never put it
+				in a browser or app.
+			</Card.Description>
+		</Card.Header>
+		<Card.Content class="grid gap-3">
+			{#if data.secretKey}
+				<div class="flex max-w-xl gap-2">
+					<Label for="secret-key" class="sr-only">Secret key</Label>
+					<Input
+						id="secret-key"
+						readonly
+						type={showSecret ? 'text' : 'password'}
+						value={data.secretKey}
+						class="font-mono"
+					/>
+					<Button type="button" variant="outline" onclick={() => (showSecret = !showSecret)}>
+						{showSecret ? 'Hide' : 'Show'}
+					</Button>
+				</div>
+				<form
+					method="POST"
+					action="?/rotateSecret"
+					use:enhance={({ cancel }) => {
+						if (!confirm('Rotate the secret key? Servers using the old key stop getting flags.'))
+							cancel();
+					}}
+				>
+					<Button type="submit" variant="outline">Rotate secret key</Button>
+				</form>
+			{:else}
+				<p class="text-sm text-muted-foreground">
+					Only organization owners and admins can see the secret key.
+				</p>
+			{/if}
+			{#if messageFor('rotateSecret')}
+				<p class="text-sm text-muted-foreground" role="status">{messageFor('rotateSecret')}</p>
 			{/if}
 		</Card.Content>
 	</Card.Root>
