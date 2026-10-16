@@ -5,6 +5,7 @@ COPY package.json bun.lock ./
 COPY app/package.json app/package.json
 COPY packages/sdk-browser/package.json packages/sdk-browser/package.json
 # Workspace packages the app bundles from source.
+COPY tsconfig.base.json ./
 COPY packages/flags packages/flags
 RUN bun install --frozen-lockfile
 COPY app app
