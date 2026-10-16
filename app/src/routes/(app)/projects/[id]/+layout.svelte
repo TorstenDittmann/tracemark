@@ -7,6 +7,7 @@ let { data, children }: LayoutProps = $props();
 const tabs = $derived([
 	{ href: `/projects/${data.project.id}`, label: 'Overview' },
 	{ href: `/projects/${data.project.id}/web`, label: 'Web analytics' },
+	{ href: `/projects/${data.project.id}/insights`, label: 'Insights' },
 	{ href: `/projects/${data.project.id}/settings`, label: 'Settings' }
 ]);
 </script>
@@ -16,7 +17,10 @@ const tabs = $derived([
 		<h1 class="text-2xl font-semibold tracking-tight">{data.project.name}</h1>
 		<nav class="flex gap-1 border-b text-sm">
 			{#each tabs as tab (tab.href)}
-				{@const active = page.url.pathname === tab.href}
+				{@const active =
+					tab.href === `/projects/${data.project.id}`
+						? page.url.pathname === tab.href
+						: page.url.pathname.startsWith(tab.href)}
 				<a
 					href={tab.href}
 					class={[
