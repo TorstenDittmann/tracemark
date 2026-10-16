@@ -1,0 +1,10 @@
+**/node_modules
+**/.svelte-kit
+**/target
+**/spill
+app/build
+app/data
+**/*.db
+.env
+.git
+geoip

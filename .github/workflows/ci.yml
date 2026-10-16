@@ -70,3 +70,29 @@ jobs:
           CLICKHOUSE_TEST_USER: footprint
           CLICKHOUSE_TEST_PASSWORD: footprint
         run: bunx vitest --run src/lib/server/events.clickhouse.spec.ts
+
+  app-image:
+    runs-on: ubuntu-latest
+    services:
+      clickhouse:
+        image: clickhouse/clickhouse-server:25.8
+        env:
+          CLICKHOUSE_USER: footprint
+          CLICKHOUSE_PASSWORD: footprint
+        ports: ['8123:8123']
+    steps:
+      - uses: actions/checkout@v5
+      - run: docker build -f app/Dockerfile -t footprint-app .
+      - run: docker image ls footprint-app
+      - name: Start the image and check it migrates and serves
+        run: |
+          for i in 1 2 3 4 5 6 7 8 9 10; do curl -sf http://localhost:8123/ping && break; sleep 2; done
+          docker run -d --name app --network host \
+            -e INTERNAL_TOKEN=ci -e AUTH_SECRET=0123456789abcdef0123456789abcdef \
+            -e PUBLIC_URL=http://localhost:3000 -e PROTOCOL_HEADER=x-forwarded-proto \
+            -e CLICKHOUSE_URL=http://localhost:8123 -e CLICKHOUSE_USER=footprint -e CLICKHOUSE_PASSWORD=footprint \
+            footprint-app
+          for i in $(seq 1 30); do curl -sf http://localhost:3000/health >/dev/null 2>&1 && break; sleep 1; done
+          docker logs app
+          test "$(curl -s -o /dev/null -w '%{redirect_url}' -H 'x-forwarded-proto: http' http://localhost:3000/)" = "http://localhost:3000/setup"
+          docker exec app bun run migrate
