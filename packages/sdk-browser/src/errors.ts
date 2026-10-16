@@ -38,7 +38,8 @@ export function createErrors(options: ErrorsOptions = {}): Errors {
 		const message = `${first.type}: ${first.value}`;
 		if (
 			options.ignore?.some((rule) =>
-				typeof rule === 'string' ? message.includes(rule) : rule.test(message)
+				// `search` ignores the g and y flags; `test` would carry lastIndex between errors.
+				typeof rule === 'string' ? message.includes(rule) : message.search(rule) !== -1
 			)
 		) {
 			return;

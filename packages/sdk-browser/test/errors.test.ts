@@ -70,6 +70,19 @@ describe('errors plugin', () => {
 		expect(exceptions(f)).toHaveLength(5);
 	});
 
+	it('drops every match of a global pattern', async () => {
+		const f = mockFetch();
+		const errors = createErrors({ ignore: [/AbortError/g] });
+		const client = make().use(errors);
+		for (const message of ['first', 'second', 'third']) {
+			const abort = new Error(message);
+			abort.name = 'AbortError';
+			errors.captureException(abort);
+		}
+		await client.flush();
+		expect(exceptions(f)).toEqual([]);
+	});
+
 	it('marks frames from the page origin as the app own code', () => {
 		const f = mockFetch();
 		const errors = createErrors();
