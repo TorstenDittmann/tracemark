@@ -179,7 +179,132 @@ export const handleError = footprintClientHandleError(errors);
   errors thrown with `error()`, then return what the function you pass returns. They work with
   SvelteKit 2 and 3.
 
-## Node servers: `@footprint/node/hono` and `@footprint/node/express`
+## Vue: `@footprint/vue`
+
+```ts
+// main.ts
+import { createErrors } from '@footprint/browser/errors';
+import { createFlags } from '@footprint/browser/flags';
+import { createFootprint } from '@footprint/vue';
+
+const app = createApp(App);
+app.use(
+  createFootprint({
+    options: { apiKey: 'fp_pub_…', host: 'https://footprint.example.com' },
+    flags: createFlags(),
+    errors: createErrors({ release })
+  })
+);
+```
+
+```vue
+<script setup lang="ts">
+import { useFeatureFlag, useFeatureFlagEnabled, useFootprint } from '@footprint/vue';
+const pricing = useFeatureFlag('pricing-page'); // Ref: variant, true, or false
+const beta = useFeatureFlagEnabled('beta'); // ComputedRef<boolean>
+const footprint = useFootprint();
+</script>
+
+<template>
+  <CheaperPricing v-if="pricing === 'cheaper'" />
+  <button v-if="beta" @click="footprint.capture('beta_clicked')">Try the beta</button>
+</template>
+```
+
+- `useFeatureFlag` records a `$feature_flag_called` exposure for each value a mounted component
+  shows; `useFeatureFlagPayload` returns the flag's JSON payload.
+- With `errors`, the plugin captures errors from components through `app.config.errorHandler`
+  and still calls a handler you set before installing it.
+- Setup only runs in the browser, so the plugin also works with server rendering, where the
+  composables hold the flags' bootstrap values.
+
+## Nuxt: `@footprint/nuxt`
+
+On the server, `@footprint/nuxt` gives each request a scope, bootstraps the browser's flags and
+captures errors. In the browser, use `@footprint/vue`.
+
+```ts
+// server/utils/footprint.ts
+import { Footprint } from '@footprint/node';
+export const footprint = new Footprint({ apiKey, host, secretKey, release });
+
+// server/middleware/footprint.ts
+import { footprintMiddleware } from '@footprint/nuxt';
+export default defineEventHandler(footprintMiddleware(footprint));
+
+// server/plugins/footprint.ts
+import { footprintErrorHook } from '@footprint/nuxt';
+export default defineNitroPlugin((nitroApp) => {
+  nitroApp.hooks.hook('error', footprintErrorHook(footprint));
+  nitroApp.hooks.hook('close', () => footprint.shutdown());
+});
+
+// app/plugins/footprint.ts
+import { createErrors } from '@footprint/browser/errors';
+import { createFlags, type FlagsSnapshot } from '@footprint/browser/flags';
+import { flagsBootstrap } from '@footprint/nuxt';
+import { createFootprint } from '@footprint/vue';
+export default defineNuxtPlugin(async (nuxtApp) => {
+  const bootstrap = useState<FlagsSnapshot | undefined>('footprint-flags');
+  if (import.meta.server) bootstrap.value = await flagsBootstrap(useRequestEvent());
+  nuxtApp.vueApp.use(
+    createFootprint({
+      options: { apiKey: 'fp_pub_…', host: 'https://footprint.example.com', persistence: 'cookie' },
+      flags: createFlags({ bootstrap: bootstrap.value }),
+      errors: createErrors({ release })
+    })
+  );
+});
+```
+
+- `footprintMiddleware` sets `event.context.footprint` (with `getFlag`, `capture` and friends) to
+  the request's person: your `distinctId` callback, or the visitor id the browser SDK keeps in its
+  cookie (use `persistence: 'cookie'`). It works with h3 1 (Nuxt 3 and 4) and h3 2.
+- `flagsBootstrap(event)` evaluates that person's flags on the server, so pages render with the
+  right variant and no flicker.
+- `footprintErrorHook` captures unexpected server errors, not 4xx responses.
+
+## Astro: `@footprint/astro`
+
+```js
+// astro.config.mjs
+import footprint from '@footprint/astro';
+export default defineConfig({
+  integrations: [
+    footprint({ apiKey: 'fp_pub_…', host: 'https://footprint.example.com', errors: true })
+  ]
+});
+```
+
+The integration adds the browser SDK to every page; page views are captured on load and on
+client-side navigations, including view transitions. `errors: true` (or `{ release, ignore }`)
+adds the errors plugin. The options end up in the page, so they must be plain JSON.
+
+For server-rendered pages and endpoints, add the middleware:
+
+```ts
+// src/middleware.ts
+import { Footprint } from '@footprint/node';
+import { footprintMiddleware } from '@footprint/astro/middleware';
+const footprint = new Footprint({ apiKey, host, secretKey, release });
+export const onRequest = footprintMiddleware(footprint, {
+  distinctId: (context) => context.locals.user?.id
+});
+```
+
+```astro
+---
+const cheaper = (await Astro.locals.footprint.getFlag('pricing-page')) === 'cheaper';
+---
+{cheaper ? <CheaperPricing /> : <Pricing />}
+```
+
+Type `Astro.locals.footprint` in `src/env.d.ts` with
+`footprint: import('@footprint/node').FootprintScope` in `App.Locals`. Errors thrown while
+rendering are captured with the request's URL and person; `flagsBootstrap(Astro)` returns the
+person's flags for client code.
+
+## Node servers: Hono, Express, Fastify and Elysia
 
 Create one `Footprint` per process and add the middleware:
 
@@ -203,6 +328,17 @@ app.get('/pricing', async (req, res) => {
 });
 app.use(footprintErrorHandler(footprint)); // after your routes, before your own error handler
 
+// Fastify: the plugin applies to every route, including ones registered in child plugins
+import { footprint as footprintPlugin } from '@footprint/node/fastify';
+await app.register(footprintPlugin(footprint, { distinctId: (request) => request.headers['x-user-id'] }));
+app.get('/pricing', async (request) => ({ variant: await request.footprint.getFlag('pricing-page') }));
+
+// Elysia (Bun): handlers get the scope as `footprint` in their context
+import { footprint as footprintPlugin } from '@footprint/node/elysia';
+const app = new Elysia()
+  .use(footprintPlugin(footprint))
+  .get('/pricing', async ({ footprint }) => ({ variant: await footprint.getFlag('pricing-page') }));
+
 process.on('SIGTERM', async () => {
   await footprint.shutdown();
   process.exit(0);
@@ -212,7 +348,8 @@ process.on('SIGTERM', async () => {
 Each request gets a scope with `capture`, `captureException`, `getFlag`, `isEnabled`,
 `getPayload` and `getAllFlags` for its person: your `distinctId` callback, or the visitor id the
 browser SDK keeps in its cookie (`persistence: 'cookie'`). Without either, flags read as off.
-Errors a handler throws are captured with the request's URL, method and person; pass
+Errors a handler throws are captured with the request's URL, method and person (Elysia leaves out
+404s, validation and parse errors); pass
 `captureErrors: false` to leave them alone. For other frameworks, `footprint.scope(distinctId)`
 and `footprint.distinctIdFromCookie(cookieHeader)` are the same building blocks.
 

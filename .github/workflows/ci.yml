@@ -25,6 +25,9 @@ jobs:
       - run: bun run --filter '@footprint/cli' build
       - run: bun run --filter '@footprint/sveltekit' build
       - run: bun run --filter '@footprint/next' build
+      - run: bun run --filter '@footprint/vue' build
+      - run: bun run --filter '@footprint/nuxt' build
+      - run: bun run --filter '@footprint/astro' build
       - run: cd app && bun run build
 
   rust:

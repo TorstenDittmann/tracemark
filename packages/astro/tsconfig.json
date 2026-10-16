@@ -1,0 +1,14 @@
+{
+	"extends": "../../tsconfig.base.json",
+	"compilerOptions": {
+		"noEmit": true,
+		"types": [],
+		// Type against the SDKs' sources, so nothing needs building first.
+		"paths": {
+			"@footprint/browser": ["../sdk-browser/src/index.ts"],
+			"@footprint/browser/errors": ["../sdk-browser/src/errors-entry.ts"],
+			"@footprint/node": ["../sdk-node/src/index.ts"]
+		}
+	},
+	"include": ["src"]
+}
