@@ -1,10 +1,12 @@
 #![allow(dead_code)]
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use axum::Router;
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
+use footprint_ingest::enrich::Enricher;
 use footprint_ingest::keys::KeyStore;
 use footprint_ingest::protocol::Row;
 use footprint_ingest::routes::{self, AppState};
@@ -26,8 +28,21 @@ pub fn app(capacity: usize) -> (Router, mpsc::Receiver<Row>) {
 }
 
 pub fn app_with_keys(keys: KeyStore, capacity: usize) -> (Router, mpsc::Receiver<Row>) {
+    app_with(keys, Enricher::new(None), capacity)
+}
+
+pub fn app_with(
+    keys: KeyStore,
+    enricher: Enricher,
+    capacity: usize,
+) -> (Router, mpsc::Receiver<Row>) {
     let (events, rx) = mpsc::channel(capacity);
-    (routes::router(AppState { keys, events }), rx)
+    let state = AppState {
+        keys,
+        events,
+        enricher: Arc::new(enricher),
+    };
+    (routes::router(state), rx)
 }
 
 pub fn post(uri: &str, body: impl Into<Body>) -> Request<Body> {

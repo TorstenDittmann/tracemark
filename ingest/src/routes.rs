@@ -1,9 +1,12 @@
 use std::io::Read;
 
 use axum::body::{Body, Bytes};
-use axum::extract::{Query, State};
+use std::net::SocketAddr;
+use std::sync::Arc;
+
+use axum::extract::{ConnectInfo, Query, State};
 use axum::http::header::{CONTENT_ENCODING, CONTENT_TYPE};
-use axum::http::{HeaderMap, Method, StatusCode};
+use axum::http::{Extensions, HeaderMap, Method, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
@@ -14,6 +17,7 @@ use serde_json::json;
 use tokio::sync::mpsc;
 use tower_http::cors::{Any, CorsLayer};
 
+use crate::enrich::Enricher;
 use crate::keys::{KeyStore, Lookup};
 use crate::protocol::{self, Envelope, Issue, MAX_BODY_BYTES, MAX_EVENTS, Row};
 
@@ -21,6 +25,7 @@ use crate::protocol::{self, Envelope, Issue, MAX_BODY_BYTES, MAX_EVENTS, Row};
 pub struct AppState {
     pub keys: KeyStore,
     pub events: mpsc::Sender<Row>,
+    pub enricher: Arc<Enricher>,
 }
 
 pub fn router(state: AppState) -> Router {
@@ -86,6 +91,7 @@ async fn ingest(
     State(state): State<AppState>,
     Query(query): Query<KeyQuery>,
     headers: HeaderMap,
+    extensions: Extensions,
     body: Body,
 ) -> Result<Response, ApiError> {
     let raw = axum::body::to_bytes(body, MAX_BODY_BYTES)
@@ -108,8 +114,13 @@ async fn ingest(
         return Err(ApiError::PayloadTooLarge);
     }
     let skew = protocol::clock_skew(envelope.sent_at, Utc::now());
-    let rows = protocol::validate_batch(&envelope.batch, project_id, skew)
+    let mut rows = protocol::validate_batch(&envelope.batch, project_id, skew)
         .map_err(ApiError::InvalidBatch)?;
+    let peer = extensions
+        .get::<ConnectInfo<SocketAddr>>()
+        .map(|info| info.0.ip());
+    let request = state.enricher.request_info(&headers, peer);
+    state.enricher.enrich(&mut rows, &request);
 
     let accepted = rows.len();
     enqueue(&state.events, rows)?;

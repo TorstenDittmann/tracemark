@@ -57,6 +57,25 @@ Unknown top-level fields are ignored, and `null` optional fields count as absent
 | `413` | `{"error": "payload_too_large"}` | Over the limits |
 | `503` | `{"error": "not_ready"}` or `{"error": "overloaded"}` | Project keys not loaded yet, or the write queue is full. SDKs retry with backoff |
 
+## Enrichment
+
+Before storing an event, ingest adds properties derived from the request. Properties the event already has are never overwritten.
+
+| Property | Source |
+| --- | --- |
+| `$browser`, `$browser_version`, `$os`, `$os_version`, `$device_type` | `User-Agent` header. `$device_type` is `Desktop`, `Mobile`, `Tablet`, `Console` or `Bot` (with `$bot_name`) |
+| `$geoip_continent_code`, `$geoip_country_code`, `$geoip_country_name`, `$geoip_subdivision_1_name`, `$geoip_city_name`, `$geoip_time_zone` | Client IP, when a city database is configured (`GEOIP_DB`) |
+
+The client IP is the peer address, or the address `XFF_DEPTH` entries from the right of `ADDRESS_HEADER` when ingest runs behind a proxy. It is used for the lookup only and never stored.
+
+Event properties that change enrichment, removed before storage unless noted:
+
+| Property | Effect |
+| --- | --- |
+| `$ip` | Look up this IP instead of the request's (server SDKs sending for a visitor) |
+| `$user_agent` | Parse this user agent instead of the request's |
+| `$geoip_disable` | `true` skips the location lookup (kept on the event) |
+
 ## Reserved events
 
 | Event | Meaning |

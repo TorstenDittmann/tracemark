@@ -45,9 +45,15 @@ services:
       CLICKHOUSE_USER: footprint
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-footprint}
       CLICKHOUSE_DATABASE: footprint
+      # Client IPs for location lookups; Caddy is the only proxy in front of ingest. IPs are never stored.
+      ADDRESS_HEADER: x-forwarded-for
+      XFF_DEPTH: 1
+      # Optional city database, e.g. /geoip/dbip-city-lite.mmdb (see README).
+      GEOIP_DB: ${GEOIP_DB:-}
     volumes:
       # The image pre-creates /app/spill owned by the nonroot user; mounting there keeps it writable.
       - ingest-spill:/app/spill
+      - ./geoip:/geoip:ro
     depends_on:
       clickhouse:
         condition: service_healthy

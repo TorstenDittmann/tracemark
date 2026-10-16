@@ -43,6 +43,8 @@ footprint.identify('user_123', { set: { email: 'ada@example.com' } });
 
 Page views, including SPA navigations, are captured automatically.
 
+The ingest service adds `$browser`, `$browser_version`, `$os`, `$os_version` and `$device_type` from the request's user agent. Crawlers get `$device_type: "Bot"`. Location properties (`$geoip_country_code`, `$geoip_city_name` and others) need a city database: download [DB-IP City Lite](https://db-ip.com/db/download/ip-to-city-lite) (free, CC BY 4.0) or MaxMind GeoLite2 City in `.mmdb` format into `./geoip/`, set `GEOIP_DB=/geoip/<file>.mmdb` in `.env` and restart ingest. Client IPs are only used for the lookup and are never stored. Server-side SDKs can pass the visitor's `$ip` and `$user_agent` as event properties, or set `$geoip_disable: true`.
+
 ## Administration
 
 ```sh

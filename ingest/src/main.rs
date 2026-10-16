@@ -1,8 +1,10 @@
 use std::net::SocketAddr;
 use std::process::ExitCode;
+use std::sync::Arc;
 use std::time::Duration;
 
 use footprint_ingest::config::Config;
+use footprint_ingest::enrich::Enricher;
 use footprint_ingest::keys::{self, KeySource, KeyStore};
 use footprint_ingest::protocol::MAX_EVENTS;
 use footprint_ingest::routes::{self, AppState};
@@ -76,13 +78,26 @@ async fn serve(config: Config) -> Result<(), Box<dyn std::error::Error>> {
         },
     ));
 
-    let app = routes::router(AppState { keys, events });
+    let enricher = Enricher::open(config.geoip_db.as_deref())
+        .map_err(|error| format!("cannot open GEOIP_DB: {error}"))?
+        .with_address_header(config.address_header.clone(), config.xff_depth);
+    if !enricher.has_geoip() {
+        tracing::info!("GEOIP_DB not set; events get no location properties");
+    }
+    let app = routes::router(AppState {
+        keys,
+        events,
+        enricher: Arc::new(enricher),
+    });
     let addr = SocketAddr::from(([0, 0, 0, 0], config.port));
     let listener = tokio::net::TcpListener::bind(addr).await?;
     tracing::info!(%addr, "listening");
-    axum::serve(listener, app)
-        .with_graceful_shutdown(shutdown_signal())
-        .await?;
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .with_graceful_shutdown(shutdown_signal())
+    .await?;
 
     // The router (and with it the last event sender) is gone, so the writer
     // flushes its buffer and exits.
