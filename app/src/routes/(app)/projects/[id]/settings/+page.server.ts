@@ -1,4 +1,5 @@
 import { error, fail, redirect } from '@sveltejs/kit';
+import { parseRetention, retentionLabel } from '#lib/retention.js';
 import {
 	deleteModelPrice,
 	modelPrices,
@@ -7,6 +8,7 @@ import {
 } from '#lib/server/ai-prices.js';
 import { deleteProjectEvents } from '#lib/server/analytics.js';
 import { getDb } from '#lib/server/db/index.js';
+import { setRetention } from '#lib/server/privacy.js';
 import {
 	canManage,
 	deleteProject,
@@ -67,6 +69,21 @@ export const actions: Actions = {
 		return {
 			action: 'rotateSecret',
 			message: 'New secret key created. Update your server SDK setup.'
+		};
+	},
+
+	setRetention: async (event) => {
+		const project = await access(event, true);
+		const days = parseRetention((await event.request.formData()).get('retention'));
+		if (days === undefined)
+			return fail(400, { action: 'setRetention', message: 'Choose a period.' });
+		await setRetention(getDb(), project.id, days);
+		return {
+			action: 'setRetention',
+			message:
+				days === null
+					? 'Events are kept forever.'
+					: `Events older than ${retentionLabel(days).toLowerCase()} are deleted within a few hours.`
 		};
 	},
 

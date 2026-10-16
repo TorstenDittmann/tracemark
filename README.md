@@ -21,6 +21,7 @@ SDKs ──POST /e──▶ ingest (Rust) ──batched inserts──▶ ClickHo
 | `packages/schema/fixtures/` | Request bodies every SDK and the ingest service test against |
 | `clickhouse/migrations/` | ClickHouse schema |
 | `docs/ingest-protocol.md` | The wire protocol between SDKs and ingest |
+| `docs/privacy.md` | Data retention, personal data export and deletion |
 
 ## Self-hosting
 
