@@ -59,37 +59,49 @@ export interface VariantSummary {
 	value: number;
 	/** Observed rate: conversions or events per exposed person. */
 	rate: number;
-	/** 95% credible interval of the true rate. */
-	interval: [number, number];
-	/** Chance this variant's true rate is the highest. */
+	/** 95% credible interval of the true rate; null until someone saw the variant. */
+	interval: [number, number] | null;
+	/** Chance this variant's true rate is the highest. Variants nobody saw have none. */
 	chanceToBeBest: number;
 }
 
-/** Summaries for posterior samples drawn per variant by `draw`. */
+/**
+ * Summaries for posterior samples drawn per variant by `draw`. A variant nobody saw has only its
+ * prior to go on, which says nothing about it, so it gets no interval and never counts as best.
+ */
 function summarize(
 	variants: { key: string; people: number; value: number }[],
 	draw: (variant: { people: number; value: number }) => number,
 	samples: number
 ): VariantSummary[] {
-	const draws = variants.map(() => new Float64Array(samples));
+	const seen = variants.map((variant) => variant.people > 0);
+	const draws = variants.map((_, i) => (seen[i] ? new Float64Array(samples) : null));
 	const wins = variants.map(() => 0);
-	for (let s = 0; s < samples; s++) {
-		let best = 0;
-		for (const [i, variant] of variants.entries()) {
-			const value = draw(variant);
-			(draws[i] as Float64Array)[s] = value;
-			if (value > ((draws[best] as Float64Array)[s] ?? 0)) best = i;
+	if (seen.some(Boolean)) {
+		for (let s = 0; s < samples; s++) {
+			let best = -1;
+			let top = Number.NEGATIVE_INFINITY;
+			for (const [i, variant] of variants.entries()) {
+				const sampled = draws[i];
+				if (!sampled) continue;
+				const value = draw(variant);
+				sampled[s] = value;
+				if (value > top) {
+					top = value;
+					best = i;
+				}
+			}
+			wins[best] = (wins[best] ?? 0) + 1;
 		}
-		wins[best] = (wins[best] ?? 0) + 1;
 	}
 	return variants.map((variant, i) => {
-		const sorted = (draws[i] as Float64Array).sort();
+		const sorted = draws[i]?.sort();
 		return {
 			key: variant.key,
 			people: variant.people,
 			value: variant.value,
 			rate: variant.people ? variant.value / variant.people : 0,
-			interval: [quantile(sorted, 0.025), quantile(sorted, 0.975)],
+			interval: sorted ? [quantile(sorted, 0.025), quantile(sorted, 0.975)] : null,
 			chanceToBeBest: (wins[i] ?? 0) / samples
 		};
 	});

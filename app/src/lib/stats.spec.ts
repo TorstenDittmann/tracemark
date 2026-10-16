@@ -30,8 +30,8 @@ describe('conversion results', () => {
 		]);
 		expect(control?.rate).toBe(0.1);
 		expect(test?.chanceToBeBest).toBeGreaterThan(0.99);
-		expect(control?.interval[0]).toBeGreaterThan(0.08);
-		expect(control?.interval[1]).toBeLessThan(0.125);
+		expect(control?.interval?.[0]).toBeGreaterThan(0.08);
+		expect(control?.interval?.[1]).toBeLessThan(0.125);
 		expect((control?.chanceToBeBest ?? 0) + (test?.chanceToBeBest ?? 0)).toBe(1);
 	});
 
@@ -44,15 +44,16 @@ describe('conversion results', () => {
 		for (const result of results) expect(result.chanceToBeBest).toBeCloseTo(1 / 3, 1);
 	});
 
-	it('handles variants nobody saw yet', () => {
-		const [empty] = conversionResults([
+	it('leaves variants nobody saw yet out of the running', () => {
+		const [empty, seen] = conversionResults([
 			{ key: 'a', people: 0, value: 0 },
-			{ key: 'b', people: 10, value: 5 }
+			{ key: 'b', people: 10, value: 1 }
 		]);
 		expect(empty?.rate).toBe(0);
-		// A uniform prior: the interval spans almost everything.
-		expect(empty?.interval[0]).toBeLessThan(0.05);
-		expect(empty?.interval[1]).toBeGreaterThan(0.95);
+		expect(empty?.interval).toBeNull();
+		expect(empty?.chanceToBeBest).toBe(0);
+		expect(seen?.chanceToBeBest).toBe(1);
+		expect(conversionResults([{ key: 'a', people: 0, value: 0 }])[0]?.chanceToBeBest).toBe(0);
 	});
 });
 
@@ -65,8 +66,19 @@ describe('count results', () => {
 		expect(control?.rate).toBe(2);
 		expect(test?.rate).toBe(2.5);
 		expect(test?.chanceToBeBest).toBeGreaterThan(0.99);
-		expect(test?.interval[0]).toBeGreaterThan(2.2);
-		expect(test?.interval[1]).toBeLessThan(2.8);
+		expect(test?.interval?.[0]).toBeGreaterThan(2.2);
+		expect(test?.interval?.[1]).toBeLessThan(2.8);
+	});
+
+	it('leaves variants nobody saw yet out of the running', () => {
+		const [empty, seen] = countResults([
+			{ key: 'a', people: 0, value: 0 },
+			{ key: 'b', people: 100, value: 15 }
+		]);
+		expect(empty?.interval).toBeNull();
+		expect(empty?.chanceToBeBest).toBe(0);
+		expect(seen?.chanceToBeBest).toBe(1);
+		expect(seen?.interval?.[1]).toBeLessThan(1);
 	});
 });
 

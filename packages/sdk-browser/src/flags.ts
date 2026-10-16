@@ -56,6 +56,8 @@ export function createFlags(options: FlagsOptions = {}): Flags {
 	let properties: Properties = { ...options.personProperties };
 	/** Distinct id the current snapshot is for; exposures are recorded once per id. */
 	let owner: string | undefined;
+	/** The snapshot is still the server's bootstrap, which was evaluated for this visitor. */
+	let bootstrapped = options.bootstrap !== undefined;
 	let exposed = new Set<string>();
 	let request = 0;
 	let markReady: () => void = () => {};
@@ -76,8 +78,10 @@ export function createFlags(options: FlagsOptions = {}): Flags {
 	};
 
 	const set = (next: FlagsSnapshot, id: string | undefined) => {
-		const changed = JSON.stringify(next) !== JSON.stringify(snapshot);
+		// A new person counts as a change even with the same flags, so their reads get recorded.
+		const changed = JSON.stringify(next) !== JSON.stringify(snapshot) || id !== owner;
 		snapshot = next;
+		bootstrapped = false;
 		if (id !== owner) exposed = new Set();
 		owner = id;
 		if (changed) {
@@ -127,7 +131,11 @@ export function createFlags(options: FlagsOptions = {}): Flags {
 		const value = snapshot.flags[key] ?? false;
 		const id = client?.getDistinctId();
 		const seen = `${key}\u0000${String(value)}`;
-		if (client && options.sendExposures !== false && id && !exposed.has(seen)) {
+		// Only values meant for this person are exposures. Before the first answer (or after an
+		// identify, until the next one) every flag reads as a placeholder; recording those would
+		// put people in an experiment as `false` before they saw anything.
+		const current = id !== undefined && (owner === id || (owner === undefined && bootstrapped));
+		if (client && options.sendExposures !== false && current && !exposed.has(seen)) {
 			exposed.add(seen);
 			client.capture('$feature_flag_called', {
 				$feature_flag: key,

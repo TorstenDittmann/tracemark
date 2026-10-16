@@ -77,4 +77,18 @@ describe('svelte stores', () => {
 				.map((e) => [e.properties?.$feature_flag, e.properties?.$feature_flag_response])
 		).toEqual([['pricing', 'cheaper']]);
 	});
+
+	it('record nothing for the placeholder before flags load', async () => {
+		const { client, flags } = setup();
+		const stop = featureFlag(flags, 'pricing').subscribe(() => {});
+		await flags.ready();
+		await Promise.resolve();
+		stop();
+		await client.flush();
+		expect(
+			events
+				.filter((e) => e.event === '$feature_flag_called')
+				.map((e) => e.properties?.$feature_flag_response)
+		).toEqual(['cheaper']);
+	});
 });

@@ -88,6 +88,53 @@ describe('flags plugin', () => {
 		expect(events.at(-1)?.distinct_id).toBe('ada');
 	});
 
+	it('records nothing for reads before flags are known for the person', async () => {
+		const pending: ((value: unknown) => void)[] = [];
+		const events: WireEvent[] = [];
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async (url: string, init: RequestInit) => {
+				if (url === `${HOST}/flags`) {
+					return new Promise((resolve) =>
+						pending.push((json) => resolve({ ok: true, status: 200, json: async () => json }))
+					);
+				}
+				events.push(...JSON.parse(String(init.body)).batch);
+				return { ok: true, status: 202, json: async () => ({}) };
+			})
+		);
+		const flags = createFlags();
+		const client = make().use(flags);
+		expect(flags.getFlag('pricing')).toBe(false);
+		pending[0]?.({ flags: { pricing: 'test' } });
+		await flags.ready();
+		expect(flags.getFlag('pricing')).toBe('test');
+		// After identify, reads wait for the new person's answer too.
+		client.identify('ada');
+		flags.getFlag('pricing');
+		pending[1]?.({ flags: { pricing: 'test' } });
+		await flags.ready();
+		flags.getFlag('pricing');
+		await client.flush();
+		expect(
+			events
+				.filter((e) => e.event === '$feature_flag_called')
+				.map((e) => [e.distinct_id === 'ada', e.properties?.$feature_flag_response])
+		).toEqual([
+			[false, 'test'],
+			[true, 'test']
+		]);
+	});
+
+	it('records reads of a bootstrap', async () => {
+		const { events } = server(() => new Promise(() => {}));
+		const flags = createFlags({ bootstrap: { flags: { pricing: 'control' } } });
+		const client = make().use(flags);
+		flags.getFlag('pricing');
+		await client.flush();
+		expect(events.map((e) => e.properties?.$feature_flag_response)).toEqual(['control']);
+	});
+
 	it('can leave exposures out', async () => {
 		const { events } = server(() => ON);
 		const flags = createFlags({ sendExposures: false });

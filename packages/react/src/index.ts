@@ -70,14 +70,16 @@ function useExposure(flags: Flags, key: string, value: FlagValue) {
 	// biome-ignore lint/correctness/useExhaustiveDependencies: re-runs for each new value on purpose
 	useEffect(() => {
 		let mounted = true;
+		// The plugin records only values known for the current person, so read again once they
+		// load and whenever they change (an identify can keep the value but change the person).
 		flags.getFlag(key);
-		// Children's effects run before the provider's adds the plugin to the client, so the
-		// first read can't be recorded yet; read again once flags loaded for the person.
 		void flags.ready().then(() => {
 			if (mounted) flags.getFlag(key);
 		});
+		const stop = flags.onChange(() => flags.getFlag(key));
 		return () => {
 			mounted = false;
+			stop();
 		};
 	}, [flags, key, value]);
 }

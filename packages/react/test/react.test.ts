@@ -109,17 +109,14 @@ describe('react bindings', () => {
 		const exposures = events
 			.filter((e) => e.event === '$feature_flag_called')
 			.map((e) => [e.properties?.$feature_flag, e.properties?.$feature_flag_response]);
-		// Before the fetch answered every flag read as false; afterwards each value once.
-		expect(exposures).toEqual(
-			expect.arrayContaining([
-				['pricing', 'cheaper'],
+		// Nothing is recorded for the placeholder `false` shown before the answer arrived.
+		expect(exposures.sort()).toEqual(
+			[
 				['beta', true],
-				['missing', false]
-			])
+				['missing', false],
+				['pricing', 'cheaper']
+			].sort()
 		);
-		expect(
-			exposures.filter(([key, value]) => key === 'pricing' && value === 'cheaper')
-		).toHaveLength(1);
 	});
 
 	it('gives components the client', async () => {

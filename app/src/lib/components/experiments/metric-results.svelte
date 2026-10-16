@@ -58,8 +58,9 @@ const people = $derived(result.variants.reduce((sum, v) => sum + v.people, 0));
 						<td class="px-4 py-2 text-right tabular-nums">{numberFormat.format(variant.value)}</td>
 						<td class="px-4 py-2 text-right font-medium tabular-nums">{rate(variant.rate)}</td>
 						<td class="px-4 py-2 text-right whitespace-nowrap text-muted-foreground tabular-nums">
-							{rate(variant.interval[0])}
-							to {rate(variant.interval[1])}
+							{variant.interval
+								? `${rate(variant.interval[0])} to ${rate(variant.interval[1])}`
+								: '–'}
 						</td>
 						<td class="py-2 pl-4">
 							<div class="flex items-center gap-2">
