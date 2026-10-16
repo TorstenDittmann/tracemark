@@ -140,6 +140,41 @@ function rows<T>(body: string): T[] {
 
 const num = (value: string | number) => Number(value);
 
+export interface TimeWindow {
+	bucket: 'hour' | 'day';
+	/** ClickHouse function that truncates a timestamp to its bucket. */
+	bucketFn: 'toStartOfHour' | 'toStartOfDay';
+	from: Date;
+	to: Date;
+	count: number;
+	/** Every bucket start in the window, ISO 8601 without milliseconds. */
+	buckets: string[];
+}
+
+/** Buckets are aligned to whole hours or days in UTC, so the window starts on a bucket boundary. */
+export function timeWindow(range: Range, now?: Date): TimeWindow {
+	const { hours, bucket } = RANGES[range];
+	const to = new Date(now ?? Date.now());
+	const step = bucket === 'hour' ? 3_600_000 : 86_400_000;
+	const lastBucket = Math.floor(to.getTime() / step) * step;
+	const count = Math.round((hours * 3_600_000) / step);
+	const from = new Date(lastBucket - (count - 1) * step);
+	const buckets = Array.from({ length: count }, (_, i) =>
+		new Date(from.getTime() + i * step).toISOString().replace('.000Z', 'Z')
+	);
+	return {
+		bucket,
+		bucketFn: bucket === 'hour' ? 'toStartOfHour' : 'toStartOfDay',
+		from,
+		to,
+		count,
+		buckets
+	};
+}
+
+/** A Date as a DateTime64 query parameter. */
+export const chTime = (date: Date) => date.toISOString().replace('Z', '');
+
 /** Web analytics for a project over the last `range`, narrowed by `filters`. */
 export async function webAnalytics(
 	config: ClickHouseConfig,
@@ -148,18 +183,11 @@ export async function webAnalytics(
 ): Promise<WebAnalytics> {
 	const { range } = options;
 	const filters = options.filters ?? {};
-	const { hours, bucket } = RANGES[range];
-	// Buckets are aligned to whole hours or days, so the window starts on a bucket boundary.
-	const to = new Date(options.now ?? Date.now());
-	const step = bucket === 'hour' ? 3_600_000 : 86_400_000;
-	const lastBucket = Math.floor(to.getTime() / step) * step;
-	const count = Math.round((hours * 3_600_000) / step);
-	const from = new Date(lastBucket - (count - 1) * step);
-
+	const { bucket, bucketFn, from, to, buckets } = timeWindow(range, options.now);
 	const params: Record<string, string> = {
 		project: projectId,
-		from: from.toISOString().replace('Z', ''),
-		to: to.toISOString().replace('Z', '')
+		from: chTime(from),
+		to: chTime(to)
 	};
 	for (const [key, value] of Object.entries(filters)) params[`f_${key}`] = value;
 	const run = (select: string) =>
@@ -175,7 +203,6 @@ export async function webAnalytics(
 			if(count() = 0, 0, avg(dateDiff('millisecond', started, ended)) / 1000) AS avgDuration
 		FROM sessions`);
 
-	const bucketFn = bucket === 'hour' ? 'toStartOfHour' : 'toStartOfDay';
 	const seriesQuery = run(`SELECT
 			formatDateTime(${bucketFn}(viewed), '%Y-%m-%dT%H:%i:%SZ', 'UTC') AS t,
 			uniqExact(person) AS visitors,
@@ -203,8 +230,7 @@ export async function webAnalytics(
 	const byBucket = new Map(
 		rows<{ t: string; visitors: string; pageviews: string }>(seriesBody).map((row) => [row.t, row])
 	);
-	const series = Array.from({ length: count }, (_, i) => {
-		const t = new Date(from.getTime() + i * step).toISOString().replace('.000Z', 'Z');
+	const series = buckets.map((t) => {
 		const row = byBucket.get(t);
 		return { t, visitors: row ? num(row.visitors) : 0, pageviews: row ? num(row.pageviews) : 0 };
 	});

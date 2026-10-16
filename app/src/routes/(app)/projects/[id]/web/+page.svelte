@@ -1,5 +1,5 @@
 <script lang="ts">
-import TimeSeries from '#lib/components/charts/time-series.svelte';
+import LineChart from '#lib/components/charts/line-chart.svelte';
 import * as Card from '#lib/components/ui/card/index.js';
 import { DIMENSIONS, type Dimension, RANGES, type Range } from '#lib/web.js';
 import { page } from '$app/state';
@@ -103,9 +103,6 @@ const metrics: { key: Metric; label: string }[] = [
 	{ key: 'visitors', label: 'Visitors' },
 	{ key: 'pageviews', label: 'Page views' }
 ];
-const points = $derived(
-	data.web?.series.map((point) => ({ t: point.t, value: point[metric] })) ?? []
-);
 </script>
 
 <svelte:head>
@@ -195,9 +192,15 @@ const points = $derived(
 				</fieldset>
 			</Card.Header>
 			<Card.Content>
-				<TimeSeries
-					{points}
-					label={metric === 'visitors' ? 'Visitors' : 'Page views'}
+				<LineChart
+					lines={[
+						{
+							key: metric,
+							label: metric === 'visitors' ? 'Visitors' : 'Page views',
+							data: data.web.series.map((point) => point[metric])
+						}
+					]}
+					buckets={data.web.series.map((point) => point.t)}
 					bucket={data.web.bucket}
 				/>
 			</Card.Content>
