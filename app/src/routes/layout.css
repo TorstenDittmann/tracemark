@@ -28,6 +28,7 @@
 	--chart-3: oklch(0.398 0.07 227.392);
 	--chart-4: oklch(0.828 0.189 84.429);
 	--chart-5: oklch(0.769 0.188 70.08);
+	--series-1: #2a78d6;
 }
 
 .dark {
@@ -54,6 +55,7 @@
 	--chart-3: oklch(0.769 0.188 70.08);
 	--chart-4: oklch(0.627 0.265 303.9);
 	--chart-5: oklch(0.645 0.246 16.439);
+	--series-1: #3987e5;
 }
 
 @theme inline {
@@ -84,6 +86,7 @@
 	--color-chart-3: var(--chart-3);
 	--color-chart-4: var(--chart-4);
 	--color-chart-5: var(--chart-5);
+	--color-series-1: var(--series-1);
 }
 
 @layer base {
