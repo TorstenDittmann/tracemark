@@ -17,7 +17,7 @@ use serde_json::json;
 use tokio::sync::mpsc;
 use tower_http::cors::{Any, CorsLayer};
 
-use crate::enrich::Enricher;
+use crate::enrich::{self, Enricher};
 use crate::keys::{KeyStore, Lookup};
 use crate::protocol::{self, Envelope, Issue, MAX_BODY_BYTES, MAX_EVENTS, Row};
 
@@ -120,7 +120,14 @@ async fn ingest(
         .get::<ConnectInfo<SocketAddr>>()
         .map(|info| info.0.ip());
     let request = state.enricher.request_info(&headers, peer);
-    state.enricher.enrich(&mut rows, &request);
+    let salt = if enrich::needs_salt(&rows) {
+        // Salts are handed out a day ahead, so this only fails before the app has created any.
+        let salt = state.keys.salt(Utc::now().date_naive());
+        Some(salt.ok_or(ApiError::NotReady)?)
+    } else {
+        None
+    };
+    state.enricher.enrich(&mut rows, &request, salt.as_deref());
 
     let accepted = rows.len();
     enqueue(&state.events, rows)?;

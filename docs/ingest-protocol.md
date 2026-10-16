@@ -97,6 +97,14 @@ A person is one identified `distinct_id` plus every anonymous id linked to it.
 - Identified ids are never merged with each other. Switching from one identified id to another (without a reset to a new anonymous id) starts a different person, so SDKs send `$anon_distinct_id` only when the previous id was anonymous.
 - `person.set` keeps the newest value per key by event `timestamp`, across all of a person's ids. `person.set_once` keeps the oldest and is used only for keys `set` never wrote.
 
+## Cookieless visitors
+
+An SDK that stores nothing on the device sends `"distinct_id": "$cookieless"` for anonymous visitors and leaves out `session_id`. Ingest replaces the placeholder with `cookieless_` followed by 32 hex characters: a SHA-256 hash of the current UTC day's salt, the project id, the client IP and the user agent (the `$ip` and `$user_agent` overrides apply). A `$identify` event whose `properties.$anon_distinct_id` is `$cookieless` gets the same replacement, so the visitor is linked to the identified id.
+
+The app creates a random salt per UTC day and deletes it once the day is over, so a hash cannot be recomputed later, and the same visitor gets a new id each day. A batch with the placeholder is answered `503 not_ready` while ingest has no salt for the current day; SDKs retry.
+
+Analytics split events without a `session_id` into sessions per person wherever 30 minutes pass without an event.
+
 ## Internal: project keys
 
 The ingest service never reads the app database. It polls the app:
@@ -104,5 +112,10 @@ The ingest service never reads the app database. It polls the app:
 `GET {APP_INTERNAL_URL}/internal/projects` with header `x-internal-token: {INTERNAL_TOKEN}` →
 
 ```json
-{ "projects": [{ "id": "5f0c…uuid", "public_key": "fp_pub_3b1f…" }] }
+{
+  "projects": [{ "id": "5f0c…uuid", "public_key": "fp_pub_3b1f…" }],
+  "salts": { "2026-10-16": "9c1e…", "2026-10-17": "04ab…" }
+}
 ```
+
+`salts` holds the cookieless salts for today and tomorrow (UTC), so ingest has the next day's salt before midnight.

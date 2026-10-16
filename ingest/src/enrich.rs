@@ -11,6 +11,7 @@ use maxminddb::Reader;
 use serde::Deserialize;
 use serde_json::{Map, Value};
 
+use crate::cookieless::{self, PLACEHOLDER};
 use crate::protocol::Row;
 
 /// Event properties that override the request's values, for server SDKs sending
@@ -19,6 +20,20 @@ const IP_PROPERTY: &str = "$ip";
 const USER_AGENT_PROPERTY: &str = "$user_agent";
 /// Set to `true` on an event to skip location lookup, e.g. for server-side events.
 const GEOIP_DISABLE_PROPERTY: &str = "$geoip_disable";
+
+const ANON_DISTINCT_ID_PROPERTY: &str = "$anon_distinct_id";
+
+/// Whether any row carries the cookieless placeholder and so needs today's salt.
+pub fn needs_salt(rows: &[Row]) -> bool {
+    rows.iter().any(|row| {
+        row.distinct_id == PLACEHOLDER
+            || row
+                .properties
+                .get(ANON_DISTINCT_ID_PROPERTY)
+                .and_then(Value::as_str)
+                == Some(PLACEHOLDER)
+    })
+}
 
 pub struct Enricher {
     geoip: Option<Reader<Vec<u8>>>,
@@ -111,7 +126,10 @@ impl Enricher {
     }
 
     /// Adds derived properties to every row. Properties the client already set win.
-    pub fn enrich(&self, rows: &mut [Row], request: &RequestInfo) {
+    ///
+    /// Cookieless placeholders in `distinct_id` and `$anon_distinct_id` are replaced with the
+    /// visitor hash for `salt`; callers check [`needs_salt`] first and must pass one then.
+    pub fn enrich(&self, rows: &mut [Row], request: &RequestInfo, salt: Option<&str>) {
         // Most batches come from one visitor, so cache the lookups per distinct input.
         let mut agents: BTreeMap<String, Map<String, Value>> = BTreeMap::new();
         let mut places: BTreeMap<IpAddr, Map<String, Value>> = BTreeMap::new();
@@ -127,6 +145,19 @@ impl Enricher {
                 _ => request.user_agent.clone(),
             };
             let geoip_disabled = props.get(GEOIP_DISABLE_PROPERTY) == Some(&Value::Bool(true));
+
+            if let Some(salt) = salt {
+                let visitor =
+                    || cookieless::visitor_id(salt, row.project_id, ip, user_agent.as_deref());
+                if row.distinct_id == PLACEHOLDER {
+                    row.distinct_id = visitor();
+                }
+                if let Some(anon) = props.get_mut(ANON_DISTINCT_ID_PROPERTY)
+                    && anon.as_str() == Some(PLACEHOLDER)
+                {
+                    *anon = visitor().into();
+                }
+            }
 
             if let Some(ua) = user_agent {
                 let derived = agents

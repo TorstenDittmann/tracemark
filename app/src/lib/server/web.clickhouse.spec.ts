@@ -12,6 +12,7 @@ import { webAnalytics } from './web';
 
 const project = '33333333-3333-4333-8333-333333333333';
 const other = '44444444-4444-4444-8444-444444444444';
+const cookieless = '55555555-5555-4555-8555-555555555555';
 // 12:30 UTC, so the last hourly bucket is 12:00.
 const now = new Date(Date.UTC(2026, 9, 16, 12, 30));
 
@@ -79,14 +80,26 @@ describe.skipIf(!clickhouseTestUrl)('web analytics in ClickHouse', () => {
 				// s3: another visitor on mobile, one minute on one page.
 				view('anon-b', 's3', 60, { ...mobile, $pathname: '/', $referring_domain: 'twitter.com' }),
 				view('anon-b', 's3', 59, { $pathname: '/' }, { event: '$pageleave' }),
-				// No session id: grouped per visitor and day.
+				// No session id: one session per visit.
 				view('anon-c', '', 10, { ...desktop, $pathname: '/docs' }),
 				// Left out: bots, other projects, sessions without a page view.
 				view('bot', 's4', 20, { $pathname: '/', $device_type: 'Bot' }),
 				view('anon-d', 's6', 20, { $pathname: '/' }, { projectId: other }),
 				view('anon-e', 's7', 20, { $pathname: '/' }, { event: '$pageleave' }),
 				// Two days ago: only in the weekly view.
-				view('anon-f', 's5', 60 * 48, { ...mobile, $pathname: '/blog' })
+				view('anon-f', 's5', 60 * 48, { ...mobile, $pathname: '/blog' }),
+				// Cookieless: no session ids. A 90 minute pause starts a new visit; signing in does not.
+				view('cookieless_1', '', 300, { $pathname: '/' }, { projectId: cookieless }),
+				view('cookieless_1', '', 290, { $pathname: '/docs' }, { projectId: cookieless }),
+				view('cookieless_1', '', 200, { $pathname: '/' }, { projectId: cookieless }),
+				{
+					distinctId: 'user-x',
+					event: '$identify',
+					minutesAgo: 199,
+					projectId: cookieless,
+					properties: { $anon_distinct_id: 'cookieless_1' }
+				},
+				view('user-x', '', 195, { $pathname: '/app' }, { projectId: cookieless })
 			],
 			now.getTime()
 		);
@@ -168,6 +181,19 @@ describe.skipIf(!clickhouseTestUrl)('web analytics in ClickHouse', () => {
 			filters: { referrer: '', device: 'Desktop' }
 		});
 		expect(directDesktop.overview).toMatchObject({ visitors: 2, sessions: 2 });
+	});
+
+	it('splits visits without session ids at 30 minute gaps', async () => {
+		const web = await webAnalytics(config, cookieless, { range: '24h', now });
+		expect(web.overview).toEqual({
+			visitors: 1,
+			pageviews: 4,
+			sessions: 2,
+			bounceRate: 0,
+			avgDuration: (600 + 300) / 2
+		});
+		expect(web.breakdowns.entry.map((row) => row.value)).toEqual(['/']);
+		expect(web.breakdowns.exit.map((row) => row.value)).toEqual(['/app', '/docs']);
 	});
 
 	it('covers a week in daily buckets', async () => {
