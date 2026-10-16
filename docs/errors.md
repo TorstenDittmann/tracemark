@@ -44,6 +44,12 @@ footprint.captureUncaughtExceptions();
 
 Without a `distinctId` an error is attributed to `$server`.
 
+## Frameworks
+
+React error boundaries, Svelte boundaries, Next.js (`error.tsx` and `onRequestError`),
+SvelteKit `handleError` and Hono and Express middleware are covered in
+[frameworks.md](frameworks.md).
+
 ## The `$exception` event
 
 | Property | |

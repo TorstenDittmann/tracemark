@@ -48,6 +48,15 @@ describe('errors plugin', () => {
 		]);
 	});
 
+	it('keeps a few errors captured before it was added to a client', async () => {
+		const f = mockFetch();
+		const errors = createErrors({ autocapture: false });
+		for (let i = 0; i < 15; i++) errors.captureException(new Error(`early ${i}`));
+		const client = make().use(errors);
+		await client.flush();
+		expect(exceptions(f)).toHaveLength(10);
+	});
+
 	it('can leave uncaught errors alone', async () => {
 		const f = mockFetch();
 		const client = make().use(createErrors({ autocapture: false }));
@@ -68,6 +77,25 @@ describe('errors plugin', () => {
 		for (let i = 0; i < 20; i++) errors.captureException(loop);
 		await client.flush();
 		expect(exceptions(f)).toHaveLength(5);
+	});
+
+	it('records how a captured error was caught', async () => {
+		const f = mockFetch();
+		const errors = createErrors();
+		const client = make().use(errors);
+		errors.captureException(
+			new Error('render'),
+			{ route: '/' },
+			{
+				mechanism: 'react-error-boundary',
+				handled: false
+			}
+		);
+		await client.flush();
+		const [event] = exceptions(f);
+		const [entry] = (event?.properties?.$exception_list ?? []) as { mechanism: unknown }[];
+		expect(entry?.mechanism).toEqual({ type: 'react-error-boundary', handled: false });
+		expect(event?.properties).toMatchObject({ route: '/', $exception_level: 'fatal' });
 	});
 
 	it('drops every match of a global pattern', async () => {

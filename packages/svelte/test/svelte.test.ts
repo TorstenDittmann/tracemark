@@ -1,8 +1,15 @@
 import { createClient, type FootprintClient, type WireEvent } from '@footprint/browser';
+import { createErrors } from '@footprint/browser/errors';
 import { createFlags } from '@footprint/browser/flags';
 import { get } from 'svelte/store';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { allFlags, featureFlag, featureFlagEnabled, featureFlagPayload } from '../src/index';
+import {
+	allFlags,
+	boundaryError,
+	featureFlag,
+	featureFlagEnabled,
+	featureFlagPayload
+} from '../src/index';
 
 const HOST = 'https://ingest.example.com';
 const options = { apiKey: 'fp_pub_test', host: HOST, autocapturePageviews: false };
@@ -90,5 +97,23 @@ describe('svelte stores', () => {
 				.filter((e) => e.event === '$feature_flag_called')
 				.map((e) => e.properties?.$feature_flag_response)
 		).toEqual(['cheaper']);
+	});
+});
+
+describe('boundary errors', () => {
+	it('captures the error and passes it on', async () => {
+		const c = createClient();
+		c.init({ apiKey: 'fp_pub_test', host: HOST, autocapturePageviews: false });
+		const errors = createErrors({ autocapture: false });
+		c.use(errors);
+		const then = vi.fn();
+		const reset = () => {};
+		boundaryError(errors, then)(new Error('render failed'), reset);
+		await c.flush();
+		const exception = events.find((e) => e.event === '$exception');
+		const [entry] = (exception?.properties?.$exception_list ?? []) as { mechanism: unknown }[];
+		expect(entry?.mechanism).toEqual({ type: 'svelte-boundary', handled: false });
+		expect(then).toHaveBeenCalledWith(expect.any(Error), reset);
+		c.destroy();
 	});
 });

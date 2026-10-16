@@ -1,5 +1,6 @@
 // Svelte stores for footprint feature flags. They work in Svelte 4 and 5 components with `$`,
 // and in SvelteKit, where they keep their initial value during server rendering.
+import type { Errors } from '@footprint/browser/errors';
 import type { Flags, FlagValue } from '@footprint/browser/flags';
 import { derived, type Readable, readable } from 'svelte/store';
 
@@ -43,4 +44,19 @@ export function featureFlagPayload<T = unknown>(
 	);
 }
 
+/**
+ * An `onerror` handler for Svelte 5's `<svelte:boundary>` that captures the error, then calls
+ * `then` with it, for example to log it or to `reset` after a while.
+ */
+export function boundaryError(
+	errors: Errors,
+	then?: (error: unknown, reset: () => void) => void
+): (error: unknown, reset: () => void) => void {
+	return (error, reset) => {
+		errors.captureException(error, {}, { mechanism: 'svelte-boundary', handled: false });
+		then?.(error, reset);
+	};
+}
+
+export type { Errors, ErrorsOptions } from '@footprint/browser/errors';
 export type { Flags, FlagsOptions, FlagsSnapshot, FlagValue } from '@footprint/browser/flags';

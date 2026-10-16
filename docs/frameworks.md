@@ -38,37 +38,80 @@ function Pricing() {
   when flags change, and record a `$feature_flag_called` exposure once per person and value.
 - `useFlags()` returns the plugin itself, for `reload()` or `setPersonProperties()`.
 
-## Next.js (App Router)
+### Error boundaries
 
-The package is marked `'use client'`, so the provider can sit in your root layout. To render the
-right variant on the first paint for signed-in people, evaluate flags on the server with the Node
-SDK and pass them as the bootstrap:
+Pass the errors plugin to the provider and wrap parts of your tree in `FootprintErrorBoundary`:
+
+```tsx
+import { createErrors } from '@footprint/browser/errors';
+import { FootprintErrorBoundary, reactErrorHandler } from '@footprint/react';
+
+const errors = createErrors({ release: '1.4.0' });
+
+<FootprintProvider options={options} flags={flags} errors={errors}>
+  <FootprintErrorBoundary fallback={({ reset }) => <button onClick={reset}>Try again</button>}>
+    <Checkout />
+  </FootprintErrorBoundary>
+</FootprintProvider>;
+
+// React 19 roots also report errors no boundary caught:
+createRoot(el, { onUncaughtError: reactErrorHandler(errors) });
+```
+
+The boundary captures what its children throw while rendering, with the component stack as
+`$react_component_stack`, and shows `fallback`. `useErrors()` returns the plugin.
+
+## Next.js (App Router): `@footprint/next`
 
 ```tsx
 // lib/footprint.ts (server only)
 import { Footprint } from '@footprint/node';
 export const footprint = new Footprint({
-  apiKey: process.env.FOOTPRINT_API_KEY!,
-  host: process.env.FOOTPRINT_HOST!,
-  secretKey: process.env.FOOTPRINT_SECRET_KEY // local evaluation, optional
+  apiKey: process.env.NEXT_PUBLIC_FOOTPRINT_KEY!,
+  host: process.env.NEXT_PUBLIC_FOOTPRINT_HOST!,
+  secretKey: process.env.FOOTPRINT_SECRET_KEY, // local evaluation, optional
+  release: process.env.NEXT_PUBLIC_RELEASE
 });
 
 // app/layout.tsx
-const user = await currentUser();
-const bootstrap = user ? await footprint.getAllFlagsAndPayloads(user.id) : undefined;
-return <Providers bootstrap={bootstrap} userId={user?.id}>{children}</Providers>;
+import { cookies } from 'next/headers';
+import { flagsBootstrap } from '@footprint/next/server';
+import { FootprintNextProvider } from '@footprint/next';
 
-// app/providers.tsx
-'use client';
-export function Providers({ bootstrap, userId, children }) {
-  const [flags] = useState(() => createFlags({ bootstrap }));
-  useEffect(() => { if (userId) footprint.identify(userId); }, [userId]);
-  return <FootprintProvider options={options} flags={flags}>{children}</FootprintProvider>;
+export default async function RootLayout({ children }) {
+  const user = await currentUser();
+  const bootstrap = await flagsBootstrap(footprint, await cookies(), user?.id);
+  return (
+    <html><body>
+      <FootprintNextProvider
+        options={{ apiKey: process.env.NEXT_PUBLIC_FOOTPRINT_KEY!, host: process.env.NEXT_PUBLIC_FOOTPRINT_HOST! }}
+        bootstrap={bootstrap}
+        distinctId={user?.id}
+        errors={{ release: process.env.NEXT_PUBLIC_RELEASE }}
+      >
+        {children}
+      </FootprintNextProvider>
+    </body></html>
+  );
 }
 ```
 
-The bootstrap is used until the browser's own `POST /flags` answers, so it only helps when the
-browser identifies as the same person the server evaluated for.
+- `FootprintNextProvider` sets up the browser SDK with the flags and errors plugins, and keeps
+  the visitor's id in a cookie (`persistence: 'cookie'`) so the server can read it. Page views
+  follow client-side navigation on their own. The hooks from `@footprint/react` work inside it.
+- `flagsBootstrap(client, cookies, distinctId?)` evaluates every flag for the signed-in user, or
+  the visitor in the cookie, so the first render shows the right variant. It returns nothing for
+  a first-time visitor. `footprintScope(client, await cookies())` gives the same person's
+  `getFlag`, `isEnabled` and `capture` in server components and route handlers.
+- Errors: `useCaptureException(error)` in `error.tsx` captures what the page shows (pass the
+  errors plugin in `global-error.tsx`, which renders outside the provider). For server errors,
+  add to `instrumentation.ts`:
+
+```ts
+import { createOnRequestError } from '@footprint/next/server';
+import { footprint } from './lib/footprint';
+export const onRequestError = createOnRequestError(footprint);
+```
 
 ## Svelte and SvelteKit: `@footprint/svelte`
 
@@ -90,45 +133,88 @@ Stores that work with `$` in Svelte 4 and 5 components:
 `featureFlagEnabled` and `featureFlagPayload` derive from it, and `allFlags` reads every flag
 without recording anything.
 
-In SvelteKit, initialize in the browser only, for example in `src/hooks.client.ts`:
+Svelte 5's `<svelte:boundary>` captures render errors with `boundaryError` from
+`@footprint/svelte` and the errors plugin:
 
-```ts
-import { footprint } from '@footprint/browser';
-import { flags } from '$lib/footprint'; // export const flags = createFlags();
-footprint.init({ apiKey: 'fp_pub_…', host: 'https://ingest.example.com' });
-footprint.use(flags);
+```svelte
+<svelte:boundary onerror={boundaryError(errors)}>
+  <Checkout />
+  {#snippet failed(error, reset)}<button onclick={reset}>Try again</button>{/snippet}
+</svelte:boundary>
 ```
 
-During server rendering the stores keep their initial value (the bootstrap, or `false`). To
-bootstrap, evaluate in `+layout.server.ts` with `@footprint/node` as in the Next.js example and
-create the flags with `createFlags({ bootstrap: data.flags })`.
+## SvelteKit: `@footprint/sveltekit`
 
-## Node servers: Express, Hono and others
+```ts
+// src/lib/server/footprint.ts
+import { Footprint } from '@footprint/node';
+export const footprint = new Footprint({ apiKey, host, secretKey, release });
 
-Create one `Footprint` per process, read flags per request, and flush on shutdown:
+// src/hooks.server.ts
+import { footprintHandle, footprintHandleError } from '@footprint/sveltekit/server';
+export const handle = footprintHandle(footprint, { distinctId: (event) => event.locals.user?.id });
+export const handleError = footprintHandleError(footprint);
+
+// src/routes/+layout.server.ts
+import { flagsBootstrap } from '@footprint/sveltekit/server';
+export const load = async (event) => ({ flags: await flagsBootstrap(event) });
+
+// src/hooks.client.ts
+import { footprint } from '@footprint/browser';
+import { createErrors } from '@footprint/browser/errors';
+import { footprintClientHandleError } from '@footprint/sveltekit';
+export const errors = createErrors({ release });
+footprint.init({ apiKey: 'fp_pub_…', host: 'https://footprint.example.com', persistence: 'cookie' });
+footprint.use(errors);
+export const handleError = footprintClientHandleError(errors);
+```
+
+- `footprintHandle` sets `event.locals.footprint` to the request's person: your `distinctId`
+  callback, or the visitor id the browser SDK keeps in its cookie (use `persistence: 'cookie'`).
+  Type it in `src/app.d.ts` with `footprint: import('@footprint/node').FootprintScope` in `Locals`.
+  Combine it with your own hooks using `sequence()`.
+- `flagsBootstrap(event)` returns that person's flags for `createFlags({ bootstrap: data.flags })`.
+  During server rendering the `@footprint/svelte` stores keep that bootstrap.
+- `footprintHandleError` and `footprintClientHandleError` capture unexpected errors, not 404s or
+  errors thrown with `error()`, then return what the function you pass returns. They work with
+  SvelteKit 2 and 3.
+
+## Node servers: `@footprint/node/hono` and `@footprint/node/express`
+
+Create one `Footprint` per process and add the middleware:
 
 ```ts
 import { Footprint } from '@footprint/node';
-const footprint = new Footprint({ apiKey, host, secretKey });
-
-// Express
-app.use(async (req, res, next) => {
-  req.flags = req.user ? await footprint.getAllFlags(req.user.id) : {};
-  next();
-});
+const footprint = new Footprint({ apiKey, host, secretKey, release });
 
 // Hono
-app.use(async (c, next) => {
-  const user = c.get('user');
-  c.set('flags', user ? await footprint.getAllFlags(user.id) : {});
-  await next();
+import { footprint as footprintMiddleware, getFootprint } from '@footprint/node/hono';
+app.use(footprintMiddleware(footprint, { distinctId: (c) => c.get('user')?.id }));
+app.get('/pricing', async (c) => {
+  const fp = getFootprint(c);
+  return c.json({ variant: await fp.getFlag('pricing-page') });
 });
+
+// Express
+import { footprint as footprintMiddleware, footprintErrorHandler } from '@footprint/node/express';
+app.use(footprintMiddleware(footprint, { distinctId: (req) => req.user?.id }));
+app.get('/pricing', async (req, res) => {
+  res.json({ variant: await req.footprint?.getFlag('pricing-page') });
+});
+app.use(footprintErrorHandler(footprint)); // after your routes, before your own error handler
 
 process.on('SIGTERM', async () => {
   await footprint.shutdown();
   process.exit(0);
 });
 ```
+
+Each request gets a scope with `capture`, `captureException`, `getFlag`, `isEnabled`,
+`getPayload` and `getAllFlags` for its person: your `distinctId` callback, or the visitor id the
+browser SDK keeps in its cookie (`persistence: 'cookie'`). Without either, flags read as off.
+Errors a handler throws are captured with the request's URL, method and person; pass
+`captureErrors: false` to leave them alone. For other frameworks, `footprint.scope(distinctId)`
+and `footprint.distinctIdFromCookie(cookieHeader)` are the same building blocks.
 
 `getAllFlags` records no exposures; use `getFlag` or `isEnabled` where the value actually changes
 what someone sees, so experiments count them. With a `secretKey`, flags that only depend on

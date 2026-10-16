@@ -56,6 +56,26 @@ export interface ExceptionOptions {
 	distinctId?: string;
 	properties?: Properties;
 	groups?: Record<string, string>;
+	/** What caught it, such as `express`. Default `manual`. */
+	mechanism?: string;
+	/** Whether your code handled it; unhandled errors are `fatal`. Default `true`. */
+	handled?: boolean;
+}
+
+/** One person's view of the client, for code that serves one request. */
+export interface FootprintScope {
+	/** Undefined when the request doesn't say who it is. */
+	readonly distinctId: string | undefined;
+	capture(event: string, properties?: Properties): void;
+	captureException(error: unknown, properties?: Properties): void;
+	/** Off (`false`, `{}` or `undefined`) for a request without a distinct id. */
+	getFlag(key: string, options?: FlagOptions): Promise<FlagValue>;
+	isEnabled(key: string, options?: FlagOptions): Promise<boolean>;
+	getPayload(key: string, options?: FlagOptions): Promise<unknown>;
+	getAllFlags(options?: FlagOptions): Promise<Record<string, FlagValue>>;
+	getAllFlagsAndPayloads(
+		options?: FlagOptions
+	): Promise<{ flags: Record<string, FlagValue>; payloads: Record<string, unknown> }>;
 }
 
 export interface CaptureMessage {
@@ -397,10 +417,62 @@ export class Footprint {
 		});
 	}
 
-	/** Stops the timers and sends what's queued. Call it before the process exits. */
 	/** Captures an error as a `$exception` event. */
 	captureException(error: unknown, options: ExceptionOptions = {}): void {
-		this.#exception(error, options, 'manual', true);
+		this.#exception(error, options, options.mechanism ?? 'manual', options.handled ?? true);
+	}
+
+	/**
+	 * The distinct id the browser SDK keeps in its cookie (with `persistence: 'cookie'`), read from
+	 * a request's `Cookie` header. Undefined when there is none.
+	 */
+	distinctIdFromCookie(cookieHeader: string | null | undefined): string | undefined {
+		const name = `fp_${this.#options.apiKey}`;
+		for (const part of cookieHeader?.split(';') ?? []) {
+			const i = part.indexOf('=');
+			if (i < 0 || part.slice(0, i).trim() !== name) continue;
+			try {
+				const id = (JSON.parse(decodeURIComponent(part.slice(i + 1).trim())) as { id?: unknown })
+					?.id;
+				return typeof id === 'string' && id ? id : undefined;
+			} catch {
+				return undefined;
+			}
+		}
+		return undefined;
+	}
+
+	/** The client bound to one person, such as the one making a request. */
+	scope(
+		distinctId: string | undefined,
+		defaults: { properties?: Properties } = {}
+	): FootprintScope {
+		const off = { flags: {}, payloads: {} };
+		return {
+			distinctId,
+			capture: (event, properties) => {
+				if (distinctId)
+					this.capture({
+						distinctId,
+						event,
+						properties: { ...defaults.properties, ...properties }
+					});
+			},
+			captureException: (error, properties) =>
+				this.captureException(error, {
+					distinctId,
+					properties: { ...defaults.properties, ...properties }
+				}),
+			getFlag: async (key, options) =>
+				distinctId ? this.getFlag(key, distinctId, options) : false,
+			isEnabled: async (key, options) =>
+				distinctId ? this.isEnabled(key, distinctId, options) : false,
+			getPayload: async (key, options) =>
+				distinctId ? this.getPayload(key, distinctId, options) : undefined,
+			getAllFlags: async (options) => (distinctId ? this.getAllFlags(distinctId, options) : {}),
+			getAllFlagsAndPayloads: async (options) =>
+				distinctId ? this.getAllFlagsAndPayloads(distinctId, options) : off
+		};
 	}
 
 	#exception(error: unknown, options: ExceptionOptions, mechanism: string, handled: boolean) {
@@ -443,6 +515,7 @@ export class Footprint {
 		};
 	}
 
+	/** Stops the timers and sends what's queued. Call it before the process exits. */
 	async shutdown(): Promise<void> {
 		this.#closed = true;
 		clearInterval(this.#flushTimer);

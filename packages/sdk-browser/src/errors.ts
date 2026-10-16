@@ -15,10 +15,20 @@ export interface ErrorsOptions {
 	inApp?: (filename: string) => boolean;
 }
 
+export interface CaptureOptions {
+	/** What caught it, such as `react-error-boundary`. Default `manual`. */
+	mechanism?: string;
+	/** Whether your code handled it; unhandled errors are `fatal`. Default `true`. */
+	handled?: boolean;
+}
+
 export interface Errors extends Plugin {
 	/** Captures an error you caught, with optional extra properties. */
-	captureException(error: unknown, properties?: Properties): void;
+	captureException(error: unknown, properties?: Properties, options?: CaptureOptions): void;
 }
+
+/** Errors captured before the plugin is added to a client, kept until it is. */
+const MAX_EARLY = 10;
 
 /** The same error captured more often than this on one page is dropped, so a loop can't flood. */
 const MAX_REPEATS = 5;
@@ -26,6 +36,8 @@ const MAX_REPEATS = 5;
 /** Creates the errors plugin; pass it to `footprint.use()`. */
 export function createErrors(options: ErrorsOptions = {}): Errors {
 	let capture: ((event: string, properties: Properties) => void) | undefined;
+	// A component can throw before the effect that adds the plugin runs; keep those few errors.
+	const early: Properties[] = [];
 	const counts = new Map<string, number>();
 	const inApp =
 		options.inApp ??
@@ -34,7 +46,7 @@ export function createErrors(options: ErrorsOptions = {}): Errors {
 	const send = (error: unknown, mechanism: string, handled: boolean, extra?: Properties) => {
 		const list = exceptionList(error, { mechanism, handled, inApp });
 		const [first] = list;
-		if (!capture || !first) return;
+		if (!first) return;
 		const message = `${first.type}: ${first.value}`;
 		if (
 			options.ignore?.some((rule) =>
@@ -49,12 +61,14 @@ export function createErrors(options: ErrorsOptions = {}): Errors {
 		const count = (counts.get(key) ?? 0) + 1;
 		counts.set(key, count);
 		if (count > MAX_REPEATS) return;
-		capture('$exception', {
+		const properties = {
 			...extra,
 			$exception_list: list,
 			$exception_level: handled ? 'error' : 'fatal',
 			...(options.release ? { $release: options.release } : {})
-		});
+		};
+		if (capture) capture('$exception', properties);
+		else if (early.length < MAX_EARLY) early.push(properties);
 	};
 
 	const onError = (event: ErrorEvent) => {
@@ -70,13 +84,14 @@ export function createErrors(options: ErrorsOptions = {}): Errors {
 		name: 'errors',
 		setup(client) {
 			capture = (event, properties) => client.capture(event, properties);
+			for (const properties of early.splice(0)) capture('$exception', properties);
 			if (options.autocapture !== false && typeof window !== 'undefined') {
 				window.addEventListener('error', onError);
 				window.addEventListener('unhandledrejection', onRejection);
 			}
 		},
-		captureException(error, properties) {
-			send(error, 'manual', true, properties);
+		captureException(error, properties, how = {}) {
+			send(error, how.mechanism ?? 'manual', how.handled ?? true, properties);
 		}
 	};
 }

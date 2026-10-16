@@ -1,2 +1,2 @@
-export type { Errors, ErrorsOptions } from './errors';
+export type { CaptureOptions, Errors, ErrorsOptions } from './errors';
 export { createErrors } from './errors';
