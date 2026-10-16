@@ -8,6 +8,7 @@ export default defineConfig({
 	resolve: {
 		alias: [
 			{ find: /^@footprint\/browser\/flags$/, replacement: browser('flags-entry.ts') },
+			{ find: /^@footprint\/browser\/errors$/, replacement: browser('errors-entry.ts') },
 			{ find: /^@footprint\/browser$/, replacement: browser('index.ts') }
 		]
 	},

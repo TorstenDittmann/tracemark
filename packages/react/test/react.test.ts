@@ -1,10 +1,13 @@
 import { createClient, type FootprintClient, type WireEvent } from '@footprint/browser';
+import { createErrors } from '@footprint/browser/errors';
 import { createFlags } from '@footprint/browser/flags';
 import { act, createElement, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+	FootprintErrorBoundary,
 	FootprintProvider,
+	reactErrorHandler,
 	useFeatureFlag,
 	useFeatureFlagEnabled,
 	useFeatureFlagPayload,
@@ -139,5 +142,79 @@ describe('react bindings', () => {
 		await expect(
 			render(createElement(FootprintProvider, { client: client() }, createElement(Probe)))
 		).rejects.toThrow('pass `flags`');
+	});
+});
+
+describe('error boundary', () => {
+	function Broken(): never {
+		throw new TypeError('cart is undefined');
+	}
+
+	const exceptions = () =>
+		events
+			.filter((e) => e.event === '$exception')
+			.map(
+				(e) =>
+					e.properties as Record<string, unknown> & {
+						$exception_list: { value: string; mechanism: unknown }[];
+					}
+			);
+
+	it('captures render errors and shows the fallback', async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		const c = client();
+		const errors = createErrors({ autocapture: false });
+		let reset: (() => void) | undefined;
+		await render(
+			createElement(
+				FootprintProvider,
+				{ client: c, options, errors },
+				createElement(
+					FootprintErrorBoundary,
+					{
+						fallback: (props: { error: unknown; reset: () => void }) => {
+							reset = props.reset;
+							return createElement('p', null, `failed: ${(props.error as Error).message}`);
+						}
+					},
+					createElement(Broken)
+				)
+			)
+		);
+		expect(container.textContent).toBe('failed: cart is undefined');
+		await act(() => c.flush());
+		const [captured] = exceptions();
+		expect(captured?.$exception_list[0]).toMatchObject({
+			value: 'cart is undefined',
+			mechanism: { type: 'react-error-boundary', handled: false }
+		});
+		expect(captured?.$react_component_stack).toContain('Broken');
+		expect(typeof reset).toBe('function');
+	});
+
+	it('warns when there is no errors plugin', async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+		await render(
+			createElement(
+				FootprintProvider,
+				{ client: client(), options },
+				createElement(FootprintErrorBoundary, { fallback: 'oops' }, createElement(Broken))
+			)
+		);
+		expect(container.textContent).toBe('oops');
+		expect(warn).toHaveBeenCalledWith(expect.stringContaining('pass `errors`'));
+	});
+
+	it('captures root errors for createRoot options', async () => {
+		const c = client();
+		c.init(options);
+		const errors = createErrors({ autocapture: false });
+		c.use(errors);
+		const then = vi.fn();
+		reactErrorHandler(errors, then)(new Error('root'), { componentStack: '\n    at App' });
+		await act(() => c.flush());
+		expect(exceptions()[0]).toMatchObject({ $react_component_stack: '\n    at App' });
+		expect(then).toHaveBeenCalled();
 	});
 });
