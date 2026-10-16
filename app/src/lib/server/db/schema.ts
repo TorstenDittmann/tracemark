@@ -287,3 +287,35 @@ export const flagVersions = sqliteTable(
 
 export type FeatureFlag = typeof featureFlags.$inferSelect;
 export type FlagVersion = typeof flagVersions.$inferSelect;
+
+/** An experiment comparing the variants of a multivariate flag on a set of metrics. */
+export const experiments = sqliteTable(
+	'experiments',
+	{
+		id: id(),
+		projectId: text('project_id')
+			.notNull()
+			.references(() => projects.id, { onDelete: 'cascade' }),
+		flagId: text('flag_id')
+			.notNull()
+			.references(() => featureFlags.id, { onDelete: 'cascade' }),
+		name: text('name').notNull(),
+		description: text('description').notNull().default(''),
+		status: text('status', { enum: ['draft', 'running', 'complete'] })
+			.notNull()
+			.default('draft'),
+		/** `ExperimentMetric[]` as JSON. */
+		metrics: text('metrics').notNull().default('[]'),
+		startedAt: timestamp('started_at'),
+		endedAt: timestamp('ended_at'),
+		createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+		createdAt: createdAt(),
+		updatedAt: updatedAt()
+	},
+	(table) => [
+		index('experiments_project_id_idx').on(table.projectId),
+		index('experiments_flag_id_idx').on(table.flagId)
+	]
+);
+
+export type Experiment = typeof experiments.$inferSelect;
