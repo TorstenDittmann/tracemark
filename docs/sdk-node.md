@@ -46,3 +46,8 @@ await footprint.shutdown();
 - `onlyLocal: true` skips the server; such flags come back off.
 
 **Exposures:** `isEnabled`, `getFlag` and `getPayload` capture `$feature_flag_called` the first time a person gets each value. Turn this off per call with `sendExposure: false`. `getAllFlags` never captures one.
+
+## AI
+
+`@footprint/node/ai` records LLM calls made through the Anthropic and OpenAI SDKs and the Vercel AI
+SDK, and groups them into traces. See [ai.md](ai.md#node-sdk).

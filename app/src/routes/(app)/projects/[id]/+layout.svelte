@@ -19,6 +19,7 @@ const tabs: { href: string; label: string; also?: string }[] = $derived([
 	{ href: `/projects/${data.project.id}/flags`, label: 'Feature flags' },
 	{ href: `/projects/${data.project.id}/experiments`, label: 'Experiments' },
 	{ href: `/projects/${data.project.id}/issues`, label: 'Issues' },
+	{ href: `/projects/${data.project.id}/ai`, label: 'AI' },
 	{ href: `/projects/${data.project.id}/settings`, label: 'Settings' }
 ]);
 </script>

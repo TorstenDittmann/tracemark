@@ -1,0 +1,22 @@
+{
+	"api_key": "fp_pub_test",
+	"batch": [
+		{
+			"uuid": "01890a5d-ac96-774b-bcce-b302099a8061",
+			"event": "$ai_generation",
+			"timestamp": "2026-10-16T09:00:00.000Z",
+			"distinct_id": "user-42",
+			"properties": {
+				"$ai_trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+				"$ai_span_id": "00f067aa0ba902b7",
+				"$ai_provider": "anthropic",
+				"$ai_model": "claude-sonnet-4-5-20250929",
+				"$ai_input": [{ "role": "user", "content": "Hi" }],
+				"$ai_output_choices": [{ "role": "assistant", "content": "Hello!" }],
+				"$ai_input_tokens": 12,
+				"$ai_output_tokens": 4,
+				"$ai_latency": 0.82
+			}
+		}
+	]
+}

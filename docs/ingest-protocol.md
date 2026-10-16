@@ -57,6 +57,14 @@ Unknown top-level fields are ignored, and `null` optional fields count as absent
 | `413` | `{"error": "payload_too_large"}` | Over the limits |
 | `503` | `{"error": "not_ready"}` or `{"error": "overloaded"}` | Project keys not loaded yet, or the write queue is full. SDKs retry with backoff |
 
+## `POST /v1/traces`
+
+OpenTelemetry trace export (OTLP/HTTP, protobuf or JSON) for LLM instrumentation. Spans become
+`$ai_*` events and then go through the same validation and enrichment as `POST /e` batches, except
+that location is not looked up. The key comes as `Authorization: Bearer fp_pub_…`, an
+`x-footprint-api-key` header or an `api_key` query parameter. Success is `200` with an empty
+`ExportTraceServiceResponse`; errors use the responses above. See [ai.md](ai.md#opentelemetry).
+
 ## Enrichment
 
 Before storing an event, ingest adds properties derived from the request. Properties the event already has are never overwritten.
@@ -105,7 +113,7 @@ The app creates a random salt per UTC day and deletes it once the day is over, s
 
 Analytics split events without a `session_id` into sessions per person wherever 30 minutes pass without an event.
 
-## Internal: project keys
+## Internal: project keys, salts and prices
 
 The ingest service never reads the app database. It polls the app:
 
@@ -114,8 +122,12 @@ The ingest service never reads the app database. It polls the app:
 ```json
 {
   "projects": [{ "id": "5f0c…uuid", "public_key": "fp_pub_3b1f…" }],
-  "salts": { "2026-10-16": "9c1e…", "2026-10-17": "04ab…" }
+  "salts": { "2026-10-16": "9c1e…", "2026-10-17": "04ab…" },
+  "model_prices": {
+    "defaults": [{ "model": "gpt-4o", "input": 2.5, "output": 10, "cache_read": 1.25, "cache_write": null }],
+    "projects": { "5f0c…uuid": [{ "model": "gpt-4o", "input": 2, "output": 8, "cache_read": null, "cache_write": null }] }
+  }
 }
 ```
 
-`salts` holds the cookieless salts for today and tomorrow (UTC), so ingest has the next day's salt before midnight.
+`salts` holds the cookieless salts for today and tomorrow (UTC), so ingest has the next day's salt before midnight. `model_prices` are the token prices ingest computes `$ai_cost_usd` with, see [ai.md](ai.md#cost).

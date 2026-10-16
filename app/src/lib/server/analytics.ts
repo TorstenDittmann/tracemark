@@ -6,6 +6,7 @@ import {
 	CLICKHOUSE_USER
 } from '$app/env/private';
 import type { CohortSpec } from '../cohorts';
+import * as ai from './ai';
 import type { ClickHouseConfig } from './clickhouse';
 import * as cohortPeople from './cohort-people';
 import { cohortSpec, getCohort, listCohorts } from './cohorts';
@@ -22,6 +23,7 @@ import * as persons from './persons';
 import type { SavedQuery } from './saved';
 import * as web from './web';
 
+export type { AiOverview, TraceSummary } from './ai';
 export type { EventStats } from './events';
 export type { GroupDetail } from './groups';
 export type {
@@ -183,3 +185,12 @@ export const issueDetail = (
 	fingerprint: string,
 	options: Parameters<typeof issues.issueDetail>[3]
 ) => issues.issueDetail(config(), projectId, fingerprint, options);
+
+export const aiOverview = (projectId: string, options: Parameters<typeof ai.aiOverview>[2]) =>
+	ai.aiOverview(config(), projectId, options);
+
+export const listTraces = (projectId: string, options: Parameters<typeof ai.listTraces>[2]) =>
+	ai.listTraces(config(), projectId, options);
+
+export const traceEvents = (projectId: string, traceId: string) =>
+	ai.traceEvents(config(), projectId, traceId);
