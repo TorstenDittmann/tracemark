@@ -62,7 +62,7 @@ const percent = (share: number) => `${Math.round(share * 1000) / 10}%`;
 {#if total === 0}
 	<p class="py-12 text-center text-sm text-muted-foreground">Nobody did {start} in this range.</p>
 {:else}
-	<div class="overflow-x-auto">
+	<div class="relative overflow-x-auto">
 		<table class="w-full border-separate border-spacing-0 text-sm">
 			<thead class="text-xs text-muted-foreground">
 				<tr>

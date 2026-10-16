@@ -126,7 +126,7 @@ const allProperties = $derived(data.properties.map((p) => p.name));
 			Insights are unavailable because ClickHouse could not be reached.
 		</p>
 	{:else}
-		<Card.Root>
+		<Card.Root class="min-w-0">
 			<Card.Content>
 				<FunnelView result={data.result} breakdown={data.query.breakdown} />
 			</Card.Content>

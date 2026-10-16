@@ -37,6 +37,7 @@ export interface TestEvent {
 	properties?: object;
 	set?: object;
 	setOnce?: object;
+	groups?: Record<string, string>;
 }
 
 let seq = 0;
@@ -57,12 +58,13 @@ export async function insertEvents(
 			session_id: e.sessionId ?? '',
 			properties: e.properties ?? {},
 			person_set: e.set ?? {},
-			person_set_once: e.setOnce ?? {}
+			person_set_once: e.setOnce ?? {},
+			groups: e.groups ?? {}
 		});
 	});
 	await clickhouseQuery(
 		config,
-		`INSERT INTO events (uuid, project_id, event, timestamp, distinct_id, session_id, properties, person_set, person_set_once)
+		`INSERT INTO events (uuid, project_id, event, timestamp, distinct_id, session_id, properties, person_set, person_set_once, groups)
 		FORMAT JSONEachRow\n${rows.join('\n')}`
 	);
 }

@@ -65,12 +65,12 @@ export async function personProperties(
 	return properties;
 }
 
-/** Removes a deleted project's events and people. Lightweight delete: rows disappear from queries at once, from disk on merge. */
+/** Removes a deleted project's events, people and groups. Lightweight delete: rows disappear from queries at once, from disk on merge. */
 export async function deleteProjectEvents(
 	config: ClickHouseConfig,
 	projectId: string
 ): Promise<void> {
-	for (const table of ['events', 'person_aliases', 'person_properties']) {
+	for (const table of ['events', 'person_aliases', 'person_properties', 'group_properties']) {
 		await clickhouseQuery(config, `DELETE FROM ${table} WHERE project_id = {project:UUID}`, {
 			params: { project: projectId }
 		});

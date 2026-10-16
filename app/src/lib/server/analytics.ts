@@ -6,11 +6,15 @@ import {
 } from '$app/env/private';
 import type { ClickHouseConfig } from './clickhouse';
 import * as events from './events';
+import * as explore from './explore';
+import * as groups from './groups';
 import * as insights from './insights';
+import * as persons from './persons';
 import type { SavedQuery } from './saved';
 import * as web from './web';
 
 export type { EventStats } from './events';
+export type { GroupDetail } from './groups';
 export type {
 	EventName,
 	FunnelResult,
@@ -18,6 +22,7 @@ export type {
 	RetentionResult,
 	TrendsResult
 } from './insights';
+export type { PersonDetail } from './persons';
 export type { WebAnalytics } from './web';
 
 export type SavedResult =
@@ -67,3 +72,34 @@ export async function runSaved(projectId: string, saved: SavedQuery): Promise<Sa
 			return { ...saved, result: await retention(projectId, saved.query) };
 	}
 }
+
+export const recentEvents = (
+	projectId: string,
+	query: Parameters<typeof explore.recentEvents>[2],
+	options?: Parameters<typeof explore.recentEvents>[3]
+) => explore.recentEvents(config(), projectId, query, options);
+
+export const eventDefinitions = (projectId: string) =>
+	explore.eventDefinitions(config(), projectId);
+
+export const propertyDefinitions = (projectId: string, event?: string) =>
+	explore.propertyDefinitions(config(), projectId, { event });
+
+export const listPersons = (
+	projectId: string,
+	options?: Parameters<typeof persons.listPersons>[2]
+) => persons.listPersons(config(), projectId, options);
+
+export const getPerson = (projectId: string, distinctId: string) =>
+	persons.getPerson(config(), projectId, distinctId);
+
+export const groupTypes = (projectId: string) => groups.groupTypes(config(), projectId);
+
+export const listGroups = (
+	projectId: string,
+	type: string,
+	options?: Parameters<typeof groups.listGroups>[3]
+) => groups.listGroups(config(), projectId, type, options);
+
+export const getGroup = (projectId: string, type: string, key: string) =>
+	groups.getGroup(config(), projectId, type, key);
