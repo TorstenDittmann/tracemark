@@ -37,6 +37,13 @@ docker compose up -d
 
 Open `http://localhost:8080`. The first visit asks you to create the owner account and an organization; after that, create a project to get its public key. Invite teammates from **Team**: tracemark doesn't send email, so you copy each invitation's link and send it yourself. Everything is served on one port (default `8080`): `/e` goes to the ingest service, everything else to the app. Set `TRACEMARK_HOST=analytics.example.com` and `PUBLIC_URL=https://analytics.example.com` to get automatic HTTPS. Sign-in uses [better-auth](https://www.better-auth.com).
 
+For a production server, `docker-compose.prod.yml` runs the published images from GitHub Container Registry instead of building from source, and serves HTTPS on ports 80 and 443. Copy it, `Caddyfile` and `.env.example` to the server, point your hostname's DNS at it, and in `.env` set `INTERNAL_TOKEN`, `AUTH_SECRET`, `CLICKHOUSE_PASSWORD`, `TRACEMARK_HOST` and `PUBLIC_URL`. Pin a release with `TRACEMARK_VERSION=0.1.0` (default `latest`). Then:
+
+```sh
+docker compose -f docker-compose.prod.yml up -d
+docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compose.prod.yml up -d   # upgrade
+```
+
 On Kubernetes, use the Helm chart in `deploy/helm/tracemark`; see [docs/kubernetes.md](docs/kubernetes.md).
 
 ## Tracking events
