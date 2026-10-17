@@ -33,7 +33,7 @@ let { data, form }: PageProps = $props();
 	</form>
 
 	{#if data.dashboards.length}
-		<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 stagger">
+		<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 			{#each data.dashboards as dashboard (dashboard.id)}
 				<a
 					href="/projects/{data.project.id}/dashboards/{dashboard.id}"

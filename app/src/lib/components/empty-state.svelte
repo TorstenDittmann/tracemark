@@ -18,10 +18,7 @@ let {
 </script>
 
 <div
-	class={cn(
-		'flex flex-col items-center justify-center gap-3 px-6 py-12 text-center animate-enter',
-		className
-	)}
+	class={cn('flex flex-col items-center justify-center gap-3 px-6 py-12 text-center', className)}
 >
 	<div class="relative">
 		<span class="absolute -inset-3 rounded-2xl bg-primary/5 blur-md" aria-hidden="true"></span>

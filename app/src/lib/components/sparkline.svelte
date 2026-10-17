@@ -19,7 +19,7 @@ const line = $derived(
 </script>
 
 {#if values.length > 1}
-	<svg viewBox="0 0 100 30" preserveAspectRatio="none" class="spark {className}" aria-hidden="true">
+	<svg viewBox="0 0 100 30" preserveAspectRatio="none" class={className} aria-hidden="true">
 		<defs>
 			<linearGradient id="spark-{id}" x1="0" x2="0" y1="0" y2="1">
 				<stop offset="0" stop-color={color} stop-opacity="0.25" />
@@ -38,17 +38,3 @@ const line = $derived(
 		/>
 	</svg>
 {/if}
-
-<style>
-.spark {
-	animation: spark-reveal 1s cubic-bezier(0.2, 0.7, 0.2, 1) both;
-}
-@keyframes spark-reveal {
-	from {
-		clip-path: inset(0 100% 0 0);
-	}
-	to {
-		clip-path: inset(0 0 0 0);
-	}
-}
-</style>

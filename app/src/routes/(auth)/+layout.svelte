@@ -35,7 +35,7 @@ const path = points
 				<ThemeToggle />
 			</div>
 			<main class="flex flex-1 items-center justify-center py-10">
-				<div class="w-full max-w-sm animate-enter">{@render children()}</div>
+				<div class="w-full max-w-sm">{@render children()}</div>
 			</main>
 			<p class="text-center text-xs text-muted-foreground">
 				Self-hosted, open source analytics. Your data stays on your servers.
@@ -82,11 +82,11 @@ const path = points
 						stroke-linecap="round"
 						stroke-linejoin="round"
 						pathLength="1"
-						class="[stroke-dasharray:1] [animation:draw_1.6s_ease-out_both]"
+						class="[stroke-dasharray:1] [animation:draw_0.8s_ease-out_both]"
 					/>
 				</svg>
 			</div>
-			<ul class="relative grid grid-cols-2 gap-4 stagger">
+			<ul class="relative grid grid-cols-2 gap-4">
 				{#each features as feature (feature.title)}
 					<li class="flex gap-3">
 						<span class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-white/15">

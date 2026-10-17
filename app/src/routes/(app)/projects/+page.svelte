@@ -106,7 +106,7 @@ const onboarding = [
 					It takes about two minutes. You'll see events arrive live as soon as the SDK is in.
 				</p>
 			</div>
-			<ol class="grid gap-3 stagger">
+			<ol class="grid gap-3">
 				{#each onboarding as item, i (item.label)}
 					<li class="flex items-center gap-3 text-sm">
 						<span
@@ -149,7 +149,7 @@ const onboarding = [
 				</Button>
 			{/snippet}
 		</PageHeader>
-		<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 stagger">
+		<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 			{#each data.projects as project (project.id)}
 				<a
 					href="/projects/{project.id}"
