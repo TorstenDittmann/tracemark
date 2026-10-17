@@ -1,5 +1,7 @@
+import { error, fail, redirect } from '@sveltejs/kit';
 import type { ActivityEvent } from '#lib/explore.js';
 import {
+	addMockData,
 	type EventStats,
 	projectEventStats,
 	recentEvents,
@@ -9,8 +11,9 @@ import {
 import { getDb } from '#lib/server/db/index.js';
 import { listFlags } from '#lib/server/flags.js';
 import { listMembers } from '#lib/server/members.js';
+import { getProjectForUser } from '#lib/server/projects.js';
 import { listInsights } from '#lib/server/saved.js';
-import type { PageServerLoad } from './$types';
+import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ parent, url, depends }) => {
 	// The page re-runs this while waiting for the first event and to keep the live feed fresh.
@@ -50,4 +53,18 @@ export const load: PageServerLoad = async ({ parent, url, depends }) => {
 			members: members.length
 		}
 	};
+};
+
+export const actions: Actions = {
+	addMockData: async ({ locals, params }) => {
+		if (!locals.user) redirect(303, '/login');
+		const row = await getProjectForUser(getDb(), locals.user.id, params.id);
+		if (!row) error(404, 'Project not found');
+		try {
+			return { mockEvents: await addMockData(row.project.id, locals.user.id) };
+		} catch (err) {
+			console.error('could not add mock data:', err);
+			return fail(500, { message: 'Could not add mock data. Is ClickHouse running?' });
+		}
+	}
 };

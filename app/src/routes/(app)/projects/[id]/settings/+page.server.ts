@@ -6,7 +6,7 @@ import {
 	parsePriceForm,
 	setModelPrice
 } from '#lib/server/ai-prices.js';
-import { deleteProjectEvents } from '#lib/server/analytics.js';
+import { addMockData, deleteProjectEvents, removeMockData } from '#lib/server/analytics.js';
 import { getDb } from '#lib/server/db/index.js';
 import { setRetention } from '#lib/server/privacy.js';
 import {
@@ -110,6 +110,39 @@ export const actions: Actions = {
 		const model = String((await event.request.formData()).get('model') ?? '');
 		await deleteModelPrice(getDb(), project.id, model);
 		return { action: 'deleteModelPrice', message: `Removed your price for ${model}.` };
+	},
+
+	addMockData: async (event) => {
+		const project = await access(event, false);
+		const user = event.locals.user;
+		if (!user) redirect(303, '/login');
+		try {
+			const count = await addMockData(project.id, user.id);
+			return {
+				action: 'addMockData',
+				message: `Added ${count.toLocaleString('en')} mock events and their flags, experiment, cohorts and insights.`
+			};
+		} catch (err) {
+			console.error('could not add mock data:', err);
+			return fail(500, {
+				action: 'addMockData',
+				message: 'Could not add mock data. Is ClickHouse running?'
+			});
+		}
+	},
+
+	removeMockData: async (event) => {
+		const project = await access(event, false);
+		try {
+			await removeMockData(project.id);
+			return { action: 'removeMockData', message: 'Removed the mock data.' };
+		} catch (err) {
+			console.error('could not remove mock data:', err);
+			return fail(500, {
+				action: 'removeMockData',
+				message: 'Could not remove mock data. Is ClickHouse running?'
+			});
+		}
 	},
 
 	delete: async (event) => {

@@ -11,6 +11,7 @@ import type { PageProps } from './$types';
 let { data, form }: PageProps = $props();
 let confirmName = $state('');
 let showSecret = $state(false);
+let mockBusy = $state<'add' | 'remove' | null>(null);
 let price = $state({ model: '', input: '', output: '', cacheRead: '', cacheWrite: '' });
 
 function editPrice(p: PageProps['data']['modelPrices'][number]) {
@@ -333,6 +334,65 @@ function formatBytes(bytes: number): string {
 			{#if messageFor('setModelPrice') ?? messageFor('deleteModelPrice')}
 				<p class="text-sm text-muted-foreground" role="status">
 					{messageFor('setModelPrice') ?? messageFor('deleteModelPrice')}
+				</p>
+			{/if}
+		</Card.Content>
+	</Card.Root>
+
+	<Card.Root>
+		<Card.Header>
+			<Card.Title>Mock data</Card.Title>
+			<Card.Description>
+				A month of made-up web traffic, product events, errors, AI traces, people and companies,
+				plus flags, an experiment, cohorts, insights and a dashboard to explore them. Adding again
+				replaces the mock events with fresh ones. Mock people and companies have ids starting with
+				<code class="font-mono">demo-</code>; your own data is never changed.
+			</Card.Description>
+		</Card.Header>
+		<Card.Content>
+			<div class="flex flex-wrap gap-2">
+				<form
+					method="POST"
+					action="?/addMockData"
+					use:enhance={() => {
+						mockBusy = 'add';
+						return async ({ update }) => {
+							await update({ reset: false });
+							mockBusy = null;
+						};
+					}}
+				>
+					<Button type="submit" variant="outline" disabled={mockBusy !== null}>
+						{mockBusy === 'add' ? 'Adding…' : 'Add mock data'}
+					</Button>
+				</form>
+				<form
+					method="POST"
+					action="?/removeMockData"
+					use:enhance={({ cancel }) => {
+						if (
+							!confirm(
+								'Remove the mock events, and the mock flags, experiment, cohorts, insights and dashboard?'
+							)
+						) {
+							cancel();
+							return;
+						}
+						mockBusy = 'remove';
+						return async ({ update }) => {
+							await update({ reset: false });
+							mockBusy = null;
+						};
+					}}
+				>
+					<Button type="submit" variant="ghost" disabled={mockBusy !== null}>
+						{mockBusy === 'remove' ? 'Removing…' : 'Remove mock data'}
+					</Button>
+				</form>
+			</div>
+			{#if messageFor('addMockData') ?? messageFor('removeMockData')}
+				<p class="mt-2 text-sm text-muted-foreground" role="status">
+					{messageFor('addMockData') ?? messageFor('removeMockData')}
 				</p>
 			{/if}
 		</Card.Content>
