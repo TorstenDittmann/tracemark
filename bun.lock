@@ -51,7 +51,7 @@
     },
     "packages/astro": {
       "name": "@tracemark/astro",
-      "version": "0.0.0",
+      "version": "0.1.0",
       "devDependencies": {
         "@tracemark/browser": "workspace:*",
         "@tracemark/node": "workspace:*",
@@ -71,7 +71,7 @@
     },
     "packages/cli": {
       "name": "@tracemark/cli",
-      "version": "0.0.0",
+      "version": "0.1.0",
       "bin": {
         "tracemark": "./dist/index.js",
       },
@@ -102,7 +102,7 @@
     },
     "packages/next": {
       "name": "@tracemark/next",
-      "version": "0.0.0",
+      "version": "0.1.0",
       "devDependencies": {
         "@tracemark/browser": "workspace:*",
         "@tracemark/node": "workspace:*",
@@ -126,7 +126,7 @@
     },
     "packages/nuxt": {
       "name": "@tracemark/nuxt",
-      "version": "0.0.0",
+      "version": "0.1.0",
       "devDependencies": {
         "@tracemark/node": "workspace:*",
         "@types/node": "22.20.3",
@@ -141,7 +141,7 @@
     },
     "packages/react": {
       "name": "@tracemark/react",
-      "version": "0.0.0",
+      "version": "0.1.0",
       "devDependencies": {
         "@tracemark/browser": "workspace:*",
         "@types/node": "22.20.3",
@@ -161,7 +161,7 @@
     },
     "packages/sdk-browser": {
       "name": "@tracemark/browser",
-      "version": "0.0.0",
+      "version": "0.1.0",
       "devDependencies": {
         "@tracemark/errors": "workspace:*",
         "@types/node": "22.20.3",
@@ -173,7 +173,7 @@
     },
     "packages/sdk-node": {
       "name": "@tracemark/node",
-      "version": "0.0.0",
+      "version": "0.1.0",
       "devDependencies": {
         "@anthropic-ai/sdk": "0.135.0",
         "@tracemark/errors": "workspace:*",
@@ -199,7 +199,7 @@
     },
     "packages/svelte": {
       "name": "@tracemark/svelte",
-      "version": "0.0.0",
+      "version": "0.1.0",
       "devDependencies": {
         "@tracemark/browser": "workspace:*",
         "@types/node": "22.20.3",
@@ -216,7 +216,7 @@
     },
     "packages/sveltekit": {
       "name": "@tracemark/sveltekit",
-      "version": "0.0.0",
+      "version": "0.1.0",
       "devDependencies": {
         "@sveltejs/kit": "^3.0.1",
         "@tracemark/browser": "workspace:*",
@@ -234,7 +234,7 @@
     },
     "packages/vue": {
       "name": "@tracemark/vue",
-      "version": "0.0.0",
+      "version": "0.1.0",
       "devDependencies": {
         "@tracemark/browser": "workspace:*",
         "@types/node": "22.20.3",

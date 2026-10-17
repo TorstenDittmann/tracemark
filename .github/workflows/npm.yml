@@ -1,0 +1,43 @@
+name: npm
+
+on:
+  push:
+    tags: ['npm-v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: npm-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - run: npm install --global npm@11.19.0
+      - run: bun install --frozen-lockfile
+      - run: bun run check
+      - run: bun run test:release
+      - run: bun run --filter './packages/*' typecheck
+      - run: bun run --filter './packages/*' test
+      - run: bun run release:check
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+      - run: bun run --filter '@tracemark/browser' size
+      - name: Publish using npm trusted publishing (OIDC)
+        run: node scripts/release.mjs publish
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}

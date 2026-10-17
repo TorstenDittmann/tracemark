@@ -17,6 +17,7 @@ jobs:
       - run: bun run check
       - run: bun run typecheck
       - run: bun run test
+      - run: bun run test:release
       - run: bun run --filter '@tracemark/browser' build
       - run: bun run --filter '@tracemark/browser' size
       - run: bun run --filter '@tracemark/node' build
@@ -28,6 +29,7 @@ jobs:
       - run: bun run --filter '@tracemark/vue' build
       - run: bun run --filter '@tracemark/nuxt' build
       - run: bun run --filter '@tracemark/astro' build
+      - run: node scripts/release.mjs check
       - run: cd app && bun run build
 
   rust:
