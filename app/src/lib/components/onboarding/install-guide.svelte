@@ -130,7 +130,7 @@ function setManager(value: PackageManager) {
 		>
 			<Bot class="size-5" />
 		</span>
-		<div class="grid min-w-48 flex-1 gap-0.5">
+		<div class="grid min-w-0 flex-[1_1_18rem] gap-0.5">
 			<p class="font-medium">Let your coding agent set it up</p>
 			<p class="text-sm text-muted-foreground">
 				Paste one prompt into Claude Code, Cursor, Codex or any other agent.
@@ -210,18 +210,18 @@ function setManager(value: PackageManager) {
 						class="h-9 w-full rounded-lg border bg-background pr-3 pl-9 text-sm outline-none transition-[border-color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30"
 					>
 				</label>
-				<div class="grid gap-4">
+				<div class="grid gap-6">
 					{#each matches as group (group.id)}
-						<div class="grid gap-2">
+						<div class="grid gap-2.5">
 							<p class="text-xs font-medium text-muted-foreground">{group.label}</p>
-							<div class="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
+							<div class="grid grid-cols-[repeat(auto-fill,minmax(13rem,1fr))] gap-3">
 								{#each group.items as f (f.id)}
 									<button
 										type="button"
 										onclick={() => choose(f.id)}
 										aria-pressed={f.id === frameworkId}
 										class={[
-											'group flex flex-col items-start gap-2 rounded-xl border bg-card p-2.5 text-left sm:flex-row sm:items-center sm:gap-3 transition-all duration-150 hover:-translate-y-px hover:border-foreground/20 hover:shadow-sm active:translate-y-0',
+											'group flex items-center gap-3 rounded-xl border bg-card p-3 text-left transition-all duration-150 hover:-translate-y-px hover:border-foreground/20 hover:shadow-sm active:translate-y-0',
 											f.id === frameworkId && 'border-primary ring-2 ring-primary/15'
 										]}
 									>
@@ -230,9 +230,9 @@ function setManager(value: PackageManager) {
 										>
 											<BrandLogo icon={f.icon} label={f.label} />
 										</span>
-										<span class="grid min-w-0 leading-tight">
-											<span class="text-sm font-medium sm:truncate">{f.label}</span>
-											<span class="text-xs text-muted-foreground sm:truncate">{f.tagline}</span>
+										<span class="grid min-w-0 gap-0.5 leading-tight">
+											<span class="text-sm font-medium">{f.label}</span>
+											<span class="text-xs text-muted-foreground">{f.tagline}</span>
 										</span>
 									</button>
 								{/each}
