@@ -1,4 +1,6 @@
 <script lang="ts">
+import FlaskConical from '@lucide/svelte/icons/flask-conical';
+import EmptyState from '#lib/components/empty-state.svelte';
 import ExperimentStatus from '#lib/components/experiments/experiment-status.svelte';
 import { selectClass } from '#lib/components/insights/editor.svelte.js';
 import { Button } from '#lib/components/ui/button/index.js';
@@ -78,7 +80,7 @@ function period(experiment: (typeof data.experiments)[number]): string {
 	<Card.Root class="min-w-0 py-2">
 		{#if data.experiments.length}
 			<div class="relative overflow-x-auto">
-				<table class="w-full text-sm">
+				<table class="data-table w-full text-sm">
 					<thead class="text-left text-xs text-muted-foreground">
 						<tr>
 							<th class="px-6 py-2 font-normal">Name</th>
@@ -113,7 +115,11 @@ function period(experiment: (typeof data.experiments)[number]): string {
 				</table>
 			</div>
 		{:else}
-			<p class="px-6 py-10 text-center text-sm text-muted-foreground">No experiments yet.</p>
+			<EmptyState
+				icon={FlaskConical}
+				title="No experiments yet"
+				description="Test a multivariate flag's variants against a goal and see which one wins."
+			/>
 		{/if}
 	</Card.Root>
 </div>

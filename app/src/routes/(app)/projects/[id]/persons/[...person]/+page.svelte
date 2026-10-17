@@ -79,7 +79,7 @@ function display(value: unknown): string {
 					</Card.Header>
 					<Card.Content>
 						{#if properties.length}
-							<table class="w-full text-left text-sm">
+							<table class="data-table w-full text-left text-sm">
 								<tbody>
 									{#each properties as [key, value] (key)}
 										<tr class="border-t first:border-t-0">

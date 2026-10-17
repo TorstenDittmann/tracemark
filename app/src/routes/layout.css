@@ -189,6 +189,30 @@
 		animation-delay: 200ms;
 	}
 }
+/* Native selects styled like inputs, with a chevron that reads in both themes. */
+@utility select-chevron {
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+	background-repeat: no-repeat;
+	background-position: right 0.5rem center;
+	background-size: 1rem;
+}
+
+/* Tables inside cards: quiet headers, row hover, and tabular numbers. */
+@utility data-table {
+	& thead {
+		@apply text-xs font-medium text-muted-foreground;
+	}
+	& thead th {
+		@apply font-medium;
+	}
+	& tbody tr {
+		@apply transition-colors duration-150 hover:bg-muted/40;
+	}
+	& td {
+		@apply tabular-nums;
+	}
+}
+
 @utility animate-ping-soft {
 	animation: ping-soft 1.6s cubic-bezier(0, 0, 0.2, 1) infinite;
 }

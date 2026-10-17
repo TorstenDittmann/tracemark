@@ -1,4 +1,5 @@
 <script lang="ts">
+import { selectClass } from '#lib/components/insights/editor.svelte.js';
 import { Button } from '#lib/components/ui/button/index.js';
 import * as Card from '#lib/components/ui/card/index.js';
 import { Input } from '#lib/components/ui/input/index.js';
@@ -98,11 +99,7 @@ async function copy(id: string, link: string) {
 					</div>
 					<div class="grid gap-2">
 						<Label for="role">Role</Label>
-						<select
-							id="role"
-							name="role"
-							class="h-9 rounded-md border border-input bg-transparent px-3 text-sm shadow-xs dark:bg-input/30"
-						>
+						<select id="role" name="role" class={[selectClass, 'h-9']}>
 							<option value="member">Member</option>
 							<option value="admin">Admin</option>
 						</select>

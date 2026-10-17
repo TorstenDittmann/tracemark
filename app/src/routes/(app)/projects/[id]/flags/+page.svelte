@@ -1,4 +1,6 @@
 <script lang="ts">
+import ToggleRight from '@lucide/svelte/icons/toggle-right';
+import EmptyState from '#lib/components/empty-state.svelte';
 import { Button } from '#lib/components/ui/button/index.js';
 import * as Card from '#lib/components/ui/card/index.js';
 import { Input } from '#lib/components/ui/input/index.js';
@@ -56,7 +58,7 @@ const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' });
 	<Card.Root class="min-w-0 py-2">
 		{#if data.flags.length}
 			<div class="relative overflow-x-auto">
-				<table class="w-full text-sm">
+				<table class="data-table w-full text-sm">
 					<thead class="text-left text-xs text-muted-foreground">
 						<tr>
 							<th class="px-6 py-2 font-normal">Key</th>
@@ -114,7 +116,11 @@ const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' });
 				</table>
 			</div>
 		{:else}
-			<p class="px-6 py-10 text-center text-sm text-muted-foreground">No feature flags yet.</p>
+			<EmptyState
+				icon={ToggleRight}
+				title="No feature flags yet"
+				description="Create one above, then ask for it by key in your code. New flags start off."
+			/>
 		{/if}
 	</Card.Root>
 </div>

@@ -1,6 +1,6 @@
 <script lang="ts">
-import SubNav from '#lib/components/sub-nav.svelte';
 import RangePicker from '#lib/components/range-picker.svelte';
+import SubNav from '#lib/components/sub-nav.svelte';
 import type { Range } from '#lib/web.js';
 
 let {

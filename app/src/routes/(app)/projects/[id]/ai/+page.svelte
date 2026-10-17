@@ -120,7 +120,7 @@ const tracesHref = (person?: string) => {
 				<Card.Title>By model</Card.Title>
 			</Card.Header>
 			<div class="relative overflow-x-auto">
-				<table class="w-full text-sm">
+				<table class="data-table w-full text-sm">
 					<caption class="sr-only">
 						LLM usage by model in the {rangeLabel}
 					</caption>
@@ -174,7 +174,7 @@ const tracesHref = (person?: string) => {
 			</Card.Header>
 			{#if data.overview.people.length}
 				<div class="relative overflow-x-auto">
-					<table class="w-full text-sm">
+					<table class="data-table w-full text-sm">
 						<caption class="sr-only">
 							LLM usage by person in the {rangeLabel}
 						</caption>

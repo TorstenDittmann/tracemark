@@ -1,4 +1,6 @@
 <script lang="ts">
+import Bookmark from '@lucide/svelte/icons/bookmark';
+import EmptyState from '#lib/components/empty-state.svelte';
 import { Button } from '#lib/components/ui/button/index.js';
 import * as Card from '#lib/components/ui/card/index.js';
 import { INSIGHT_KINDS, insightHref } from '#lib/insight-kinds.js';
@@ -17,7 +19,7 @@ const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', tim
 <Card.Root class="min-w-0 py-2">
 	{#if data.insights.length}
 		<div class="relative overflow-x-auto">
-			<table class="w-full text-sm">
+			<table class="data-table w-full text-sm">
 				<thead class="text-left text-xs text-muted-foreground">
 					<tr>
 						<th class="px-6 py-2 font-normal">Name</th>
@@ -60,8 +62,12 @@ const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', tim
 			</table>
 		</div>
 	{:else}
-		<p class="px-6 py-10 text-center text-sm text-muted-foreground">
-			No saved insights yet. Build a trend, funnel or retention view and save it.
-		</p>
+		<EmptyState
+			icon={Bookmark}
+			title="No saved insights yet"
+			description="Build a trend, funnel or retention view and save it to find it here."
+		>
+			<Button href="/projects/{data.project.id}/insights/trends" size="sm">New trend</Button>
+		</EmptyState>
 	{/if}
 </Card.Root>

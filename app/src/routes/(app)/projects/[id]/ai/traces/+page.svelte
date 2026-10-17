@@ -1,6 +1,8 @@
 <script lang="ts">
+import Waypoints from '@lucide/svelte/icons/waypoints';
 import { formatCost, formatDuration, formatTokens } from '#lib/ai.js';
 import AiNav from '#lib/components/ai/ai-nav.svelte';
+import EmptyState from '#lib/components/empty-state.svelte';
 import * as Card from '#lib/components/ui/card/index.js';
 import { personHref } from '#lib/persons.js';
 import { RANGES } from '#lib/web.js';
@@ -47,7 +49,7 @@ const traceHref = (traceId: string) =>
 		<Card.Root class="min-w-0 gap-0 py-0">
 			{#if data.traces.length}
 				<div class="relative overflow-x-auto">
-					<table class="w-full text-sm">
+					<table class="data-table w-full text-sm">
 						<caption class="sr-only">
 							AI traces in the {rangeLabel}
 						</caption>
@@ -113,9 +115,7 @@ const traceHref = (traceId: string) =>
 					</table>
 				</div>
 			{:else}
-				<p class="px-6 py-10 text-center text-sm text-muted-foreground">
-					No traces in the {rangeLabel}.
-				</p>
+				<EmptyState icon={Waypoints} title="No traces in the {rangeLabel}" />
 			{/if}
 		</Card.Root>
 	{/if}
