@@ -1,0 +1,98 @@
+# Dokploy: runs the published images behind Dokploy's own Traefik, which handles the domain and HTTPS.
+# Create a Compose service from this repository with Compose Path ./docker-compose.dokploy.yml,
+# set the variables from docs/dokploy.md in its Environment tab, then deploy. Leave the Domains tab empty:
+# the routes below are labelled here because ingest needs exact paths (/e would otherwise also match /experiments).
+services:
+  app:
+    image: ghcr.io/torstendittmann/tracemark-app:${TRACEMARK_VERSION:-latest}
+    pull_policy: always
+    environment:
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:?set INTERNAL_TOKEN}
+      AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET}
+      PUBLIC_URL: https://${TRACEMARK_DOMAIN:?set TRACEMARK_DOMAIN, e.g. analytics.example.com}
+      CLICKHOUSE_URL: http://clickhouse:8123
+      CLICKHOUSE_USER: tracemark
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:?set CLICKHOUSE_PASSWORD}
+      CLICKHOUSE_DATABASE: tracemark
+      PROTOCOL_HEADER: x-forwarded-proto
+      HOST_HEADER: x-forwarded-host
+      # Client IPs for sign-in rate limiting; Traefik is the only proxy in front of the app.
+      ADDRESS_HEADER: x-forwarded-for
+      XFF_DEPTH: 1
+    volumes:
+      - app-data:/data
+    networks: [default, dokploy-network]
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=dokploy-network
+      - traefik.http.routers.tracemark-app-web.rule=Host(`${TRACEMARK_DOMAIN}`)
+      - traefik.http.routers.tracemark-app-web.entrypoints=web
+      - traefik.http.routers.tracemark-app-web.middlewares=redirect-to-https@file
+      - traefik.http.routers.tracemark-app.rule=Host(`${TRACEMARK_DOMAIN}`)
+      - traefik.http.routers.tracemark-app.entrypoints=websecure
+      - traefik.http.routers.tracemark-app.tls.certresolver=letsencrypt
+      - traefik.http.routers.tracemark-app.service=tracemark-app
+      - traefik.http.services.tracemark-app.loadbalancer.server.port=3000
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    restart: unless-stopped
+
+  ingest:
+    image: ghcr.io/torstendittmann/tracemark-ingest:${TRACEMARK_VERSION:-latest}
+    pull_policy: always
+    environment:
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:?set INTERNAL_TOKEN}
+      APP_INTERNAL_URL: http://app:3000
+      CLICKHOUSE_URL: http://clickhouse:8123
+      CLICKHOUSE_USER: tracemark
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:?set CLICKHOUSE_PASSWORD}
+      CLICKHOUSE_DATABASE: tracemark
+      # Client IPs for location lookups; Traefik is the only proxy in front of ingest. IPs are never stored.
+      ADDRESS_HEADER: x-forwarded-for
+      XFF_DEPTH: 1
+      # Optional city database, e.g. /geoip/dbip-city-lite.mmdb (see README).
+      GEOIP_DB: ${GEOIP_DB:-}
+    volumes:
+      # The image pre-creates /app/spill owned by the nonroot user; mounting there keeps it writable.
+      - ingest-spill:/app/spill
+      - ./geoip:/geoip:ro
+    networks: [default, dokploy-network]
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=dokploy-network
+      # Same paths as the Caddyfile: /e, /e/* and /v1/traces (OpenTelemetry spans). Longer rules win over the app's.
+      - traefik.http.routers.tracemark-ingest.rule=Host(`${TRACEMARK_DOMAIN}`) && (Path(`/e`) || PathPrefix(`/e/`) || Path(`/v1/traces`))
+      - traefik.http.routers.tracemark-ingest.entrypoints=websecure
+      - traefik.http.routers.tracemark-ingest.tls.certresolver=letsencrypt
+      - traefik.http.routers.tracemark-ingest.service=tracemark-ingest
+      - traefik.http.services.tracemark-ingest.loadbalancer.server.port=8081
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    restart: unless-stopped
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:25.8
+    environment:
+      CLICKHOUSE_USER: tracemark
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:?set CLICKHOUSE_PASSWORD}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+    ulimits:
+      nofile: { soft: 262144, hard: 262144 }
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--user", "tracemark", "--password", "${CLICKHOUSE_PASSWORD}", "--query", "SELECT 1"]
+      interval: 5s
+      retries: 20
+    restart: unless-stopped
+
+networks:
+  dokploy-network:
+    external: true
+
+volumes:
+  app-data:
+  ingest-spill:
+  clickhouse-data:

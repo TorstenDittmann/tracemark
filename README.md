@@ -44,7 +44,7 @@ docker compose -f docker-compose.prod.yml up -d
 docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compose.prod.yml up -d   # upgrade
 ```
 
-On Kubernetes, use the Helm chart in `deploy/helm/tracemark`; see [docs/kubernetes.md](docs/kubernetes.md).
+On [Dokploy](https://dokploy.com), use `docker-compose.dokploy.yml`; see [docs/dokploy.md](docs/dokploy.md). On Kubernetes, use the Helm chart in `deploy/helm/tracemark`; see [docs/kubernetes.md](docs/kubernetes.md).
 
 ## Tracking events
 
