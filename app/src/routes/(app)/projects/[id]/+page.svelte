@@ -315,7 +315,7 @@ function where(properties: Record<string, unknown>): string {
 			</div>
 		{/if}
 
-		<div class="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4 stagger">
+		<div class="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
 			<StatCard
 				label="Visitors · 7 days"
 				value={web ? web.overview.visitors.toLocaleString() : '–'}
