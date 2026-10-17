@@ -8,7 +8,8 @@ import {
 	invite,
 	joinWithInvitation,
 	listMembers,
-	listPendingInvitations
+	listPendingInvitations,
+	renameOrganization
 } from './members';
 import { listOrganizationsForUser } from './projects';
 import { createTestDb } from './test-db';
@@ -120,5 +121,15 @@ describe('invitations', () => {
 		await auth.api.cancelInvitation({ body: { invitationId: created.id }, headers: ownerHeaders });
 		expect(await getOpenInvitation(db, created.id)).toBeNull();
 		expect(await listPendingInvitations(db, org.id)).toEqual([]);
+	});
+});
+
+describe('renameOrganization', () => {
+	it('changes the name members see', async () => {
+		const { db, owner, org } = await setup();
+		await renameOrganization(db, org.id, 'Acme Labs');
+		expect((await listOrganizationsForUser(db, owner.id)).map((o) => o.name)).toEqual([
+			'Acme Labs'
+		]);
 	});
 });

@@ -12,6 +12,11 @@ export async function getOrganizationForUser(db: Db, userId: string, organizatio
 	return row ?? null;
 }
 
+/** Only the display name changes; the slug stays put since nothing links by it. */
+export async function renameOrganization(db: Db, organizationId: string, name: string) {
+	await db.update(organizations).set({ name }).where(eq(organizations.id, organizationId));
+}
+
 export async function listMembers(db: Db, organizationId: string) {
 	return db
 		.select({
