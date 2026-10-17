@@ -1,5 +1,5 @@
 // Runs against a real ClickHouse when CLICKHOUSE_TEST_URL is set (CI's migrations job does), skipped otherwise.
-import { type FlagDefinition, parseFlag } from '@footprint/flags';
+import { type FlagDefinition, parseFlag } from '@tracemark/flags';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { CohortSpec } from '../cohorts';
 import type { ClickHouseConfig } from './clickhouse';

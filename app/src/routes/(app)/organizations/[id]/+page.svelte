@@ -36,7 +36,7 @@ async function copy(id: string, link: string) {
 </script>
 
 <svelte:head>
-	<title>Team · {data.organization.name} · footprint</title>
+	<title>Team · {data.organization.name} · Tracemark</title>
 </svelte:head>
 
 <div class="grid gap-6">

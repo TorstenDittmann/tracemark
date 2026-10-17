@@ -28,7 +28,7 @@ const actions = $derived(
 </script>
 
 <svelte:head>
-	<title>{issue?.type ?? 'Issue'} · {data.project.name} · footprint</title>
+	<title>{issue?.type ?? 'Issue'} · {data.project.name} · Tracemark</title>
 </svelte:head>
 
 <div class="grid gap-4">

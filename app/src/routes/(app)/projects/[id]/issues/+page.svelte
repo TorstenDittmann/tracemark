@@ -33,7 +33,7 @@ const rangeLabel = $derived(RANGES[data.range].label.toLowerCase());
 </script>
 
 <svelte:head>
-	<title>Issues · {data.project.name} · footprint</title>
+	<title>Issues · {data.project.name} · Tracemark</title>
 </svelte:head>
 
 <div class="grid gap-4">

@@ -25,7 +25,7 @@ const traceHref = (traceId: string) =>
 </script>
 
 <svelte:head>
-	<title>AI traces · {data.project.name} · footprint</title>
+	<title>AI traces · {data.project.name} · Tracemark</title>
 </svelte:head>
 
 <div class="grid gap-4">

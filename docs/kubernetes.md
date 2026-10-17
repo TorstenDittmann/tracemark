@@ -1,13 +1,13 @@
 # Kubernetes
 
-The Helm chart in `deploy/helm/footprint` runs the same three services as `docker compose`: the app,
+The Helm chart in `deploy/helm/tracemark` runs the same three services as `docker compose`: the app,
 the ingest service and a single-node ClickHouse, behind one Ingress.
 
 ## Install
 
 ```sh
-helm install footprint ./deploy/helm/footprint \
-  --namespace footprint --create-namespace \
+helm install tracemark ./deploy/helm/tracemark \
+  --namespace tracemark --create-namespace \
   --set publicUrl=https://analytics.example.com \
   --set ingress.host=analytics.example.com \
   --set ingress.className=nginx
@@ -20,7 +20,7 @@ keeps them in a Secret named after the release, so upgrades reuse them. To manag
 create a Secret with the keys `INTERNAL_TOKEN`, `AUTH_SECRET` and `CLICKHOUSE_PASSWORD` and set
 `existingSecret` and `clickhouse.existingSecret` to its name.
 
-The chart pulls `ghcr.io/torstendittmann/footprint-app` and `footprint-ingest` at the chart's
+The chart pulls `ghcr.io/torstendittmann/tracemark-app` and `tracemark-ingest` at the chart's
 `appVersion`. Images are published for each version tag; set `app.image.tag` and
 `ingest.image.tag` to pin another one.
 
@@ -50,11 +50,11 @@ healthy before draining ingest nodes.
 To use ClickHouse Cloud or your own cluster, create the database user and point the chart at it:
 
 ```sh
-helm install footprint ./deploy/helm/footprint \
+helm install tracemark ./deploy/helm/tracemark \
   --set publicUrl=https://analytics.example.com \
   --set clickhouse.enabled=false \
   --set clickhouse.external.url=https://abc123.eu-central-1.aws.clickhouse.cloud:8443 \
-  --set clickhouse.user=footprint \
+  --set clickhouse.user=tracemark \
   --set clickhouse.password=…
 ```
 
@@ -74,4 +74,4 @@ ingest:
     file: dbip-city-lite.mmdb
 ```
 
-Every value is documented in `deploy/helm/footprint/values.yaml`.
+Every value is documented in `deploy/helm/tracemark/values.yaml`.

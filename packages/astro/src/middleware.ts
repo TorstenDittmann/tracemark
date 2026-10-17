@@ -1,14 +1,14 @@
-// Astro middleware: a footprint scope per request as `Astro.locals.footprint`, and error capture.
-import type { Footprint, FootprintScope } from '@footprint/node';
+// Astro middleware: a tracemark scope per request as `Astro.locals.tracemark`, and error capture.
+import type { Tracemark, TracemarkScope } from '@tracemark/node';
 
 /** The parts of Astro's `APIContext` used here. */
-export interface FootprintContext {
+export interface TracemarkContext {
 	request: Request;
 	url: URL;
 	locals: object;
 }
 
-export interface MiddlewareOptions<Context extends FootprintContext = FootprintContext> {
+export interface MiddlewareOptions<Context extends TracemarkContext = TracemarkContext> {
 	/**
 	 * Who made the request, such as your signed-in user's id. Defaults to the id the browser SDK
 	 * stored in its cookie (`persistence: 'cookie'`).
@@ -19,11 +19,11 @@ export interface MiddlewareOptions<Context extends FootprintContext = FootprintC
 }
 
 /**
- * `export const onRequest = footprintMiddleware(footprint)` in `src/middleware.ts` (or inside
- * `sequence()`). Pages and endpoints read the request's scope as `Astro.locals.footprint`.
+ * `export const onRequest = tracemarkMiddleware(tracemark)` in `src/middleware.ts` (or inside
+ * `sequence()`). Pages and endpoints read the request's scope as `Astro.locals.tracemark`.
  */
-export function footprintMiddleware<Context extends FootprintContext>(
-	client: Footprint,
+export function tracemarkMiddleware<Context extends TracemarkContext>(
+	client: Tracemark,
 	options: MiddlewareOptions<Context> = {}
 ) {
 	return async (context: Context, next: () => Promise<Response>): Promise<Response> => {
@@ -37,7 +37,7 @@ export function footprintMiddleware<Context extends FootprintContext>(
 			$current_url: context.url.href,
 			$request_method: context.request.method
 		};
-		(context.locals as { footprint?: FootprintScope }).footprint = client.scope(distinctId, {
+		(context.locals as { tracemark?: TracemarkScope }).tracemark = client.scope(distinctId, {
 			properties
 		});
 		try {
@@ -60,10 +60,10 @@ export function footprintMiddleware<Context extends FootprintContext>(
  * Every flag for the request's person, for a page that hands them to client code. Undefined for a
  * request without a distinct id.
  */
-export async function flagsBootstrap(context: Pick<FootprintContext, 'locals'>) {
-	const scope = (context.locals as { footprint?: FootprintScope }).footprint;
+export async function flagsBootstrap(context: Pick<TracemarkContext, 'locals'>) {
+	const scope = (context.locals as { tracemark?: TracemarkScope }).tracemark;
 	if (!scope?.distinctId) return undefined;
 	return scope.getAllFlagsAndPayloads();
 }
 
-export type { FootprintScope };
+export type { TracemarkScope };

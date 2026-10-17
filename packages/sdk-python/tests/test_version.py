@@ -7,7 +7,7 @@ import unittest
 
 from _support import PACKAGE
 
-import footprint
+import tracemark
 
 
 class VersionTest(unittest.TestCase):
@@ -15,8 +15,8 @@ class VersionTest(unittest.TestCase):
         text = (PACKAGE / "pyproject.toml").read_text(encoding="utf-8")
         match = re.search(r'^version = "([^"]+)"', text, re.M)
         assert match is not None
-        self.assertEqual(footprint.VERSION, match.group(1))
-        self.assertEqual(footprint.__version__, match.group(1))
+        self.assertEqual(tracemark.VERSION, match.group(1))
+        self.assertEqual(tracemark.__version__, match.group(1))
 
 
 if __name__ == "__main__":

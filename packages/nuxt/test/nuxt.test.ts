@@ -1,17 +1,17 @@
-import { Footprint, type FootprintScope } from '@footprint/node';
+import { Tracemark, type TracemarkScope } from '@tracemark/node';
 import { H3, HTTPError } from 'h3';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-	type FootprintEvent,
 	flagsBootstrap,
-	footprintErrorHook,
-	footprintMiddleware
+	type TracemarkEvent,
+	tracemarkErrorHook,
+	tracemarkMiddleware
 } from '../src';
 
-const HOST = 'https://footprint.example.com';
+const HOST = 'https://tracemark.example.com';
 const COOKIE = `fp_fp_pub_test=${encodeURIComponent(JSON.stringify({ id: 'visitor-1', sid: 's' }))}`;
 
-const clients: Footprint[] = [];
+const clients: Tracemark[] = [];
 afterEach(async () => {
 	await Promise.all(clients.splice(0).map((c) => c.shutdown()));
 });
@@ -25,7 +25,7 @@ function server() {
 			return Response.json({ flags: { beta: true }, payloads: { beta: { v: 1 } } });
 		return Response.json({});
 	});
-	const client = new Footprint({
+	const client = new Tracemark({
 		apiKey: 'fp_pub_test',
 		host: HOST,
 		fetch: fetch as unknown as typeof globalThis.fetch
@@ -45,11 +45,11 @@ const exceptions = (events: Record<string, unknown>[]) =>
 describe('nuxt server helpers', () => {
 	it('scope requests, bootstrap flags and capture errors with h3 2', async () => {
 		const { client, events } = server();
-		const hook = footprintErrorHook(client);
+		const hook = tracemarkErrorHook(client);
 		const app = new H3({ onError: (error, event) => hook(error, { event }) });
-		app.use(footprintMiddleware(client));
+		app.use(tracemarkMiddleware(client));
 		app.get('/flags', async (event) => ({ bootstrap: (await flagsBootstrap(event)) ?? null }));
-		app.get('/me', (event) => (event.context.footprint as FootprintScope).distinctId ?? 'nobody');
+		app.get('/me', (event) => (event.context.tracemark as TracemarkScope).distinctId ?? 'nobody');
 		app.get('/boom', () => {
 			throw new Error('kaput');
 		});
@@ -83,16 +83,16 @@ describe('nuxt server helpers', () => {
 
 	it('read h3 1 events and a distinct id callback', async () => {
 		const { client } = server();
-		const event: FootprintEvent = {
+		const event: TracemarkEvent = {
 			context: {},
 			path: '/pricing?plan=pro',
 			method: 'POST',
 			headers: new Headers({ host: 'shop.test', 'x-forwarded-proto': 'https', 'x-user': 'ada' })
 		};
-		footprintMiddleware(client, { distinctId: (e) => e.headers?.get('x-user') ?? undefined })(
+		tracemarkMiddleware(client, { distinctId: (e) => e.headers?.get('x-user') ?? undefined })(
 			event
 		);
-		const scope = event.context.footprint as FootprintScope;
+		const scope = event.context.tracemark as TracemarkScope;
 		expect(scope.distinctId).toBe('ada');
 		expect(await flagsBootstrap(event)).toEqual({
 			flags: { beta: true },

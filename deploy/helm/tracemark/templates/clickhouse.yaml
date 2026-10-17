@@ -1,28 +1,28 @@
 {{- if .Values.clickhouse.enabled }}
-{{- $fullname := include "footprint.fullname" . -}}
+{{- $fullname := include "tracemark.fullname" . -}}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: {{ $fullname }}-clickhouse
   labels:
-    {{- include "footprint.labels" . | nindent 4 }}
+    {{- include "tracemark.labels" . | nindent 4 }}
     app.kubernetes.io/component: clickhouse
 spec:
   serviceName: {{ $fullname }}-clickhouse
   replicas: 1
   selector:
     matchLabels:
-      {{- include "footprint.selector" (dict "ctx" . "component" "clickhouse") | nindent 6 }}
+      {{- include "tracemark.selector" (dict "ctx" . "component" "clickhouse") | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "footprint.selector" (dict "ctx" . "component" "clickhouse") | nindent 8 }}
+        {{- include "tracemark.selector" (dict "ctx" . "component" "clickhouse") | nindent 8 }}
       annotations:
         checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
     spec:
       containers:
         - name: clickhouse
-          image: {{ include "footprint.image" (dict "ctx" . "image" .Values.clickhouse.image) }}
+          image: {{ include "tracemark.image" (dict "ctx" . "image" .Values.clickhouse.image) }}
           imagePullPolicy: {{ .Values.clickhouse.image.pullPolicy }}
           ports:
             - name: http
@@ -33,7 +33,7 @@ spec:
             - name: CLICKHOUSE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "footprint.clickhouseSecretName" . }}
+                  name: {{ include "tracemark.clickhouseSecretName" . }}
                   key: CLICKHOUSE_PASSWORD
             - name: CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT
               value: "1"
@@ -80,10 +80,10 @@ kind: Service
 metadata:
   name: {{ $fullname }}-clickhouse
   labels:
-    {{- include "footprint.labels" . | nindent 4 }}
+    {{- include "tracemark.labels" . | nindent 4 }}
 spec:
   selector:
-    {{- include "footprint.selector" (dict "ctx" . "component" "clickhouse") | nindent 4 }}
+    {{- include "tracemark.selector" (dict "ctx" . "component" "clickhouse") | nindent 4 }}
   ports:
     - name: http
       port: 8123

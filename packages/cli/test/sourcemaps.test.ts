@@ -9,7 +9,7 @@ const MAP = '{"version":3,"sources":["a.ts"],"mappings":"AAAA"}';
 
 let dir: string;
 beforeEach(async () => {
-	dir = await mkdtemp(join(tmpdir(), 'footprint-cli-'));
+	dir = await mkdtemp(join(tmpdir(), 'tracemark-cli-'));
 	await mkdir(join(dir, 'assets/chunks'), { recursive: true });
 	await mkdir(join(dir, 'node_modules/x'), { recursive: true });
 	// Named by its comment, in another folder.

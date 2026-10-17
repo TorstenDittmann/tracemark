@@ -1,5 +1,5 @@
 // Request parsing for the public flags API, see docs/flags-api.md.
-import type { FlagResult } from '@footprint/flags';
+import type { FlagResult } from '@tracemark/flags';
 import type { FlagRequest } from './flag-evaluation';
 
 export const MAX_BODY_BYTES = 64 * 1024;

@@ -1,15 +1,15 @@
-// SvelteKit server hooks: a footprint scope per request as `event.locals.footprint`, flags to
+// SvelteKit server hooks: a tracemark scope per request as `event.locals.tracemark`, flags to
 // bootstrap the browser with, and error capture.
-import type { Footprint, FootprintScope } from '@footprint/node';
+import type { Tracemark, TracemarkScope } from '@tracemark/node';
 
 /** The parts of SvelteKit's `RequestEvent` used here. */
-export interface FootprintEvent {
+export interface TracemarkEvent {
 	url: URL;
 	request: Request;
 	locals: object;
 }
 
-export interface HandleOptions<Event extends FootprintEvent = FootprintEvent> {
+export interface HandleOptions<Event extends TracemarkEvent = TracemarkEvent> {
 	/**
 	 * Who made the request, such as your signed-in user's id. Defaults to the id the browser SDK
 	 * stored in its cookie (`persistence: 'cookie'`).
@@ -17,9 +17,9 @@ export interface HandleOptions<Event extends FootprintEvent = FootprintEvent> {
 	distinctId?: (event: Event) => string | undefined;
 }
 
-const scopes = new WeakMap<object, FootprintScope>();
+const scopes = new WeakMap<object, TracemarkScope>();
 
-function scopeFor(client: Footprint, event: FootprintEvent, options: HandleOptions) {
+function scopeFor(client: Tracemark, event: TracemarkEvent, options: HandleOptions) {
 	let scope = scopes.get(event.locals);
 	if (!scope) {
 		let distinctId: string | undefined;
@@ -37,11 +37,11 @@ function scopeFor(client: Footprint, event: FootprintEvent, options: HandleOptio
 }
 
 /**
- * A `handle` hook that sets `event.locals.footprint` to the request's scope. Combine it with your
+ * A `handle` hook that sets `event.locals.tracemark` to the request's scope. Combine it with your
  * own hooks using `sequence()`.
  */
-export function footprintHandle<Event extends FootprintEvent>(
-	client: Footprint,
+export function tracemarkHandle<Event extends TracemarkEvent>(
+	client: Tracemark,
 	options: HandleOptions<Event> = {}
 ) {
 	return ({
@@ -51,7 +51,7 @@ export function footprintHandle<Event extends FootprintEvent>(
 		event: Event;
 		resolve: (event: Event) => Response | Promise<Response>;
 	}) => {
-		(event.locals as { footprint?: FootprintScope }).footprint = scopeFor(
+		(event.locals as { tracemark?: TracemarkScope }).tracemark = scopeFor(
 			client,
 			event,
 			options as HandleOptions
@@ -81,10 +81,10 @@ export const unexpected = (input: CaughtError) =>
  * A `handleError` hook that captures unexpected server errors, then returns what `then` returns,
  * so you can still shape the error page.
  */
-export function footprintHandleError<
-	Input extends CaughtError & { event: FootprintEvent },
+export function tracemarkHandleError<
+	Input extends CaughtError & { event: TracemarkEvent },
 	Result = void
->(client: Footprint, then?: (input: Input) => Result) {
+>(client: Tracemark, then?: (input: Input) => Result) {
 	return (input: Input): Result => {
 		if (unexpected(input)) {
 			const scope = scopeFor(client, input.event, {});
@@ -107,10 +107,10 @@ export function footprintHandleError<
  * Every flag for the request's person, for a root `+layout.server.ts` to pass to the browser's
  * `createFlags({ bootstrap })`. Undefined for a request without a distinct id.
  */
-export async function flagsBootstrap(event: FootprintEvent) {
-	const scope = (event.locals as { footprint?: FootprintScope }).footprint;
+export async function flagsBootstrap(event: TracemarkEvent) {
+	const scope = (event.locals as { tracemark?: TracemarkScope }).tracemark;
 	if (!scope?.distinctId) return undefined;
 	return scope.getAllFlagsAndPayloads();
 }
 
-export type { FootprintScope };
+export type { TracemarkScope };

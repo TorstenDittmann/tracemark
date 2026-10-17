@@ -12,7 +12,7 @@ let { data, form }: PageProps = $props();
 </script>
 
 <svelte:head>
-	<title>Dashboards · {data.project.name} · footprint</title>
+	<title>Dashboards · {data.project.name} · Tracemark</title>
 </svelte:head>
 
 <div class="grid gap-6">

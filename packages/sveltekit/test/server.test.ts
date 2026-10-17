@@ -1,15 +1,16 @@
 // @vitest-environment node
-import type { WireEvent } from '@footprint/browser';
-import { Footprint } from '@footprint/node';
+
 import type { RequestEvent } from '@sveltejs/kit';
 import type { Handle, HandleServerError } from '@sveltejs/kit/hooks';
+import type { WireEvent } from '@tracemark/browser';
+import { Tracemark } from '@tracemark/node';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { flagsBootstrap, footprintHandle, footprintHandleError } from '../src/server';
+import { flagsBootstrap, tracemarkHandle, tracemarkHandleError } from '../src/server';
 
-const HOST = 'https://footprint.example.com';
+const HOST = 'https://tracemark.example.com';
 const COOKIE = `fp_fp_pub_test=${encodeURIComponent(JSON.stringify({ id: 'visitor-1', sid: 's' }))}`;
 
-const clients: Footprint[] = [];
+const clients: Tracemark[] = [];
 afterEach(async () => {
 	await Promise.all(clients.splice(0).map((c) => c.shutdown()));
 });
@@ -23,7 +24,7 @@ function server() {
 			return Response.json({ flags: { beta: true }, payloads: { beta: { v: 1 } } });
 		return Response.json({});
 	});
-	const client = new Footprint({
+	const client = new Tracemark({
 		apiKey: 'fp_pub_test',
 		host: HOST,
 		fetch: fetch as unknown as typeof globalThis.fetch
@@ -42,13 +43,13 @@ const event = (path: string, cookie?: string) =>
 	}) as unknown as RequestEvent;
 
 const scopeOf = (e: RequestEvent) =>
-	(e.locals as { footprint?: { distinctId?: string } }).footprint;
+	(e.locals as { tracemark?: { distinctId?: string } }).tracemark;
 
 describe('server hooks', () => {
 	it('fit SvelteKit hook types', () => {
 		const { client } = server();
-		const handle: Handle = footprintHandle(client);
-		const handleError: HandleServerError = footprintHandleError(client, () => ({
+		const handle: Handle = tracemarkHandle(client);
+		const handleError: HandleServerError = tracemarkHandleError(client, () => ({
 			message: 'Something broke'
 		}));
 		expect([typeof handle, typeof handleError]).toEqual(['function', 'function']);
@@ -56,7 +57,7 @@ describe('server hooks', () => {
 
 	it('gives each request its visitor scope and bootstraps their flags', async () => {
 		const { client } = server();
-		const handle = footprintHandle(client);
+		const handle = tracemarkHandle(client);
 		const e = event('/pricing', COOKIE);
 		await handle({ event: e, resolve: async () => new Response('ok') });
 		expect(scopeOf(e)?.distinctId).toBe('visitor-1');
@@ -73,7 +74,7 @@ describe('server hooks', () => {
 	it('takes the distinct id from a callback', async () => {
 		const { client } = server();
 		const e = event('/');
-		await footprintHandle(client, { distinctId: () => 'user-7' })({
+		await tracemarkHandle(client, { distinctId: () => 'user-7' })({
 			event: e,
 			resolve: async () => new Response('ok')
 		});
@@ -82,7 +83,7 @@ describe('server hooks', () => {
 
 	it('captures unexpected errors only, in SvelteKit 3 and 2', async () => {
 		const { client, events } = server();
-		const handleError = footprintHandleError(client, () => ({ message: 'oh no' }));
+		const handleError = tracemarkHandleError(client, () => ({ message: 'oh no' }));
 		const cart = event('/cart', COOKIE);
 		// SvelteKit 3
 		expect(handleError({ kind: 'unknown', error: new Error('db down'), event: cart })).toEqual({

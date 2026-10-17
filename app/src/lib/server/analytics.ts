@@ -1,4 +1,4 @@
-import { evaluateAll } from '@footprint/flags';
+import { evaluateAll } from '@tracemark/flags';
 import {
 	CLICKHOUSE_DATABASE,
 	CLICKHOUSE_PASSWORD,

@@ -1,8 +1,8 @@
-// Vue 3 bindings for the footprint browser SDK: a plugin that sets up the client, its flags and
+// Vue 3 bindings for the tracemark browser SDK: a plugin that sets up the client, its flags and
 // error capture, and composables that update when flags change.
-import { type Config, type FootprintClient, footprint } from '@footprint/browser';
-import type { Errors } from '@footprint/browser/errors';
-import type { Flags, FlagValue } from '@footprint/browser/flags';
+import { type Config, type TracemarkClient, tracemark } from '@tracemark/browser';
+import type { Errors } from '@tracemark/browser/errors';
+import type { Flags, FlagValue } from '@tracemark/browser/flags';
 import {
 	type App,
 	type ComputedRef,
@@ -17,17 +17,17 @@ import {
 	shallowRef
 } from 'vue';
 
-interface FootprintContext {
-	client: FootprintClient;
+interface TracemarkContext {
+	client: TracemarkClient;
 	flags?: Flags;
 	errors?: Errors;
 }
 
-const KEY: InjectionKey<FootprintContext> = Symbol('footprint');
+const KEY: InjectionKey<TracemarkContext> = Symbol('tracemark');
 
-export interface FootprintPluginOptions {
-	/** The client to use. Defaults to the SDK's default `footprint` client. */
-	client?: FootprintClient;
+export interface TracemarkPluginOptions {
+	/** The client to use. Defaults to the SDK's default `tracemark` client. */
+	client?: TracemarkClient;
 	/** Initializes the client in the browser if it isn't yet. */
 	options?: Config;
 	/** The flags plugin from `createFlags()`; added to the client. */
@@ -40,11 +40,11 @@ export interface FootprintPluginOptions {
 }
 
 /**
- * `app.use(createFootprint({ options, flags, errors }))`. Setup only runs in the browser, so the
+ * `app.use(createTracemark({ options, flags, errors }))`. Setup only runs in the browser, so the
  * same plugin works with server rendering.
  */
-export function createFootprint(setup: FootprintPluginOptions = {}) {
-	const { client = footprint, options, flags, errors } = setup;
+export function createTracemark(setup: TracemarkPluginOptions = {}) {
+	const { client = tracemark, options, flags, errors } = setup;
 	return {
 		install(app: App) {
 			app.provide(KEY, { client, flags, errors });
@@ -68,25 +68,25 @@ export function createFootprint(setup: FootprintPluginOptions = {}) {
 	};
 }
 
-function context(): FootprintContext {
-	return inject(KEY, { client: footprint });
+function context(): TracemarkContext {
+	return inject(KEY, { client: tracemark });
 }
 
-/** The footprint client, for `capture`, `identify` and friends. */
-export function useFootprint(): FootprintClient {
+/** The tracemark client, for `capture`, `identify` and friends. */
+export function useTracemark(): TracemarkClient {
 	return context().client;
 }
 
-/** The errors plugin passed to `createFootprint`, if any. */
+/** The errors plugin passed to `createTracemark`, if any. */
 export function useErrors(): Errors | undefined {
 	return context().errors;
 }
 
-/** The flags plugin passed to `createFootprint`. */
+/** The flags plugin passed to `createTracemark`. */
 export function useFlags(): Flags {
 	const { flags } = context();
 	if (!flags)
-		throw new Error('[footprint] pass `flags` to createFootprint() to use flag composables');
+		throw new Error('[tracemark] pass `flags` to createTracemark() to use flag composables');
 	return flags;
 }
 
@@ -135,6 +135,6 @@ export function useFeatureFlagPayload<T = unknown>(key: string): ComputedRef<T |
 	);
 }
 
-export type { Config, FootprintClient } from '@footprint/browser';
-export type { Errors, ErrorsOptions } from '@footprint/browser/errors';
-export type { Flags, FlagsOptions, FlagsSnapshot, FlagValue } from '@footprint/browser/flags';
+export type { Config, TracemarkClient } from '@tracemark/browser';
+export type { Errors, ErrorsOptions } from '@tracemark/browser/errors';
+export type { Flags, FlagsOptions, FlagsSnapshot, FlagValue } from '@tracemark/browser/flags';

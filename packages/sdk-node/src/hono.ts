@@ -1,5 +1,5 @@
-// Hono middleware: a per-request footprint scope as `getFootprint(c)`, and error capture.
-import type { Footprint, FootprintScope } from './index';
+// Hono middleware: a per-request tracemark scope as `getTracemark(c)`, and error capture.
+import type { Tracemark, TracemarkScope } from './index';
 import { type RequestOptions, requestScope } from './request';
 
 /** The parts of Hono's `Context` used here. */
@@ -13,10 +13,10 @@ export interface HonoContext {
 export type HonoOptions = RequestOptions<HonoContext>;
 
 /**
- * `app.use(footprint(client))`. Handlers read the request's scope with `getFootprint(c)`;
+ * `app.use(tracemark(client))`. Handlers read the request's scope with `getTracemark(c)`;
  * errors a handler throws are captured with the request's URL and person.
  */
-export function footprint(client: Footprint, options: HonoOptions = {}) {
+export function tracemark(client: Tracemark, options: HonoOptions = {}) {
 	return async (c: HonoContext, next: () => Promise<void>): Promise<void> => {
 		const { scope, fail } = requestScope(
 			client,
@@ -25,7 +25,7 @@ export function footprint(client: Footprint, options: HonoOptions = {}) {
 			options,
 			'hono'
 		);
-		c.set('footprint', scope);
+		c.set('tracemark', scope);
 		try {
 			await next();
 		} catch (error) {
@@ -37,9 +37,9 @@ export function footprint(client: Footprint, options: HonoOptions = {}) {
 	};
 }
 
-/** The scope `footprint()` attached to this request. */
-export function getFootprint(c: Pick<HonoContext, 'get'>): FootprintScope {
-	const scope = c.get('footprint') as FootprintScope | undefined;
-	if (!scope) throw new Error('footprint middleware is not installed for this route');
+/** The scope `tracemark()` attached to this request. */
+export function getTracemark(c: Pick<HonoContext, 'get'>): TracemarkScope {
+	const scope = c.get('tracemark') as TracemarkScope | undefined;
+	if (!scope) throw new Error('tracemark middleware is not installed for this route');
 	return scope;
 }

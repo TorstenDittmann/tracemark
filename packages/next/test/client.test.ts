@@ -1,21 +1,21 @@
-import { createClient, type FootprintClient, type WireEvent } from '@footprint/browser';
-import { createErrors } from '@footprint/browser/errors';
-import { useFeatureFlag } from '@footprint/react';
+import { createClient, type TracemarkClient, type WireEvent } from '@tracemark/browser';
+import { createErrors } from '@tracemark/browser/errors';
+import { useFeatureFlag } from '@tracemark/react';
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { FootprintNextProvider, useCaptureException } from '../src/index';
+import { TracemarkNextProvider, useCaptureException } from '../src/index';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-const HOST = 'https://footprint.example.com';
+const HOST = 'https://tracemark.example.com';
 const options = { apiKey: 'fp_pub_test', host: HOST, autocapturePageviews: false };
 
 let events: WireEvent[];
 let answer: unknown;
 let root: Root;
 let container: HTMLElement;
-const clients: FootprintClient[] = [];
+const clients: TracemarkClient[] = [];
 
 beforeEach(() => {
 	events = [];
@@ -54,14 +54,14 @@ function Beta() {
 	return createElement('p', null, String(useFeatureFlag('beta')));
 }
 
-describe('FootprintNextProvider', () => {
+describe('TracemarkNextProvider', () => {
 	it('keeps the visitor in a cookie, shows bootstrapped flags and identifies', async () => {
 		const c = client();
 		answer = new Promise(() => {});
 		await act(async () =>
 			root.render(
 				createElement(
-					FootprintNextProvider,
+					TracemarkNextProvider,
 					{ client: c, options, bootstrap: { flags: { beta: 'a' } }, distinctId: 'user-7' },
 					createElement(Beta)
 				)
@@ -83,7 +83,7 @@ describe('FootprintNextProvider', () => {
 		await act(async () =>
 			root.render(
 				createElement(
-					FootprintNextProvider,
+					TracemarkNextProvider,
 					{ client: c, options, flags: false },
 					createElement(ErrorPage, { error })
 				)

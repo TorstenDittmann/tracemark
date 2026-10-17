@@ -1,5 +1,5 @@
 // Shared by the framework middleware: who a request is from and what to attach to its errors.
-import type { Footprint, FootprintScope, Properties } from './index';
+import type { Properties, Tracemark, TracemarkScope } from './index';
 
 export interface RequestOptions<Request> {
 	/**
@@ -18,13 +18,13 @@ export interface RequestInfo {
 }
 
 export interface RequestScope {
-	scope: FootprintScope;
+	scope: TracemarkScope;
 	/** Captures an error that escaped the request's handlers. */
 	fail(error: unknown): void;
 }
 
 export function requestScope<Request>(
-	client: Footprint,
+	client: Tracemark,
 	request: Request,
 	info: RequestInfo,
 	options: RequestOptions<Request>,

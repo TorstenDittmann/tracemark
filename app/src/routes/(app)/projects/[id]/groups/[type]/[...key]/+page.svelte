@@ -20,7 +20,7 @@ function display(value: unknown): string {
 </script>
 
 <svelte:head>
-	<title>{name || 'Group'} · {data.project.name} · footprint</title>
+	<title>{name || 'Group'} · {data.project.name} · Tracemark</title>
 </svelte:head>
 
 <div class="grid gap-6">

@@ -21,7 +21,7 @@ function pageHref(before: string | null): string {
 </script>
 
 <svelte:head>
-	<title>People · {data.project.name} · footprint</title>
+	<title>People · {data.project.name} · Tracemark</title>
 </svelte:head>
 
 <div class="grid gap-4">

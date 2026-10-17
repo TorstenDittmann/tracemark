@@ -32,7 +32,7 @@ function period(experiment: (typeof data.experiments)[number]): string {
 </script>
 
 <svelte:head>
-	<title>Experiments · {data.project.name} · footprint</title>
+	<title>Experiments · {data.project.name} · Tracemark</title>
 </svelte:head>
 
 <div class="grid gap-4">

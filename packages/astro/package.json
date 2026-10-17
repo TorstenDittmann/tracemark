@@ -1,7 +1,7 @@
 {
-	"name": "@footprint/astro",
+	"name": "@tracemark/astro",
 	"version": "0.0.0",
-	"description": "Astro integration for footprint: the browser SDK on every page, and server middleware",
+	"description": "Astro integration for tracemark: the browser SDK on every page, and server middleware",
 	"license": "MIT",
 	"type": "module",
 	"sideEffects": false,
@@ -27,17 +27,17 @@
 		"typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json"
 	},
 	"peerDependencies": {
-		"@footprint/browser": "*",
-		"@footprint/node": "*"
+		"@tracemark/browser": "*",
+		"@tracemark/node": "*"
 	},
 	"peerDependenciesMeta": {
-		"@footprint/node": {
+		"@tracemark/node": {
 			"optional": true
 		}
 	},
 	"devDependencies": {
-		"@footprint/browser": "workspace:*",
-		"@footprint/node": "workspace:*",
+		"@tracemark/browser": "workspace:*",
+		"@tracemark/node": "workspace:*",
 		"@types/node": "22.20.3",
 		"happy-dom": "20.14.5",
 		"tsdown": "0.23.0",

@@ -122,7 +122,7 @@ const metrics: { key: Metric; label: string }[] = [
 </script>
 
 <svelte:head>
-	<title>Web analytics · {data.project.name} · footprint</title>
+	<title>Web analytics · {data.project.name} · Tracemark</title>
 </svelte:head>
 
 <div class="grid gap-6">

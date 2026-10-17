@@ -37,7 +37,7 @@ const tracesHref = (person?: string) => {
 </script>
 
 <svelte:head>
-	<title>AI · {data.project.name} · footprint</title>
+	<title>AI · {data.project.name} · Tracemark</title>
 </svelte:head>
 
 <div class="grid gap-6">

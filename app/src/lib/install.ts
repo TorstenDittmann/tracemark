@@ -21,20 +21,20 @@ export const PLATFORMS: Platform[] = [
 		code: (
 			key,
 			host
-		) => `<script src="https://unpkg.com/@footprint/browser/dist/footprint.iife.js"></script>
+		) => `<script src="https://unpkg.com/@tracemark/browser/dist/tracemark.iife.js"></script>
 <script>
-  footprint.init({ apiKey: '${key}', host: '${host}' });
+  tracemark.init({ apiKey: '${key}', host: '${host}' });
 </script>`
 	},
 	{
 		id: 'js',
 		label: 'JavaScript',
-		install: 'npm install @footprint/browser',
+		install: 'npm install @tracemark/browser',
 		language: 'ts',
 		hint: 'Initialize once on page load. Page views are captured automatically.',
-		code: (key, host) => `import { footprint } from '@footprint/browser';
+		code: (key, host) => `import { tracemark } from '@tracemark/browser';
 
-footprint.init({
+tracemark.init({
   apiKey: '${key}',
   host: '${host}',
   // cookieless: true, // store nothing on visitors' devices
@@ -43,33 +43,33 @@ footprint.init({
 	{
 		id: 'react',
 		label: 'React',
-		install: 'npm install @footprint/browser @footprint/react',
+		install: 'npm install @tracemark/browser @tracemark/react',
 		language: 'tsx',
 		hint: 'Wrap your app once. Hooks like useFeatureFlag work anywhere inside.',
-		code: (key, host) => `import { footprint } from '@footprint/browser';
-import { FootprintProvider } from '@footprint/react';
+		code: (key, host) => `import { tracemark } from '@tracemark/browser';
+import { TracemarkProvider } from '@tracemark/react';
 
 export function App() {
   return (
-    <FootprintProvider
-      client={footprint}
+    <TracemarkProvider
+      client={tracemark}
       options={{ apiKey: '${key}', host: '${host}' }}
     >
       <Routes />
-    </FootprintProvider>
+    </TracemarkProvider>
   );
 }`
 	},
 	{
 		id: 'vue',
 		label: 'Vue',
-		install: 'npm install @footprint/browser @footprint/vue',
+		install: 'npm install @tracemark/browser @tracemark/vue',
 		language: 'ts',
 		hint: 'Install the plugin in main.ts.',
-		code: (key, host) => `import { createFootprint } from '@footprint/vue';
+		code: (key, host) => `import { createTracemark } from '@tracemark/vue';
 
 app.use(
-  createFootprint({
+  createTracemark({
     options: { apiKey: '${key}', host: '${host}' }
   })
 );`
@@ -77,26 +77,26 @@ app.use(
 	{
 		id: 'node',
 		label: 'Node.js',
-		install: 'npm install @footprint/node',
+		install: 'npm install @tracemark/node',
 		language: 'ts',
 		hint: 'Create one client per process and call shutdown() before it exits.',
-		code: (key, host) => `import { Footprint } from '@footprint/node';
+		code: (key, host) => `import { Tracemark } from '@tracemark/node';
 
-const footprint = new Footprint({ apiKey: '${key}', host: '${host}' });
+const tracemark = new Tracemark({ apiKey: '${key}', host: '${host}' });
 
-footprint.capture({ distinctId: 'user_123', event: 'signed_up' });`
+tracemark.capture({ distinctId: 'user_123', event: 'signed_up' });`
 	},
 	{
 		id: 'python',
 		label: 'Python',
-		install: 'pip install footprint-sdk',
+		install: 'pip install tracemark-sdk',
 		language: 'python',
 		hint: 'Events are sent in batches in the background.',
-		code: (key, host) => `from footprint import Footprint
+		code: (key, host) => `from tracemark import Tracemark
 
-footprint = Footprint("${key}", host="${host}")
+tracemark = Tracemark("${key}", host="${host}")
 
-footprint.capture("user_123", "signed_up")`
+tracemark.capture("user_123", "signed_up")`
 	},
 	{
 		id: 'go',
@@ -104,7 +104,7 @@ footprint.capture("user_123", "signed_up")`
 		install: 'go get github.com/TorstenDittmann/footprint/packages/sdk-go',
 		language: 'go',
 		hint: 'Close the client before your program exits so queued events are sent.',
-		code: (key, host) => `client, err := footprint.New(footprint.Config{
+		code: (key, host) => `client, err := tracemark.New(tracemark.Config{
 	APIKey: "${key}",
 	Host:   "${host}",
 })
@@ -113,7 +113,7 @@ if err != nil {
 }
 defer client.Close(context.Background())
 
-client.Capture(footprint.Event{DistinctID: "user_123", Event: "signed_up"})`
+client.Capture(tracemark.Event{DistinctID: "user_123", Event: "signed_up"})`
 	},
 	{
 		id: 'curl',

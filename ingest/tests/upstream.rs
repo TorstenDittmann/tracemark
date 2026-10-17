@@ -10,13 +10,13 @@ use axum::Router;
 use axum::extract::{RawQuery, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::routing::{get, post};
-use footprint_ingest::keys::{self, KeySource, KeyStore, Lookup};
-use footprint_ingest::protocol::Row;
-use footprint_ingest::writer::{self, ClickHouse, WriterSettings, spill_files};
 use reqwest::Url;
 use serde_json::{Value, json};
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
+use tracemark_ingest::keys::{self, KeySource, KeyStore, Lookup};
+use tracemark_ingest::protocol::Row;
+use tracemark_ingest::writer::{self, ClickHouse, WriterSettings, spill_files};
 use uuid::Uuid;
 
 #[derive(Debug, Clone)]
@@ -99,7 +99,7 @@ async fn mock_clickhouse() -> (Mock, Url) {
 fn temp_dir() -> PathBuf {
     static NEXT: AtomicUsize = AtomicUsize::new(0);
     let n = NEXT.fetch_add(1, Ordering::SeqCst);
-    std::env::temp_dir().join(format!("footprint-ingest-{}-{n}", std::process::id()))
+    std::env::temp_dir().join(format!("tracemark-ingest-{}-{n}", std::process::id()))
 }
 
 fn start_writer(
@@ -111,7 +111,7 @@ fn start_writer(
     let clickhouse = ClickHouse::new(
         reqwest::Client::new(),
         url,
-        "footprint",
+        "tracemark",
         "default",
         "secret",
     );
@@ -139,7 +139,7 @@ fn row(n: u128) -> Row {
         "person": {"set": {"plan": "pro"}},
         "groups": {"company": "acme"}
     });
-    footprint_ingest::protocol::validate_batch(&[event], Uuid::from_u128(0xabc), None)
+    tracemark_ingest::protocol::validate_batch(&[event], Uuid::from_u128(0xabc), None)
         .unwrap()
         .remove(0)
 }
@@ -166,7 +166,7 @@ async fn flushes_json_each_row_with_settings_and_auth() {
     let request = &mock.requests()[0];
     let expected_params: HashMap<String, String> = [
         ("query", "INSERT INTO events FORMAT JSONEachRow"),
-        ("database", "footprint"),
+        ("database", "tracemark"),
         ("date_time_input_format", "best_effort"),
         ("async_insert", "1"),
         ("wait_for_async_insert", "1"),

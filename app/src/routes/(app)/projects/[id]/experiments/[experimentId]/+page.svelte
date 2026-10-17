@@ -30,7 +30,7 @@ const exposed = $derived(data.results?.exposures.reduce((sum, e) => sum + e.peop
 </script>
 
 <svelte:head>
-	<title>{experiment.name} · {data.project.name} · footprint</title>
+	<title>{experiment.name} · {data.project.name} · Tracemark</title>
 </svelte:head>
 
 <datalist id="experiment-events">

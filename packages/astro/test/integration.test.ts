@@ -1,16 +1,16 @@
 // @vitest-environment happy-dom
-import * as sdk from '@footprint/browser';
-import * as errorsEntry from '@footprint/browser/errors';
+import * as sdk from '@tracemark/browser';
+import * as errorsEntry from '@tracemark/browser/errors';
 import { describe, expect, it, vi } from 'vitest';
 import integration, { pageScript } from '../src/index';
 
-const HOST = 'https://footprint.example.com';
+const HOST = 'https://tracemark.example.com';
 
 /** Runs a page script with its imports resolved to the SDK sources. */
 function run(code: string) {
 	const modules: Record<string, unknown> = {
-		'@footprint/browser': sdk,
-		'@footprint/browser/errors': errorsEntry
+		'@tracemark/browser': sdk,
+		'@tracemark/browser/errors': errorsEntry
 	};
 	const body = code.replace(
 		/^import \{ (\w+) \} from '([^']+)';$/gm,
@@ -28,7 +28,7 @@ describe('astro integration', () => {
 			persistence: 'cookie',
 			errors: { release: '1.2.3' }
 		});
-		expect(added.name).toBe('@footprint/astro');
+		expect(added.name).toBe('@tracemark/astro');
 		added.hooks['astro:config:setup']({
 			injectScript: (stage, content) => scripts.push([stage, content])
 		});
@@ -41,11 +41,11 @@ describe('astro integration', () => {
 			vi.fn(async () => ({ ok: true, status: 202, json: async () => ({}) }))
 		);
 		run(scripts[0]?.[1] ?? '');
-		expect(sdk.footprint.config).toMatchObject({
+		expect(sdk.tracemark.config).toMatchObject({
 			apiKey: 'fp_pub_test',
 			host: HOST,
 			persistence: 'cookie'
 		});
-		sdk.footprint.destroy();
+		sdk.tracemark.destroy();
 	});
 });

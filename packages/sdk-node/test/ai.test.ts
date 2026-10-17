@@ -3,20 +3,20 @@ import { generateText, streamText, wrapLanguageModel } from 'ai';
 import { MockLanguageModelV4 } from 'ai/test';
 import OpenAI from 'openai';
 import { afterEach, describe, expect, it } from 'vitest';
-import { Footprint } from '../src';
+import { Tracemark } from '../src';
 import { createAi } from '../src/ai';
 
-const HOST = 'https://footprint.example.com';
+const HOST = 'https://tracemark.example.com';
 type Event = { event: string; distinct_id: string; properties: Record<string, unknown> };
 
-const clients: Footprint[] = [];
+const clients: Tracemark[] = [];
 afterEach(async () => {
 	await Promise.all(clients.splice(0).map((c) => c.shutdown()));
 });
 
-function footprint() {
+function tracemark() {
 	const events: Event[] = [];
-	const client = new Footprint({
+	const client = new Tracemark({
 		apiKey: 'fp_pub_test',
 		host: HOST,
 		fetch: (async (_url: string, init: RequestInit = {}) => {
@@ -107,7 +107,7 @@ const anthropicStream = [
 describe('Anthropic', () => {
 	function anthropic(respond: Parameters<typeof provider>[0]) {
 		const api = provider(respond);
-		const fp = footprint();
+		const fp = tracemark();
 		const ai = createAi(fp.client, { properties: { app: 'docs' } });
 		const client = ai.wrapAnthropic(
 			new Anthropic({ apiKey: 'sk-test', fetch: api.fetch, maxRetries: 0 })
@@ -283,7 +283,7 @@ describe('Anthropic', () => {
 describe('OpenAI', () => {
 	function openai(respond: Parameters<typeof provider>[0]) {
 		const api = provider(respond);
-		const fp = footprint();
+		const fp = tracemark();
 		const client = createAi(fp.client).wrapOpenAI(
 			new OpenAI({ apiKey: 'sk-test', fetch: api.fetch, maxRetries: 0 })
 		);
@@ -442,7 +442,7 @@ describe('Vercel AI SDK', () => {
 	};
 
 	function model() {
-		const fp = footprint();
+		const fp = tracemark();
 		const ai = createAi(fp.client);
 		const wrapped = wrapLanguageModel({
 			model: new MockLanguageModelV4({

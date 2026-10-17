@@ -1,7 +1,7 @@
-// Astro integration: adds the footprint browser SDK to every page, with error capture if asked.
-import type { Config } from '@footprint/browser';
+// Astro integration: adds the tracemark browser SDK to every page, with error capture if asked.
+import type { Config } from '@tracemark/browser';
 
-export interface FootprintAstroOptions extends Config {
+export interface TracemarkAstroOptions extends Config {
 	/**
 	 * Capture uncaught browser errors with the errors plugin. `true`, or the plugin's options.
 	 * Default `false`.
@@ -20,28 +20,28 @@ export interface AstroIntegration {
 }
 
 /** The module every page loads: the SDK set up with `options`. Exported for tests. */
-export function pageScript(options: FootprintAstroOptions): string {
+export function pageScript(options: TracemarkAstroOptions): string {
 	const { errors, ...config } = options;
 	const lines = [
-		`import { footprint } from '@footprint/browser';`,
-		`footprint.init(${JSON.stringify(config)});`
+		`import { tracemark } from '@tracemark/browser';`,
+		`tracemark.init(${JSON.stringify(config)});`
 	];
 	if (errors) {
 		lines.push(
-			`import { createErrors } from '@footprint/browser/errors';`,
-			`footprint.use(createErrors(${JSON.stringify(errors === true ? {} : errors)}));`
+			`import { createErrors } from '@tracemark/browser/errors';`,
+			`tracemark.use(createErrors(${JSON.stringify(errors === true ? {} : errors)}));`
 		);
 	}
 	return lines.join('\n');
 }
 
 /**
- * `integrations: [footprint({ apiKey, host })]` in `astro.config.mjs`. Page views are captured on
+ * `integrations: [tracemark({ apiKey, host })]` in `astro.config.mjs`. Page views are captured on
  * load and on client-side navigations, including view transitions.
  */
-export default function footprint(options: FootprintAstroOptions): AstroIntegration {
+export default function tracemark(options: TracemarkAstroOptions): AstroIntegration {
 	return {
-		name: '@footprint/astro',
+		name: '@tracemark/astro',
 		hooks: {
 			'astro:config:setup': ({ injectScript }) => {
 				injectScript('page', pageScript(options));
@@ -50,4 +50,4 @@ export default function footprint(options: FootprintAstroOptions): AstroIntegrat
 	};
 }
 
-export { footprint };
+export { tracemark };

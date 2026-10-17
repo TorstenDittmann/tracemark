@@ -1,6 +1,6 @@
 // Next.js App Router server side: the visitor's scope from cookies, flags to bootstrap the
 // browser with, and `onRequestError` for instrumentation.ts.
-import type { Footprint, FootprintScope } from '@footprint/node';
+import type { Tracemark, TracemarkScope } from '@tracemark/node';
 
 /** What `cookies()` from `next/headers` returns, or a request's `cookies`. */
 export interface CookieStore {
@@ -15,22 +15,22 @@ const header = (cookies: CookieStore) =>
 
 /**
  * The visitor's scope, from the cookie the browser SDK keeps, or `distinctId` when you know who
- * is signed in: `footprintScope(client, await cookies())`.
+ * is signed in: `tracemarkScope(client, await cookies())`.
  */
-export function footprintScope(
-	client: Footprint,
+export function tracemarkScope(
+	client: Tracemark,
 	cookies: CookieStore,
 	distinctId?: string
-): FootprintScope {
+): TracemarkScope {
 	return client.scope(distinctId ?? client.distinctIdFromCookie(header(cookies)));
 }
 
 /**
- * Every flag for the visitor, for `<FootprintNextProvider bootstrap={…}>` in your root layout, so
+ * Every flag for the visitor, for `<TracemarkNextProvider bootstrap={…}>` in your root layout, so
  * the first render already shows the right variant. Undefined for a first-time visitor.
  */
-export async function flagsBootstrap(client: Footprint, cookies: CookieStore, distinctId?: string) {
-	const scope = footprintScope(client, cookies, distinctId);
+export async function flagsBootstrap(client: Tracemark, cookies: CookieStore, distinctId?: string) {
+	const scope = tracemarkScope(client, cookies, distinctId);
 	if (!scope.distinctId) return undefined;
 	return scope.getAllFlagsAndPayloads();
 }
@@ -53,7 +53,7 @@ export interface RequestErrorContext {
  * `export const onRequestError = createOnRequestError(client)` in `instrumentation.ts` captures
  * errors from server components, route handlers, server actions and middleware.
  */
-export function createOnRequestError(client: Footprint) {
+export function createOnRequestError(client: Tracemark) {
 	return async (error: unknown, request: RequestErrorInfo, context: RequestErrorContext = {}) => {
 		const cookie = request.headers.cookie;
 		client.captureException(error, {

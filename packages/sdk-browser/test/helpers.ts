@@ -1,5 +1,5 @@
 import { afterEach, vi } from 'vitest';
-import { type Config, createClient, type FootprintClient, type WireEvent } from '../src/client';
+import { type Config, createClient, type TracemarkClient, type WireEvent } from '../src/client';
 
 export const API_KEY = 'fp_pub_test';
 export const HOST = 'https://ingest.example.com';
@@ -26,9 +26,9 @@ export function sentEvents(f: ReturnType<typeof mockFetch>): WireEvent[] {
 	return bodies(f).flatMap((b) => b.batch);
 }
 
-const clients: FootprintClient[] = [];
+const clients: TracemarkClient[] = [];
 
-export function make(config: Partial<Config> = {}): FootprintClient {
+export function make(config: Partial<Config> = {}): TracemarkClient {
 	const c = createClient({ apiKey: API_KEY, host: HOST, autocapturePageviews: false, ...config });
 	clients.push(c);
 	return c;

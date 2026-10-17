@@ -47,13 +47,13 @@ export interface WireEvent {
 
 export interface Plugin {
 	name: string;
-	setup(client: FootprintClient): void;
+	setup(client: TracemarkClient): void;
 	/** Called after `init`, and when the distinct id or groups change. */
 	changed?(reason: 'init' | 'identity' | 'groups'): void;
 }
 
-export interface FootprintClient {
-	init(config: Config): FootprintClient;
+export interface TracemarkClient {
+	init(config: Config): TracemarkClient;
 	capture(event: string, properties?: Properties): void;
 	identify(distinctId: string, person?: PersonProperties): void;
 	group(type: string, key: string, properties?: Properties): void;
@@ -67,7 +67,7 @@ export interface FootprintClient {
 	getSessionId(): string | undefined;
 	/** Group type to key, as set by `group()`. */
 	getGroups(): Record<string, string>;
-	use(plugin: Plugin): FootprintClient;
+	use(plugin: Plugin): TracemarkClient;
 	/** Remove listeners, restore history methods and stop timers. Queued events are discarded. */
 	destroy(): void;
 	/** The resolved config, or `undefined` before `init`. For plugins. */
@@ -103,7 +103,7 @@ const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 class RetryableError extends Error {}
 
-export function createClient(config?: Config): FootprintClient {
+export function createClient(config?: Config): TracemarkClient {
 	let cfg: Required<Config> | undefined;
 	let store: Store;
 	let key = '';
@@ -120,13 +120,13 @@ export function createClient(config?: Config): FootprintClient {
 			try {
 				plugin.changed?.(reason);
 			} catch (e) {
-				console.warn(`[footprint] plugin ${plugin.name} failed`, e);
+				console.warn(`[tracemark] plugin ${plugin.name} failed`, e);
 			}
 		}
 	};
 
 	const log = (...args: unknown[]) => {
-		if (cfg?.debug) console.log('[footprint]', ...args);
+		if (cfg?.debug) console.log('[tracemark]', ...args);
 	};
 
 	const save = () => store.set(key, JSON.stringify(state));
@@ -344,7 +344,7 @@ export function createClient(config?: Config): FootprintClient {
 		return { id, anon: true, sid: uuidv7(now), ss: now, la: now, groups: {}, out };
 	};
 
-	const client: FootprintClient = {
+	const client: TracemarkClient = {
 		get config() {
 			return cfg;
 		},
@@ -356,7 +356,7 @@ export function createClient(config?: Config): FootprintClient {
 				return client;
 			}
 			if (!c?.apiKey || !c.host) {
-				console.warn('[footprint] init requires apiKey and host');
+				console.warn('[tracemark] init requires apiKey and host');
 				return client;
 			}
 			cfg = {
@@ -495,7 +495,7 @@ export function createClient(config?: Config): FootprintClient {
 			try {
 				plugin.setup(client);
 			} catch (e) {
-				console.warn(`[footprint] plugin ${plugin.name} failed`, e);
+				console.warn(`[tracemark] plugin ${plugin.name} failed`, e);
 			}
 			return client;
 		}

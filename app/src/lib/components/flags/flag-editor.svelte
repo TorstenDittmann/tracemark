@@ -8,7 +8,7 @@ import {
 	MAX_VARIANTS,
 	type Operator,
 	parseFlag
-} from '@footprint/flags';
+} from '@tracemark/flags';
 import { selectClass } from '#lib/components/insights/editor.svelte.js';
 import { Button } from '#lib/components/ui/button/index.js';
 import * as Card from '#lib/components/ui/card/index.js';

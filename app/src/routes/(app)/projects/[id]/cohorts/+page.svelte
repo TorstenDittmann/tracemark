@@ -15,7 +15,7 @@ const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' });
 </script>
 
 <svelte:head>
-	<title>Cohorts · {data.project.name} · footprint</title>
+	<title>Cohorts · {data.project.name} · Tracemark</title>
 </svelte:head>
 
 <div class="grid gap-4">

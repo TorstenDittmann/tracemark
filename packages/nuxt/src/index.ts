@@ -1,10 +1,10 @@
-// Nuxt server helpers: a footprint scope per request as `event.context.footprint`, flags to
+// Nuxt server helpers: a tracemark scope per request as `event.context.tracemark`, flags to
 // bootstrap the browser with, and error capture through Nitro's `error` hook.
-// In the browser, use `@footprint/vue` (see docs/frameworks.md).
-import type { Footprint, FootprintScope } from '@footprint/node';
+// In the browser, use `@tracemark/vue` (see docs/frameworks.md).
+import type { Tracemark, TracemarkScope } from '@tracemark/node';
 
 /** The parts of an h3 event used here, in h3 1 (Nuxt 3 and 4) and h3 2. */
-export interface FootprintEvent {
+export interface TracemarkEvent {
 	context: Record<string, unknown>;
 	/** h3 2. */
 	url?: URL;
@@ -15,7 +15,7 @@ export interface FootprintEvent {
 	headers?: Headers;
 }
 
-export interface MiddlewareOptions<Event extends FootprintEvent = FootprintEvent> {
+export interface MiddlewareOptions<Event extends TracemarkEvent = TracemarkEvent> {
 	/**
 	 * Who made the request, such as your signed-in user's id. Defaults to the id the browser SDK
 	 * stored in its cookie (`persistence: 'cookie'`).
@@ -23,11 +23,11 @@ export interface MiddlewareOptions<Event extends FootprintEvent = FootprintEvent
 	distinctId?: (event: Event) => string | undefined;
 }
 
-function headersOf(event: FootprintEvent): Headers | undefined {
+function headersOf(event: TracemarkEvent): Headers | undefined {
 	return event.req?.headers ?? event.headers;
 }
 
-function urlOf(event: FootprintEvent): string {
+function urlOf(event: TracemarkEvent): string {
 	if (event.url) return event.url.href;
 	const headers = headersOf(event);
 	const host = headers?.get('x-forwarded-host') ?? headers?.get('host');
@@ -37,10 +37,10 @@ function urlOf(event: FootprintEvent): string {
 	return `${protocol}://${host}${path}`;
 }
 
-const methodOf = (event: FootprintEvent) => event.req?.method ?? event.method ?? 'GET';
+const methodOf = (event: TracemarkEvent) => event.req?.method ?? event.method ?? 'GET';
 
-function scopeFor(client: Footprint, event: FootprintEvent, options: MiddlewareOptions) {
-	const existing = event.context.footprint as FootprintScope | undefined;
+function scopeFor(client: Tracemark, event: TracemarkEvent, options: MiddlewareOptions) {
+	const existing = event.context.tracemark as TracemarkScope | undefined;
 	if (existing) return existing;
 	let distinctId: string | undefined;
 	try {
@@ -51,17 +51,17 @@ function scopeFor(client: Footprint, event: FootprintEvent, options: MiddlewareO
 	const scope = client.scope(distinctId, {
 		properties: { $current_url: urlOf(event), $request_method: methodOf(event) }
 	});
-	event.context.footprint = scope;
+	event.context.tracemark = scope;
 	return scope;
 }
 
 /**
- * Server middleware that sets `event.context.footprint` to the request's scope:
- * `export default defineEventHandler(footprintMiddleware(footprint))` in
- * `server/middleware/footprint.ts`.
+ * Server middleware that sets `event.context.tracemark` to the request's scope:
+ * `export default defineEventHandler(tracemarkMiddleware(tracemark))` in
+ * `server/middleware/tracemark.ts`.
  */
-export function footprintMiddleware<Event extends FootprintEvent>(
-	client: Footprint,
+export function tracemarkMiddleware<Event extends TracemarkEvent>(
+	client: Tracemark,
 	options: MiddlewareOptions<Event> = {}
 ) {
 	return (event: Event): void => {
@@ -78,11 +78,11 @@ function unexpected(error: unknown): boolean {
 
 /**
  * A handler for Nitro's `error` hook that captures unexpected server errors (not 4xx), with the
- * request's URL and person: `nitroApp.hooks.hook('error', footprintErrorHook(footprint))` in a
+ * request's URL and person: `nitroApp.hooks.hook('error', tracemarkErrorHook(tracemark))` in a
  * Nitro plugin.
  */
-export function footprintErrorHook(client: Footprint) {
-	return (error: unknown, context: { event?: FootprintEvent } = {}): void => {
+export function tracemarkErrorHook(client: Tracemark) {
+	return (error: unknown, context: { event?: TracemarkEvent } = {}): void => {
 		if (!unexpected(error)) return;
 		// h3 wraps thrown errors; the original is its `cause`.
 		const original = (error as { cause?: unknown } | null)?.cause ?? error;
@@ -101,10 +101,10 @@ export function footprintErrorHook(client: Footprint) {
  * Every flag for the request's person, to hand to the browser's `createFlags({ bootstrap })`
  * through `useState`. Undefined for a request without a distinct id.
  */
-export async function flagsBootstrap(event: FootprintEvent | undefined) {
-	const scope = event?.context.footprint as FootprintScope | undefined;
+export async function flagsBootstrap(event: TracemarkEvent | undefined) {
+	const scope = event?.context.tracemark as TracemarkScope | undefined;
 	if (!scope?.distinctId) return undefined;
 	return scope.getAllFlagsAndPayloads();
 }
 
-export type { FootprintScope };
+export type { TracemarkScope };

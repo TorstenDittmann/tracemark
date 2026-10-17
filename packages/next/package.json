@@ -1,7 +1,7 @@
 {
-	"name": "@footprint/next",
+	"name": "@tracemark/next",
 	"version": "0.0.0",
-	"description": "Next.js App Router helpers for footprint: provider, server flag bootstrap and error capture",
+	"description": "Next.js App Router helpers for tracemark: provider, server flag bootstrap and error capture",
 	"license": "MIT",
 	"type": "module",
 	"sideEffects": false,
@@ -27,15 +27,15 @@
 		"typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json"
 	},
 	"peerDependencies": {
-		"@footprint/browser": "*",
-		"@footprint/node": "*",
-		"@footprint/react": "*",
+		"@tracemark/browser": "*",
+		"@tracemark/node": "*",
+		"@tracemark/react": "*",
 		"react": "^18.0.0 || ^19.0.0"
 	},
 	"devDependencies": {
-		"@footprint/browser": "workspace:*",
-		"@footprint/node": "workspace:*",
-		"@footprint/react": "workspace:*",
+		"@tracemark/browser": "workspace:*",
+		"@tracemark/node": "workspace:*",
+		"@tracemark/react": "workspace:*",
 		"@types/node": "22.20.3",
 		"@types/react": "19.2.2",
 		"@types/react-dom": "19.2.2",

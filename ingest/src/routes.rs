@@ -143,7 +143,7 @@ async fn ingest(
 
 /// OTLP/HTTP trace export: spans from LLM instrumentation become `$ai_*` events (see
 /// docs/ai.md). The project's public key comes as `Authorization: Bearer fp_pub_…`, an
-/// `x-footprint-api-key` header or an `api_key` query parameter.
+/// `x-tracemark-api-key` header or an `api_key` query parameter.
 async fn traces(
     State(state): State<AppState>,
     Query(query): Query<KeyQuery>,
@@ -157,7 +157,7 @@ async fn traces(
             .map(str::trim)
             .filter(|v| !v.is_empty())
     };
-    let api_key = header("x-footprint-api-key")
+    let api_key = header("x-tracemark-api-key")
         .or_else(|| header(AUTHORIZATION.as_str())?.strip_prefix("Bearer "))
         .map(str::trim)
         .map(str::to_owned)

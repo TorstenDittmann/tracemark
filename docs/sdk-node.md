@@ -1,28 +1,28 @@
 # Node SDK
 
-`@footprint/node` sends events from servers and evaluates feature flags. It runs on Node 20+, Bun, Deno and edge runtimes, and has no dependencies.
+`@tracemark/node` sends events from servers and evaluates feature flags. It runs on Node 20+, Bun, Deno and edge runtimes, and has no dependencies.
 
 ```ts
-import { Footprint } from '@footprint/node';
+import { Tracemark } from '@tracemark/node';
 
-const footprint = new Footprint({
+const tracemark = new Tracemark({
   apiKey: 'fp_pub_…',
-  host: 'https://footprint.example.com',
+  host: 'https://tracemark.example.com',
   // Optional: evaluate flags in-process instead of asking the server each time.
-  secretKey: process.env.FOOTPRINT_SECRET_KEY
+  secretKey: process.env.TRACEMARK_SECRET_KEY
 });
 
-footprint.capture({ distinctId: 'user_123', event: 'invoice_paid', properties: { amount: 49 } });
-footprint.identify({ distinctId: 'user_123', set: { plan: 'pro' } });
-footprint.alias({ distinctId: 'user_123', alias: anonymousIdFromTheBrowser });
-footprint.groupIdentify({ groupType: 'company', groupKey: 'acme', properties: { seats: 40 } });
+tracemark.capture({ distinctId: 'user_123', event: 'invoice_paid', properties: { amount: 49 } });
+tracemark.identify({ distinctId: 'user_123', set: { plan: 'pro' } });
+tracemark.alias({ distinctId: 'user_123', alias: anonymousIdFromTheBrowser });
+tracemark.groupIdentify({ groupType: 'company', groupKey: 'acme', properties: { seats: 40 } });
 
-if (await footprint.isEnabled('new-checkout', 'user_123', { personProperties: { plan: 'pro' } })) {
+if (await tracemark.isEnabled('new-checkout', 'user_123', { personProperties: { plan: 'pro' } })) {
   // …
 }
 
 // Before the process exits:
-await footprint.shutdown();
+await tracemark.shutdown();
 ```
 
 ## Events
@@ -32,7 +32,7 @@ await footprint.shutdown();
 - A batch the server can't take (network error, 5xx, 429) stays queued for the next flush.
 - A batch the server rejects (4xx) is dropped and reported to `onError`.
 - The queue keeps at most `maxQueueSize` events (10,000), dropping the oldest.
-- Every event carries `$lib: "footprint-node"` and `$lib_version`.
+- Every event carries `$lib: "tracemark-node"` and `$lib_version`.
 
 ## Flags
 
@@ -49,5 +49,5 @@ await footprint.shutdown();
 
 ## AI
 
-`@footprint/node/ai` records LLM calls made through the Anthropic and OpenAI SDKs and the Vercel AI
+`@tracemark/node/ai` records LLM calls made through the Anthropic and OpenAI SDKs and the Vercel AI
 SDK, and groups them into traces. See [ai.md](ai.md#node-sdk).

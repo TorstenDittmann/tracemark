@@ -7,13 +7,13 @@ go get github.com/TorstenDittmann/footprint/packages/sdk-go
 ```
 
 ```go
-import footprint "github.com/TorstenDittmann/footprint/packages/sdk-go"
+import tracemark "github.com/TorstenDittmann/footprint/packages/sdk-go"
 
-client, err := footprint.New(footprint.Config{
+client, err := tracemark.New(tracemark.Config{
 	APIKey: "fp_pub_…",
-	Host:   "https://footprint.example.com",
+	Host:   "https://tracemark.example.com",
 	// Optional: evaluate flags in-process instead of asking the server each time.
-	SecretKey: os.Getenv("FOOTPRINT_SECRET_KEY"),
+	SecretKey: os.Getenv("TRACEMARK_SECRET_KEY"),
 })
 if err != nil {
 	log.Fatal(err)
@@ -21,14 +21,14 @@ if err != nil {
 // Before the process exits:
 defer client.Close(context.Background())
 
-client.Capture(footprint.Event{DistinctID: "user_123", Event: "invoice_paid", Properties: footprint.Properties{"amount": 49}})
-client.Identify("user_123", footprint.Properties{"plan": "pro"}, nil)
+client.Capture(tracemark.Event{DistinctID: "user_123", Event: "invoice_paid", Properties: tracemark.Properties{"amount": 49}})
+client.Identify("user_123", tracemark.Properties{"plan": "pro"}, nil)
 client.Alias("user_123", anonymousIDFromTheBrowser)
-client.GroupIdentify("company", "acme", footprint.Properties{"seats": 40})
+client.GroupIdentify("company", "acme", tracemark.Properties{"seats": 40})
 
-on, err := client.IsFeatureEnabled(ctx, "new-checkout", footprint.FlagRequest{
+on, err := client.IsFeatureEnabled(ctx, "new-checkout", tracemark.FlagRequest{
 	DistinctID:       "user_123",
-	PersonProperties: footprint.Properties{"plan": "pro"},
+	PersonProperties: tracemark.Properties{"plan": "pro"},
 })
 ```
 
@@ -40,7 +40,7 @@ on, err := client.IsFeatureEnabled(ctx, "new-checkout", footprint.FlagRequest{
 - A batch the server rejects (any other 4xx) is dropped and logged as a warning to `Logger` (`slog.Default()`).
 - The queue keeps at most `MaxQueueSize` events (10,000), dropping the oldest.
 - `Capture` returns an error, and queues nothing, for an event ingest would reject: an empty or over-long id or name, more than 5 groups, a timestamp outside 1900–2299, or properties that don't encode to JSON. Properties are encoded right away, so you can reuse your maps.
-- Every event carries `$lib: "footprint-go"` and `$lib_version`.
+- Every event carries `$lib: "tracemark-go"` and `$lib_version`.
 - The client is safe for concurrent use. After `Close`, `Capture` returns `ErrClosed`.
 
 ## Flags
@@ -55,10 +55,10 @@ on, err := client.IsFeatureEnabled(ctx, "new-checkout", footprint.FlagRequest{
 - `OnlyLocal: true` skips the server; such flags come back off.
 
 ```go
-req := footprint.FlagRequest{
+req := tracemark.FlagRequest{
 	DistinctID:      "user_123",
 	Groups:          map[string]string{"company": "acme"},
-	GroupProperties: map[string]footprint.Properties{"company": {"seats": 40}},
+	GroupProperties: map[string]tracemark.Properties{"company": {"seats": 40}},
 }
 value, err := client.GetFeatureFlag(ctx, "pricing", req)        // false, true or a variant key
 payload, err := client.GetFeatureFlagPayload(ctx, "pricing", req) // decoded JSON, nil when off
@@ -73,7 +73,7 @@ A failed check returns the error with the flag off. `GetAllFlags` returns the fl
 ## Errors
 
 ```go
-client.CaptureException("user_123", err, footprint.Properties{"route": "/checkout"})
+client.CaptureException("user_123", err, tracemark.Properties{"route": "/checkout"})
 
 // Panics: captured as fatal, sent, then panicked again.
 defer client.CapturePanic("user_123")

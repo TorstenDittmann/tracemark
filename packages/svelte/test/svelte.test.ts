@@ -1,6 +1,6 @@
-import { createClient, type FootprintClient, type WireEvent } from '@footprint/browser';
-import { createErrors } from '@footprint/browser/errors';
-import { createFlags } from '@footprint/browser/flags';
+import { createClient, type TracemarkClient, type WireEvent } from '@tracemark/browser';
+import { createErrors } from '@tracemark/browser/errors';
+import { createFlags } from '@tracemark/browser/flags';
 import { get } from 'svelte/store';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -16,7 +16,7 @@ const options = { apiKey: 'fp_pub_test', host: HOST, autocapturePageviews: false
 
 let answer: unknown;
 let events: WireEvent[];
-const clients: FootprintClient[] = [];
+const clients: TracemarkClient[] = [];
 
 beforeEach(() => {
 	answer = { flags: { pricing: 'cheaper', beta: true }, payloads: { pricing: { price: 9 } } };

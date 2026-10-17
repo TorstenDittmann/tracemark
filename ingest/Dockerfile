@@ -16,14 +16,14 @@ COPY src ./src
 # Bump mtimes so cargo rebuilds the crate instead of reusing the stub.
 RUN touch src/main.rs src/lib.rs \
     && cargo build --release --locked \
-    && strip target/release/footprint-ingest \
+    && strip target/release/tracemark-ingest \
     && mkdir -p /out/spill
 
 FROM gcr.io/distroless/cc-debian12:nonroot
 WORKDIR /app
-COPY --from=builder /build/target/release/footprint-ingest /app/footprint-ingest
+COPY --from=builder /build/target/release/tracemark-ingest /app/tracemark-ingest
 COPY --from=builder --chown=nonroot:nonroot /out/spill /app/spill
 ENV PORT=8081 \
     SPILL_DIR=/app/spill
 EXPOSE 8081
-ENTRYPOINT ["/app/footprint-ingest"]
+ENTRYPOINT ["/app/tracemark-ingest"]
