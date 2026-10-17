@@ -8,9 +8,9 @@ use chrono::{DateTime, Utc};
 use common::{TEST_KEY, TEST_PROJECT, app, app_with_keys, drain, post, send};
 use flate2::Compression;
 use flate2::write::GzEncoder;
-use tracemark_ingest::keys::KeyStore;
 use serde_json::{Value, json};
 use tower::ServiceExt;
+use tracemark_ingest::keys::KeyStore;
 
 fn event(uuid: u128) -> Value {
     json!({

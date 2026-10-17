@@ -10,13 +10,13 @@ use axum::Router;
 use axum::extract::{RawQuery, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::routing::{get, post};
-use tracemark_ingest::keys::{self, KeySource, KeyStore, Lookup};
-use tracemark_ingest::protocol::Row;
-use tracemark_ingest::writer::{self, ClickHouse, WriterSettings, spill_files};
 use reqwest::Url;
 use serde_json::{Value, json};
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
+use tracemark_ingest::keys::{self, KeySource, KeyStore, Lookup};
+use tracemark_ingest::protocol::Row;
+use tracemark_ingest::writer::{self, ClickHouse, WriterSettings, spill_files};
 use uuid::Uuid;
 
 #[derive(Debug, Clone)]

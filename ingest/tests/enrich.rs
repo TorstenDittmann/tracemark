@@ -5,11 +5,11 @@ use std::net::{IpAddr, Ipv4Addr};
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use common::{TEST_KEY, app, app_with, drain, fake_keys, send};
-use tracemark_ingest::enrich::Enricher;
 use maxminddb_writer::Database;
 use maxminddb_writer::metadata::IpVersion;
 use maxminddb_writer::paths::IpAddrWithMask;
 use serde_json::{Map, Value, json};
+use tracemark_ingest::enrich::Enricher;
 
 const CHROME_MAC: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36";
 const SAFARI_IPHONE: &str = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1";
