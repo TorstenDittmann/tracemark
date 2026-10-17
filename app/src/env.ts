@@ -26,6 +26,11 @@ export const variables = defineEnvVars({
 		description: 'Secret that signs session cookies (openssl rand -hex 32). Required in production',
 		schema: optional('')
 	},
+	MODEL_PRICES_URL: {
+		description:
+			'Catalog the built-in model prices are refreshed from daily, in models.dev api.json format. off keeps the prices shipped with the app',
+		schema: optional('https://models.dev/api.json')
+	},
 	INTERNAL_TOKEN: {
 		description: 'Shared secret the ingest service sends in x-internal-token',
 		schema: optional('')

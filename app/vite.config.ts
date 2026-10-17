@@ -19,6 +19,8 @@ export default defineConfig({
 	test: {
 		expect: { requireAssertions: true },
 		environment: 'node',
+		// Tests use the bundled price snapshot instead of fetching models.dev.
+		env: { MODEL_PRICES_URL: 'off' },
 		include: ['src/**/*.{test,spec}.ts', 'scripts/**/*.{test,spec}.ts']
 	}
 });
