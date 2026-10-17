@@ -6,12 +6,12 @@ shows each issue with how often it happens and who it affects.
 ## Browser
 
 ```ts
-import { footprint } from '@footprint/browser';
-import { createErrors } from '@footprint/browser/errors';
+import { tracemark } from '@tracemark/browser';
+import { createErrors } from '@tracemark/browser/errors';
 
 const errors = createErrors({ release: '1.4.0' });
-footprint.init({ apiKey: 'fp_pub_…', host: 'https://footprint.example.com' });
-footprint.use(errors);
+tracemark.init({ apiKey: 'fp_pub_…', host: 'https://tracemark.example.com' });
+tracemark.use(errors);
 
 try {
   checkout();
@@ -28,18 +28,18 @@ The plugin captures errors nothing caught (`error` and `unhandledrejection` on `
 - `inApp(filename)`: which frames are your code. Defaults to scripts from the page's origin.
 
 Cross-origin "Script error." events are dropped, and the same error is captured at most five
-times per page so a loop can't flood your project. Script tag: `footprint-errors.iife.js`
-exposes `window.footprintErrors.createErrors`.
+times per page so a loop can't flood your project. Script tag: `tracemark-errors.iife.js`
+exposes `window.tracemarkErrors.createErrors`.
 
 ## Node
 
 ```ts
-const footprint = new Footprint({ apiKey, host, release: '1.4.0' });
+const tracemark = new Tracemark({ apiKey, host, release: '1.4.0' });
 
-footprint.captureException(error, { distinctId: user.id, properties: { route: '/checkout' } });
+tracemark.captureException(error, { distinctId: user.id, properties: { route: '/checkout' } });
 
 // Errors nothing caught: captured, sent, then the process exits with code 1 as it would anyway.
-footprint.captureUncaughtExceptions();
+tracemark.captureUncaughtExceptions();
 ```
 
 Without a `distinctId` an error is attributed to `$server`.
@@ -89,9 +89,9 @@ Upload your build's source maps and issue pages show the original file, line and
 source for minified frames. Use the project's secret key (Settings) in CI, after building:
 
 ```sh
-npx @footprint/cli sourcemaps upload ./dist \
-  --host https://footprint.example.com \
-  --secret-key "$FOOTPRINT_SECRET_KEY" \
+npx @tracemark/cli sourcemaps upload ./dist \
+  --host https://tracemark.example.com \
+  --secret-key "$TRACEMARK_SECRET_KEY" \
   --release "$GIT_SHA" \
   --delete-after
 ```

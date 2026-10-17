@@ -1,5 +1,5 @@
-import { type FlagDefinition, parseFlag } from '@footprint/flags';
 import { error, fail, type RequestEvent, redirect } from '@sveltejs/kit';
+import { type FlagDefinition, parseFlag } from '@tracemark/flags';
 import { flagsHref, MAX_DESCRIPTION, MAX_PAYLOAD_BYTES } from '#lib/flags.js';
 import { groupTypes, personPropertyNames } from '#lib/server/analytics.js';
 import { listCohorts } from '#lib/server/cohorts.js';

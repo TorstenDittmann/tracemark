@@ -1,7 +1,7 @@
 {
-	"name": "@footprint/flags",
+	"name": "@tracemark/flags",
 	"version": "0.0.0",
-	"description": "The feature flag evaluator shared by the footprint app and server SDKs",
+	"description": "The feature flag evaluator shared by the tracemark app and server SDKs",
 	"license": "MIT",
 	"private": true,
 	"type": "module",

@@ -6,9 +6,9 @@ import type { PageProps } from './$types';
 let { data }: PageProps = $props();
 let copied = $state<string | null>(null);
 
-const snippet = $derived(`import { footprint } from '@footprint/browser';
+const snippet = $derived(`import { tracemark } from '@tracemark/browser';
 
-footprint.init({
+tracemark.init({
 	apiKey: '${data.project.publicKey}',
 	host: '${data.host}'
 });`);
@@ -95,7 +95,7 @@ async function copy(label: string, text: string) {
 		<Card.Header>
 			<Card.Title>Install the browser SDK</Card.Title>
 			<Card.Description>
-				Add <code class="font-mono">@footprint/browser</code> with your package manager, then
+				Add <code class="font-mono">@tracemark/browser</code> with your package manager, then
 				initialize it once on page load. Page views are captured automatically. Add
 				<code class="font-mono">cookieless: true</code>
 				to store nothing on your visitors' devices; they are then counted by a hash that changes

@@ -1,5 +1,5 @@
-import { KEY } from '@footprint/flags';
 import { error, fail, redirect } from '@sveltejs/kit';
+import { KEY } from '@tracemark/flags';
 import { flagHref, MAX_DESCRIPTION } from '#lib/flags.js';
 import { getDb } from '#lib/server/db/index.js';
 import { createFlag, flagDefinition, flagKeyTaken, listFlags } from '#lib/server/flags.js';

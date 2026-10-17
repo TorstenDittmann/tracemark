@@ -1,11 +1,11 @@
-import { Footprint, type FootprintScope } from '@footprint/node';
+import { Tracemark, type TracemarkScope } from '@tracemark/node';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { flagsBootstrap, footprintMiddleware } from '../src/middleware';
+import { flagsBootstrap, tracemarkMiddleware } from '../src/middleware';
 
-const HOST = 'https://footprint.example.com';
+const HOST = 'https://tracemark.example.com';
 const COOKIE = `fp_fp_pub_test=${encodeURIComponent(JSON.stringify({ id: 'visitor-1', sid: 's' }))}`;
 
-const clients: Footprint[] = [];
+const clients: Tracemark[] = [];
 afterEach(async () => {
 	await Promise.all(clients.splice(0).map((c) => c.shutdown()));
 });
@@ -18,7 +18,7 @@ function server() {
 		if (url === `${HOST}/flags`) return Response.json({ flags: { beta: true }, payloads: {} });
 		return Response.json({});
 	});
-	const client = new Footprint({
+	const client = new Tracemark({
 		apiKey: 'fp_pub_test',
 		host: HOST,
 		fetch: fetch as unknown as typeof globalThis.fetch
@@ -30,16 +30,16 @@ function server() {
 const context = (path: string, cookie?: string) => ({
 	url: new URL(`https://shop.test${path}`),
 	request: new Request(`https://shop.test${path}`, { headers: cookie ? { cookie } : {} }),
-	locals: {} as { footprint?: FootprintScope }
+	locals: {} as { tracemark?: TracemarkScope }
 });
 
 describe('astro middleware', () => {
 	it('scopes requests and captures rendering errors', async () => {
 		const { client, events } = server();
-		const middleware = footprintMiddleware(client);
+		const middleware = tracemarkMiddleware(client);
 		const ok = context('/pricing', COOKIE);
 		await middleware(ok, async () => new Response('ok'));
-		expect(ok.locals.footprint?.distinctId).toBe('visitor-1');
+		expect(ok.locals.tracemark?.distinctId).toBe('visitor-1');
 		expect(await flagsBootstrap(ok)).toEqual({ flags: { beta: true }, payloads: {} });
 		const anonymous = context('/pricing');
 		await middleware(anonymous, async () => new Response('ok'));

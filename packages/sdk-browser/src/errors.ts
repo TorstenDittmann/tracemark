@@ -1,6 +1,6 @@
 // Error tracking plugin: captures `$exception` events for errors nothing caught, and for errors
 // passed to `captureException`. See docs/errors.md for the event's shape.
-import { exceptionList } from '@footprint/errors';
+import { exceptionList } from '@tracemark/errors';
 import type { Plugin } from './client';
 import type { Properties } from './properties';
 
@@ -33,7 +33,7 @@ const MAX_EARLY = 10;
 /** The same error captured more often than this on one page is dropped, so a loop can't flood. */
 const MAX_REPEATS = 5;
 
-/** Creates the errors plugin; pass it to `footprint.use()`. */
+/** Creates the errors plugin; pass it to `tracemark.use()`. */
 export function createErrors(options: ErrorsOptions = {}): Errors {
 	let capture: ((event: string, properties: Properties) => void) | undefined;
 	// A component can throw before the effect that adds the plugin runs; keep those few errors.

@@ -6,9 +6,9 @@ use std::sync::Arc;
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use common::{TEST_KEY, TEST_PROJECT, app, app_with_keys, drain, send};
-use footprint_ingest::ai::{Price, Prices};
-use footprint_ingest::keys::{KeyStore, Snapshot};
-use footprint_ingest::otlp::proto::{
+use tracemark_ingest::ai::{Price, Prices};
+use tracemark_ingest::keys::{KeyStore, Snapshot};
+use tracemark_ingest::otlp::proto::{
     AnyValue, ExportTraceServiceRequest, KeyValue, Resource, ResourceSpans, ScopeSpans, Span,
     Status, Value as V,
 };
@@ -255,7 +255,7 @@ async fn checks_the_key_and_the_body() {
     header_key.headers_mut().remove("authorization");
     header_key
         .headers_mut()
-        .insert("x-footprint-api-key", TEST_KEY.parse().unwrap());
+        .insert("x-tracemark-api-key", TEST_KEY.parse().unwrap());
     let (status, body) = send(&app, header_key).await;
     assert_eq!(status, StatusCode::OK);
     assert_eq!(body, json!({}));

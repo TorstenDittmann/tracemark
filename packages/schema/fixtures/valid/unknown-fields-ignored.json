@@ -1,6 +1,6 @@
 {
 	"api_key": "fp_pub_test",
-	"sdk": "footprint-js/0.1.0",
+	"sdk": "tracemark-js/0.1.0",
 	"batch": [
 		{
 			"uuid": "01927d0b-8c4a-7cc2-9f43-3c1b2b0e9a11",

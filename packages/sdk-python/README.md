@@ -1,28 +1,28 @@
-# footprint-sdk
+# tracemark-sdk
 
-Python server SDK for footprint, self-hosted product analytics. Sends events and evaluates feature flags. Python 3.9+, no dependencies.
+Python server SDK for tracemark, self-hosted product analytics. Sends events and evaluates feature flags. Python 3.9+, no dependencies.
 
 ```sh
-pip install footprint-sdk
+pip install tracemark-sdk
 ```
 
 ```python
-from footprint import Footprint
+from tracemark import Tracemark
 
-footprint = Footprint("fp_pub_…", host="https://footprint.example.com")
+tracemark = Tracemark("fp_pub_…", host="https://tracemark.example.com")
 
-footprint.capture("user_123", "invoice_paid", {"amount": 49})
-footprint.identify("user_123", set={"plan": "pro"})
+tracemark.capture("user_123", "invoice_paid", {"amount": 49})
+tracemark.identify("user_123", set={"plan": "pro"})
 
-if footprint.is_feature_enabled("new-checkout", "user_123"):
+if tracemark.is_feature_enabled("new-checkout", "user_123"):
     ...
 
 try:
     checkout()
 except Exception:
-    footprint.capture_exception(distinct_id="user_123")
+    tracemark.capture_exception(distinct_id="user_123")
 
-footprint.shutdown()  # also runs at exit
+tracemark.shutdown()  # also runs at exit
 ```
 
 Pass `secret_key="fp_sec_…"` to evaluate flags in-process; flags that need a cohort or a property you didn't pass are asked of the server.

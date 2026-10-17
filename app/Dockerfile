@@ -27,7 +27,7 @@ RUN lib=usr/lib/$(uname -m)-linux-gnu && mkdir -p /out/root/$lib /out/root/usr/b
 
 FROM oven/bun:1.4-distroless
 WORKDIR /srv/app
-ENV NODE_ENV=production DATABASE_URL=file:/data/footprint.db CLICKHOUSE_MIGRATIONS=/srv/clickhouse/migrations
+ENV NODE_ENV=production DATABASE_URL=file:/data/tracemark.db CLICKHOUSE_MIGRATIONS=/srv/clickhouse/migrations
 COPY app/docker/package.json ./
 COPY --from=build /out/root/ /
 COPY --from=build /out/node_modules ./node_modules

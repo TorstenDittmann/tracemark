@@ -1,4 +1,4 @@
-package footprint
+package tracemark
 
 import (
 	"context"
@@ -62,7 +62,7 @@ func TestSendsEventsInTheIngestWireFormat(t *testing.T) {
 		"event":       "purchase",
 		"distinct_id": "ada",
 		"timestamp":   "2026-10-16T12:00:00.000Z",
-		"properties":  map[string]any{"$lib": "footprint-go", "$lib_version": Version, "amount": 9},
+		"properties":  map[string]any{"$lib": "tracemark-go", "$lib_version": Version, "amount": 9},
 		"groups":      map[string]any{"company": "acme"},
 	}
 	if got, want := asJSON(t, events[0]), asJSON(t, wantPurchase); !reflect.DeepEqual(got, want) {
@@ -263,7 +263,7 @@ func TestCallerMayReuseMapsAfterCapture(t *testing.T) {
 	props["$lib"] = "mine"
 	flush(t, c)
 	got := s.events()[0]["properties"].(map[string]any)
-	if fmt.Sprint(got["step"]) != "1" || got["$lib"] != "footprint-go" {
+	if fmt.Sprint(got["step"]) != "1" || got["$lib"] != "tracemark-go" {
 		t.Errorf("properties = %v", got)
 	}
 	// Properties may override $lib, as in the Node SDK.

@@ -11,8 +11,8 @@ from typing import Any, List
 
 from _support import FakeServer, batch_errors, closed_port_url, fixtures
 
-from footprint import VERSION, Footprint
-from footprint._uuid import uuidv7
+from tracemark import VERSION, Tracemark
+from tracemark._uuid import uuidv7
 
 UUID7 = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}")
 
@@ -36,18 +36,18 @@ class SchemaRules(unittest.TestCase):
 class ClientTest(unittest.TestCase):
     def setUp(self) -> None:
         self.server = FakeServer()
-        self.clients: List[Footprint] = []
+        self.clients: List[Tracemark] = []
 
     def tearDown(self) -> None:
         for client in self.clients:
             client.shutdown()
         self.server.close()
 
-    def client(self, **options: Any) -> Footprint:
+    def client(self, **options: Any) -> Tracemark:
         settings: Any = {"flush_interval": 60.0, "retry_backoff": 0.01}
         settings.update(options)
         host = settings.pop("host", self.server.url)
-        client = Footprint("fp_pub_test", host + "/", **settings)
+        client = Tracemark("fp_pub_test", host + "/", **settings)
         self.clients.append(client)
         return client
 
@@ -89,7 +89,7 @@ class WireFormat(ClientTest):
         self.assertEqual(
             paid["properties"],
             {
-                "$lib": "footprint-python",
+                "$lib": "tracemark-python",
                 "$lib_version": VERSION,
                 "amount": 49,
                 "when": "2026-10-07T20:59:58.120Z",
@@ -144,7 +144,7 @@ class WireFormat(ClientTest):
     def test_skips_invalid_events_without_raising(self) -> None:
         errors: List[BaseException] = []
         fp = self.client(on_error=errors.append)
-        with self.assertLogs("footprint", logging.WARNING):
+        with self.assertLogs("tracemark", logging.WARNING):
             fp.capture("", "e")
             fp.capture("u", "")
             fp.capture("u", "x" * 201)
@@ -240,7 +240,7 @@ class Failures(ClientTest):
         errors: List[BaseException] = []
         fp = self.client(max_retries=2, on_error=errors.append)
         fp.capture("u", "a")
-        with self.assertLogs("footprint", logging.ERROR):
+        with self.assertLogs("tracemark", logging.ERROR):
             fp.flush()
         self.assertEqual(len(self.server.to("/e")), 3)
         self.assertEqual(len(errors), 1)
@@ -255,7 +255,7 @@ class Failures(ClientTest):
         errors: List[BaseException] = []
         fp = self.client(on_error=errors.append)
         fp.capture("u", "a")
-        with self.assertLogs("footprint", logging.WARNING) as logs:
+        with self.assertLogs("tracemark", logging.WARNING) as logs:
             fp.flush()
         self.assertIn("HTTP 400", "\n".join(logs.output))
         self.assertIn("invalid_batch", str(errors[0]))
@@ -268,7 +268,7 @@ class Failures(ClientTest):
         errors: List[BaseException] = []
         fp = self.client(host=closed_port_url(), max_retries=1, on_error=errors.append)
         fp.capture("u", "a")
-        with self.assertLogs("footprint", logging.ERROR):
+        with self.assertLogs("tracemark", logging.ERROR):
             fp.flush()
             fp.shutdown()
         self.assertGreaterEqual(len(errors), 1)
@@ -280,7 +280,7 @@ class Failures(ClientTest):
         self.server.script("/e", (401, {"error": "invalid_api_key"}))
         fp = self.client(on_error=explode)
         fp.capture("u", "a")
-        with self.assertLogs("footprint", logging.WARNING):
+        with self.assertLogs("tracemark", logging.WARNING):
             fp.flush()
 
 
@@ -297,16 +297,16 @@ class Lifecycle(ClientTest):
         self.assertFalse(fp._consumer.is_alive())
 
     def test_context_manager_shuts_down(self) -> None:
-        with Footprint("fp_pub_test", self.server.url, flush_interval=60) as fp:
+        with Tracemark("fp_pub_test", self.server.url, flush_interval=60) as fp:
             fp.capture("u", "a")
         self.assertEqual(len(self.server.events()), 1)
         self.assertTrue(fp._closed)
 
     def test_needs_api_key_and_host(self) -> None:
         with self.assertRaises(ValueError):
-            Footprint("", "http://x")
+            Tracemark("", "http://x")
         with self.assertRaises(ValueError):
-            Footprint("fp_pub_test", "")
+            Tracemark("fp_pub_test", "")
 
 
 if __name__ == "__main__":

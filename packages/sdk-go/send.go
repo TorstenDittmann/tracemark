@@ -1,4 +1,4 @@
-package footprint
+package tracemark
 
 import (
 	"bytes"
@@ -23,7 +23,7 @@ type rejectedError struct {
 }
 
 func (e *rejectedError) Error() string {
-	return fmt.Sprintf("footprint: events rejected with HTTP %d: %s", e.status, e.body)
+	return fmt.Sprintf("tracemark: events rejected with HTTP %d: %s", e.status, e.body)
 }
 
 // take removes the next batch from the front of the queue.
@@ -31,7 +31,7 @@ func (c *Client) take() []json.RawMessage {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.dropped > 0 {
-		c.logger.Warn("footprint: queue full, dropped the oldest events", "dropped", c.dropped)
+		c.logger.Warn("tracemark: queue full, dropped the oldest events", "dropped", c.dropped)
 		c.dropped = 0
 	}
 	n := min(len(c.queue), maxBatch)
@@ -63,7 +63,7 @@ func (c *Client) drain(ctx context.Context) error {
 		case err == nil:
 		case errors.As(err, &rejected):
 			// Sending it again would get the same answer.
-			c.logger.Warn("footprint: dropped a batch the server rejected",
+			c.logger.Warn("tracemark: dropped a batch the server rejected",
 				"status", rejected.status, "events", len(batch), "body", rejected.body)
 		default:
 			c.putBack(batch)
@@ -117,11 +117,11 @@ func (c *Client) sendBatch(ctx context.Context, batch []json.RawMessage) error {
 		var wait time.Duration
 		switch {
 		case err != nil:
-			err = fmt.Errorf("footprint: sending events: %w", err)
+			err = fmt.Errorf("tracemark: sending events: %w", err)
 		case res.status < 400:
 			return nil
 		case res.status >= 500 || res.status == http.StatusTooManyRequests:
-			err = fmt.Errorf("footprint: sending events failed with HTTP %d: %s", res.status, res.body)
+			err = fmt.Errorf("tracemark: sending events failed with HTTP %d: %s", res.status, res.body)
 			wait = retryAfter(res.header)
 		default:
 			return &rejectedError{res.status, string(res.body)}

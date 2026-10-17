@@ -1,5 +1,5 @@
 // Feature flag definitions in libSQL, with every saved state kept in `flag_versions`.
-import { type FlagDefinition, parseFlag } from '@footprint/flags';
+import { type FlagDefinition, parseFlag } from '@tracemark/flags';
 import { and, asc, desc, eq } from 'drizzle-orm';
 import type { Db } from './db/client';
 import { type FeatureFlag, featureFlags, flagVersions, users } from './db/schema';

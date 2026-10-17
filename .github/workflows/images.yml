@@ -16,10 +16,10 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: footprint-app
+          - name: tracemark-app
             context: .
             file: app/Dockerfile
-          - name: footprint-ingest
+          - name: tracemark-ingest
             context: ingest
             file: ingest/Dockerfile
     steps:

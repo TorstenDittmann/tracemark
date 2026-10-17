@@ -1,4 +1,4 @@
-package footprint
+package tracemark
 
 // A port of packages/flags (parse.ts and flags.ts). Every evaluator must pass the shared vectors
 // in packages/flags/vectors.json, so keep this in step with the TypeScript one.

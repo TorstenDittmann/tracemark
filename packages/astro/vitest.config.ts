@@ -6,12 +6,12 @@ const source = (path: string) => fileURLToPath(new URL(`../${path}`, import.meta
 export default defineConfig({
 	resolve: {
 		alias: [
-			{ find: /^@footprint\/node$/, replacement: source('sdk-node/src/index.ts') },
+			{ find: /^@tracemark\/node$/, replacement: source('sdk-node/src/index.ts') },
 			{
-				find: /^@footprint\/browser\/errors$/,
+				find: /^@tracemark\/browser\/errors$/,
 				replacement: source('sdk-browser/src/errors-entry.ts')
 			},
-			{ find: /^@footprint\/browser$/, replacement: source('sdk-browser/src/index.ts') }
+			{ find: /^@tracemark\/browser$/, replacement: source('sdk-browser/src/index.ts') }
 		]
 	},
 	test: {

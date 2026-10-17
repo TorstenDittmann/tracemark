@@ -1,11 +1,11 @@
-{{- $fullname := include "footprint.fullname" . -}}
+{{- $fullname := include "tracemark.fullname" . -}}
 {{- if not .Values.app.persistence.existingClaim }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: {{ $fullname }}-app
   labels:
-    {{- include "footprint.labels" . | nindent 4 }}
+    {{- include "tracemark.labels" . | nindent 4 }}
   annotations:
     # Keeps accounts, projects and flags when the release is uninstalled.
     helm.sh/resource-policy: keep
@@ -24,7 +24,7 @@ kind: Deployment
 metadata:
   name: {{ $fullname }}-app
   labels:
-    {{- include "footprint.labels" . | nindent 4 }}
+    {{- include "tracemark.labels" . | nindent 4 }}
     app.kubernetes.io/component: app
 spec:
   # One pod: the libSQL file must never be opened by two.
@@ -33,11 +33,11 @@ spec:
     type: Recreate
   selector:
     matchLabels:
-      {{- include "footprint.selector" (dict "ctx" . "component" "app") | nindent 6 }}
+      {{- include "tracemark.selector" (dict "ctx" . "component" "app") | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "footprint.selector" (dict "ctx" . "component" "app") | nindent 8 }}
+        {{- include "tracemark.selector" (dict "ctx" . "component" "app") | nindent 8 }}
       annotations:
         checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
         {{- with .Values.app.podAnnotations }}
@@ -52,22 +52,22 @@ spec:
       initContainers:
         # The app applies ClickHouse migrations on start, so it waits for ClickHouse first.
         - name: wait-for-clickhouse
-          image: {{ include "footprint.image" (dict "ctx" . "image" .Values.clickhouse.image) }}
-          command: [sh, -c, "until wget -q -O- {{ include "footprint.clickhouseUrl" . }}/ping; do sleep 2; done"]
+          image: {{ include "tracemark.image" (dict "ctx" . "image" .Values.clickhouse.image) }}
+          command: [sh, -c, "until wget -q -O- {{ include "tracemark.clickhouseUrl" . }}/ping; do sleep 2; done"]
       {{- end }}
       containers:
         - name: app
-          image: {{ include "footprint.image" (dict "ctx" . "image" .Values.app.image) }}
+          image: {{ include "tracemark.image" (dict "ctx" . "image" .Values.app.image) }}
           imagePullPolicy: {{ .Values.app.image.pullPolicy }}
           ports:
             - name: http
               containerPort: 3000
           env:
-            {{- include "footprint.clickhouseEnv" . | nindent 12 }}
+            {{- include "tracemark.clickhouseEnv" . | nindent 12 }}
             - name: AUTH_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "footprint.secretName" . }}
+                  name: {{ include "tracemark.secretName" . }}
                   key: AUTH_SECRET
             - name: PUBLIC_URL
               value: {{ required "publicUrl is required, e.g. https://analytics.example.com" .Values.publicUrl | quote }}
@@ -123,11 +123,11 @@ kind: Service
 metadata:
   name: {{ $fullname }}-app
   labels:
-    {{- include "footprint.labels" . | nindent 4 }}
+    {{- include "tracemark.labels" . | nindent 4 }}
 spec:
   type: {{ .Values.service.type }}
   selector:
-    {{- include "footprint.selector" (dict "ctx" . "component" "app") | nindent 4 }}
+    {{- include "tracemark.selector" (dict "ctx" . "component" "app") | nindent 4 }}
   ports:
     - name: http
       port: 3000

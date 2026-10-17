@@ -19,7 +19,7 @@ Anonymous ids that were later identified count as the person they identified as.
 ## Reading the results
 
 Results are Bayesian. Each variant's rate gets a posterior from a flat prior (Beta for
-conversions, Gamma for counts), and footprint draws 20,000 samples from each to report:
+conversions, Gamma for counts), and tracemark draws 20,000 samples from each to report:
 
 - **95% interval**: where the true rate most likely lies.
 - **Chance to be best**: how often that variant's sample came out highest. At 95% or more the

@@ -16,7 +16,7 @@ export default defineConfig({
 	clean: true,
 	// The flag evaluator and stack parser are bundled in, so the published package has no dependencies.
 	deps: {
-		alwaysBundle: ['@footprint/flags', '@footprint/errors'],
+		alwaysBundle: ['@tracemark/flags', '@tracemark/errors'],
 		// Only the AI helpers import a Node built-in (AsyncLocalStorage), which Bun and Deno provide too.
 		neverBundle: [/^node:/, 'elysia', 'fastify']
 	}

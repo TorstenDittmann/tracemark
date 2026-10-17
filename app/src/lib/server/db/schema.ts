@@ -351,7 +351,7 @@ export const errorIssues = sqliteTable(
 export type ErrorIssue = typeof errorIssues.$inferSelect;
 
 /**
- * Source maps uploaded with `footprint sourcemaps upload`. The map itself is a gzipped file under
+ * Source maps uploaded with `tracemark sourcemaps upload`. The map itself is a gzipped file under
  * SOURCEMAPS_DIR; `name` is the minified file's URL with `~` for any origin, e.g.
  * `~/assets/index-B3xk9aZ1.js`.
  */

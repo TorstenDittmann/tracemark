@@ -22,8 +22,8 @@ Send `POST` bodies with `content-type: application/json`. The app refuses form c
 ## `POST /api/v1/query`: run a query
 
 ```sh
-curl https://footprint.example.com/api/v1/query \
-  -H "authorization: Bearer $FOOTPRINT_SECRET_KEY" \
+curl https://tracemark.example.com/api/v1/query \
+  -H "authorization: Bearer $TRACEMARK_SECRET_KEY" \
   -H "content-type: application/json" \
   -d '{"kind": "trends", "query": {"series": [{"event": "$pageview", "math": "unique_users"}], "range": "7d"}}'
 ```

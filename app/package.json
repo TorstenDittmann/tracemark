@@ -1,5 +1,5 @@
 {
-	"name": "@footprint/app",
+	"name": "@tracemark/app",
 	"private": true,
 	"version": "0.0.0",
 	"license": "MIT",
@@ -22,7 +22,7 @@
 		"drizzle-orm": "^0.45.3"
 	},
 	"devDependencies": {
-		"@footprint/flags": "workspace:*",
+		"@tracemark/flags": "workspace:*",
 		"@internationalized/date": "^3.12.4",
 		"@jridgewell/trace-mapping": "0.3.31",
 		"@lucide/svelte": "^1.52.0",

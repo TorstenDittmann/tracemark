@@ -71,14 +71,14 @@ A condition includes the id when its bucket is below `rollout / 100`. Variants u
 
 ## Browser SDK
 
-The flags plugin ships with `@footprint/browser` as a separate entry, so pages without flags don't load it:
+The flags plugin ships with `@tracemark/browser` as a separate entry, so pages without flags don't load it:
 
 ```ts
-import { footprint } from '@footprint/browser';
-import { createFlags } from '@footprint/browser/flags';
+import { tracemark } from '@tracemark/browser';
+import { createFlags } from '@tracemark/browser/flags';
 
 const flags = createFlags();
-footprint.init({ apiKey: 'fp_pub_…', host: 'https://footprint.example.com' }).use(flags);
+tracemark.init({ apiKey: 'fp_pub_…', host: 'https://tracemark.example.com' }).use(flags);
 
 await flags.ready();
 if (flags.isEnabled('new-checkout')) showNewCheckout();

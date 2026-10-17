@@ -1,6 +1,6 @@
 // Wrappers that record calls made through the Anthropic and OpenAI SDKs and the Vercel AI SDK.
 // They rely only on the shape of requests and responses, so they don't import those SDKs.
-import type { FootprintAi, Generation } from './ai';
+import type { Generation, TracemarkAi } from './ai';
 
 type Params = Record<string, unknown> & { stream?: boolean };
 type Create = (params: Params, ...rest: unknown[]) => unknown;
@@ -29,7 +29,7 @@ const requestSettings = (params: Params) => ({
 
 /** Calls `create`, records the call, and returns exactly what `create` returned. */
 function record(
-	ai: FootprintAi,
+	ai: TracemarkAi,
 	create: Create,
 	self: unknown,
 	args: unknown[],
@@ -184,7 +184,7 @@ interface AnthropicUsage {
 	cache_creation_input_tokens?: number | null;
 }
 
-/** Anthropic counts cached tokens apart from `input_tokens`; footprint counts them in. */
+/** Anthropic counts cached tokens apart from `input_tokens`; tracemark counts them in. */
 function anthropicTokens(usage: AnthropicUsage | undefined) {
 	if (!usage) return {};
 	const read = num(usage.cache_read_input_tokens) ?? 0;
@@ -281,7 +281,7 @@ const streamAnthropic: StreamDescriber = (params) => {
  * Records every `messages.create` call (streamed or not, including `messages.stream`) made
  * through the returned client. Use it like the client you passed in.
  */
-export function wrapAnthropic<T extends object>(ai: FootprintAi, client: T): T {
+export function wrapAnthropic<T extends object>(ai: TracemarkAi, client: T): T {
 	const create = (original: Create): Create =>
 		function (this: unknown, ...args) {
 			return record(ai, original, this, args, describeAnthropic, streamAnthropic);
@@ -300,7 +300,7 @@ interface OpenAIUsage {
 	input_tokens_details?: { cached_tokens?: number } | null;
 }
 
-/** OpenAI counts cached tokens inside the prompt tokens, as footprint does. */
+/** OpenAI counts cached tokens inside the prompt tokens, as tracemark does. */
 function openaiTokens(usage: OpenAIUsage | undefined | null) {
 	if (!usage) return {};
 	return {
@@ -424,7 +424,7 @@ const describeEmbedding: Describe = (params, result) => {
  * the returned client. Streamed chat completions ask for usage (`stream_options.include_usage`)
  * unless you set `stream_options`, so the last chunk carries token counts and no choices.
  */
-export function wrapOpenAI<T extends object>(ai: FootprintAi, client: T): T {
+export function wrapOpenAI<T extends object>(ai: TracemarkAi, client: T): T {
 	const wrap =
 		(describe: Describe, streamed?: StreamDescriber, prepare?: (params: Params) => Params) =>
 		(original: Create): Create =>
@@ -498,7 +498,7 @@ export interface VercelCallOptions {
 	model: VercelModel;
 }
 
-export interface FootprintMiddleware {
+export interface TracemarkMiddleware {
 	specificationVersion: 'v2' | 'v3' | 'v4';
 	middlewareVersion: 'v2' | 'v3' | 'v4';
 	wrapGenerate<R>(options: VercelCallOptions & { doGenerate: () => PromiseLike<R> }): Promise<R>;
@@ -512,9 +512,9 @@ export interface FootprintMiddleware {
  * `wrapLanguageModel({ model, middleware: aiMiddleware(ai) })`.
  */
 export function aiMiddleware(
-	ai: FootprintAi,
+	ai: TracemarkAi,
 	options: MiddlewareOptions = {}
-): FootprintMiddleware {
+): TracemarkMiddleware {
 	const version = options.specificationVersion ?? 'v4';
 	const capture = (generation: Generation) => {
 		try {

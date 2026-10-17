@@ -1,7 +1,7 @@
-// Svelte stores for footprint feature flags. They work in Svelte 4 and 5 components with `$`,
+// Svelte stores for tracemark feature flags. They work in Svelte 4 and 5 components with `$`,
 // and in SvelteKit, where they keep their initial value during server rendering.
-import type { Errors } from '@footprint/browser/errors';
-import type { Flags, FlagValue } from '@footprint/browser/flags';
+import type { Errors } from '@tracemark/browser/errors';
+import type { Flags, FlagValue } from '@tracemark/browser/flags';
 import { derived, type Readable, readable } from 'svelte/store';
 
 /** Every flag's value. Reading it records no exposures. */
@@ -58,5 +58,5 @@ export function boundaryError(
 	};
 }
 
-export type { Errors, ErrorsOptions } from '@footprint/browser/errors';
-export type { Flags, FlagsOptions, FlagsSnapshot, FlagValue } from '@footprint/browser/flags';
+export type { Errors, ErrorsOptions } from '@tracemark/browser/errors';
+export type { Flags, FlagsOptions, FlagsSnapshot, FlagValue } from '@tracemark/browser/flags';

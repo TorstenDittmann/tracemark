@@ -1,11 +1,11 @@
-# Self-host footprint: `cp .env.example .env`, set INTERNAL_TOKEN and AUTH_SECRET, then `docker compose up -d`.
+# Self-host tracemark: `cp .env.example .env`, set INTERNAL_TOKEN and AUTH_SECRET, then `docker compose up -d`.
 services:
   proxy:
     image: caddy:2
     ports:
-      - "${FOOTPRINT_PORT:-8080}:80"
+      - "${TRACEMARK_PORT:-8080}:80"
     environment:
-      FOOTPRINT_HOST: ${FOOTPRINT_HOST:-:80}
+      TRACEMARK_HOST: ${TRACEMARK_HOST:-:80}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
@@ -19,11 +19,11 @@ services:
     environment:
       INTERNAL_TOKEN: ${INTERNAL_TOKEN:?set INTERNAL_TOKEN in .env}
       AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET in .env}
-      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:${FOOTPRINT_PORT:-8080}}
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:${TRACEMARK_PORT:-8080}}
       CLICKHOUSE_URL: http://clickhouse:8123
-      CLICKHOUSE_USER: footprint
-      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-footprint}
-      CLICKHOUSE_DATABASE: footprint
+      CLICKHOUSE_USER: tracemark
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-tracemark}
+      CLICKHOUSE_DATABASE: tracemark
       PROTOCOL_HEADER: x-forwarded-proto
       HOST_HEADER: x-forwarded-host
       # Client IPs for sign-in rate limiting; Caddy is the only proxy in front of the app.
@@ -42,9 +42,9 @@ services:
       INTERNAL_TOKEN: ${INTERNAL_TOKEN:?set INTERNAL_TOKEN in .env}
       APP_INTERNAL_URL: http://app:3000
       CLICKHOUSE_URL: http://clickhouse:8123
-      CLICKHOUSE_USER: footprint
-      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-footprint}
-      CLICKHOUSE_DATABASE: footprint
+      CLICKHOUSE_USER: tracemark
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-tracemark}
+      CLICKHOUSE_DATABASE: tracemark
       # Client IPs for location lookups; Caddy is the only proxy in front of ingest. IPs are never stored.
       ADDRESS_HEADER: x-forwarded-for
       XFF_DEPTH: 1
@@ -62,15 +62,15 @@ services:
   clickhouse:
     image: clickhouse/clickhouse-server:25.8
     environment:
-      CLICKHOUSE_USER: footprint
-      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-footprint}
+      CLICKHOUSE_USER: tracemark
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-tracemark}
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
     volumes:
       - clickhouse-data:/var/lib/clickhouse
     ulimits:
       nofile: { soft: 262144, hard: 262144 }
     healthcheck:
-      test: ["CMD", "clickhouse-client", "--user", "footprint", "--password", "${CLICKHOUSE_PASSWORD:-footprint}", "--query", "SELECT 1"]
+      test: ["CMD", "clickhouse-client", "--user", "tracemark", "--password", "${CLICKHOUSE_PASSWORD:-tracemark}", "--query", "SELECT 1"]
       interval: 5s
       retries: 20
     restart: unless-stopped

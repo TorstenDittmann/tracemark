@@ -50,7 +50,7 @@ impl Config {
             clickhouse_url: trim_slash(string("CLICKHOUSE_URL", "http://localhost:8123")),
             clickhouse_user: string("CLICKHOUSE_USER", "default"),
             clickhouse_password: lookup("CLICKHOUSE_PASSWORD").unwrap_or_default(),
-            clickhouse_database: string("CLICKHOUSE_DATABASE", "footprint"),
+            clickhouse_database: string("CLICKHOUSE_DATABASE", "tracemark"),
             app_internal_url: trim_slash(string("APP_INTERNAL_URL", "http://localhost:3000")),
             internal_token,
             flush_interval: Duration::from_millis(positive(&get, "FLUSH_INTERVAL_MS", 1000)?),
@@ -130,7 +130,7 @@ mod tests {
         assert_eq!(c.clickhouse_url, "http://localhost:8123");
         assert_eq!(c.clickhouse_user, "default");
         assert_eq!(c.clickhouse_password, "");
-        assert_eq!(c.clickhouse_database, "footprint");
+        assert_eq!(c.clickhouse_database, "tracemark");
         assert_eq!(c.app_internal_url, "http://localhost:3000");
         assert_eq!(c.flush_interval, Duration::from_secs(1));
         assert_eq!(c.flush_max_rows, 10_000);

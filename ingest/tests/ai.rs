@@ -5,8 +5,8 @@ use std::sync::Arc;
 
 use axum::http::StatusCode;
 use common::{TEST_KEY, TEST_PROJECT, app_with_keys, drain, post, send};
-use footprint_ingest::ai::{Price, Prices};
-use footprint_ingest::keys::{KeyStore, Snapshot};
+use tracemark_ingest::ai::{Price, Prices};
+use tracemark_ingest::keys::{KeyStore, Snapshot};
 use serde_json::json;
 
 #[tokio::test]

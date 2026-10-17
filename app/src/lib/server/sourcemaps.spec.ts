@@ -47,7 +47,7 @@ const exception = (filename: string, colno: number): ExceptionEntry[] => [
 
 let dir: string;
 beforeEach(async () => {
-	dir = await mkdtemp(join(tmpdir(), 'footprint-maps-'));
+	dir = await mkdtemp(join(tmpdir(), 'tracemark-maps-'));
 });
 afterEach(() => rm(dir, { recursive: true, force: true }));
 
@@ -84,8 +84,8 @@ describe('names', () => {
 	});
 
 	it('defaults the directory next to a file database', () => {
-		expect(defaultSourcemapsDir('file:/data/footprint.db')).toBe('/data/sourcemaps');
-		expect(defaultSourcemapsDir('file:///data/footprint.db')).toBe('/data/sourcemaps');
+		expect(defaultSourcemapsDir('file:/data/tracemark.db')).toBe('/data/sourcemaps');
+		expect(defaultSourcemapsDir('file:///data/tracemark.db')).toBe('/data/sourcemaps');
 		expect(defaultSourcemapsDir('libsql://db.example.com')).toMatch(/data\/sourcemaps$/);
 	});
 });

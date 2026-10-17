@@ -4,8 +4,8 @@ const optional = (fallback: string) => (value: string | undefined) => value || f
 
 export const variables = defineEnvVars({
 	DATABASE_URL: {
-		description: 'libSQL URL: file:./data/footprint.db, or libsql://… for sqld/Turso',
-		schema: optional('file:./data/footprint.db')
+		description: 'libSQL URL: file:./data/tracemark.db, or libsql://… for sqld/Turso',
+		schema: optional('file:./data/tracemark.db')
 	},
 	DATABASE_AUTH_TOKEN: { description: 'Auth token for sqld/Turso', schema: optional('') },
 	SOURCEMAPS_DIR: {
@@ -16,7 +16,7 @@ export const variables = defineEnvVars({
 	CLICKHOUSE_URL: { schema: optional('http://localhost:8123') },
 	CLICKHOUSE_USER: { schema: optional('default') },
 	CLICKHOUSE_PASSWORD: { schema: optional('') },
-	CLICKHOUSE_DATABASE: { schema: optional('footprint') },
+	CLICKHOUSE_DATABASE: { schema: optional('tracemark') },
 	PUBLIC_URL: {
 		description:
 			'Public URL of the instance, e.g. https://analytics.example.com. Inferred per request when empty',

@@ -1,13 +1,13 @@
 [package]
-name = "footprint-ingest"
+name = "tracemark-ingest"
 version = "0.1.0"
 edition = "2024"
 license = "MIT"
-description = "Event ingest service for footprint product analytics"
+description = "Event ingest service for tracemark product analytics"
 publish = false
 
 [[bin]]
-name = "footprint-ingest"
+name = "tracemark-ingest"
 path = "src/main.rs"
 
 [dependencies]

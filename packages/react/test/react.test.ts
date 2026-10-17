@@ -1,18 +1,18 @@
-import { createClient, type FootprintClient, type WireEvent } from '@footprint/browser';
-import { createErrors } from '@footprint/browser/errors';
-import { createFlags } from '@footprint/browser/flags';
+import { createClient, type TracemarkClient, type WireEvent } from '@tracemark/browser';
+import { createErrors } from '@tracemark/browser/errors';
+import { createFlags } from '@tracemark/browser/flags';
 import { act, createElement, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-	FootprintErrorBoundary,
-	FootprintProvider,
 	reactErrorHandler,
+	TracemarkErrorBoundary,
+	TracemarkProvider,
 	useFeatureFlag,
 	useFeatureFlagEnabled,
 	useFeatureFlagPayload,
 	useFlags,
-	useFootprint
+	useTracemark
 } from '../src/index';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -24,7 +24,7 @@ let answer: unknown;
 let events: WireEvent[];
 let root: Root;
 let container: HTMLElement;
-const clients: FootprintClient[] = [];
+const clients: TracemarkClient[] = [];
 
 beforeEach(() => {
 	answer = { flags: { pricing: 'cheaper', beta: true }, payloads: { pricing: { price: 9 } } };
@@ -77,7 +77,7 @@ describe('react bindings', () => {
 		const c = client();
 		const flags = createFlags();
 		await render(
-			createElement(FootprintProvider, { client: c, options, flags }, createElement(Pricing))
+			createElement(TracemarkProvider, { client: c, options, flags }, createElement(Pricing))
 		);
 		expect(c.config?.apiKey).toBe('fp_pub_test');
 		await act(() => flags.ready());
@@ -89,7 +89,7 @@ describe('react bindings', () => {
 		const flags = createFlags({ bootstrap: { flags: { pricing: 'control' } } });
 		answer = new Promise(() => {});
 		await render(
-			createElement(FootprintProvider, { client: c, options, flags }, createElement(Pricing))
+			createElement(TracemarkProvider, { client: c, options, flags }, createElement(Pricing))
 		);
 		expect(container.textContent).toBe('control - stable false');
 
@@ -102,11 +102,11 @@ describe('react bindings', () => {
 		const c = client();
 		const flags = createFlags();
 		await render(
-			createElement(FootprintProvider, { client: c, options, flags }, createElement(Pricing))
+			createElement(TracemarkProvider, { client: c, options, flags }, createElement(Pricing))
 		);
 		await act(() => flags.ready());
 		await render(
-			createElement(FootprintProvider, { client: c, options, flags }, createElement(Pricing))
+			createElement(TracemarkProvider, { client: c, options, flags }, createElement(Pricing))
 		);
 		await act(() => c.flush());
 		const exposures = events
@@ -124,12 +124,12 @@ describe('react bindings', () => {
 
 	it('gives components the client', async () => {
 		const c = client();
-		let seen: FootprintClient | undefined;
+		let seen: TracemarkClient | undefined;
 		function Probe() {
-			seen = useFootprint();
+			seen = useTracemark();
 			return null;
 		}
-		await render(createElement(FootprintProvider, { client: c }, createElement(Probe)));
+		await render(createElement(TracemarkProvider, { client: c }, createElement(Probe)));
 		expect(seen).toBe(c);
 	});
 
@@ -140,7 +140,7 @@ describe('react bindings', () => {
 			return null;
 		}
 		await expect(
-			render(createElement(FootprintProvider, { client: client() }, createElement(Probe)))
+			render(createElement(TracemarkProvider, { client: client() }, createElement(Probe)))
 		).rejects.toThrow('pass `flags`');
 	});
 });
@@ -167,10 +167,10 @@ describe('error boundary', () => {
 		let reset: (() => void) | undefined;
 		await render(
 			createElement(
-				FootprintProvider,
+				TracemarkProvider,
 				{ client: c, options, errors },
 				createElement(
-					FootprintErrorBoundary,
+					TracemarkErrorBoundary,
 					{
 						fallback: (props: { error: unknown; reset: () => void }) => {
 							reset = props.reset;
@@ -197,9 +197,9 @@ describe('error boundary', () => {
 		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 		await render(
 			createElement(
-				FootprintProvider,
+				TracemarkProvider,
 				{ client: client(), options },
-				createElement(FootprintErrorBoundary, { fallback: 'oops' }, createElement(Broken))
+				createElement(TracemarkErrorBoundary, { fallback: 'oops' }, createElement(Broken))
 			)
 		);
 		expect(container.textContent).toBe('oops');

@@ -1,6 +1,6 @@
 # AI observability
 
-footprint records LLM calls as events, like everything else: one `$ai_generation` per model call,
+tracemark records LLM calls as events, like everything else: one `$ai_generation` per model call,
 grouped into traces. Cost, tokens and latency per model and per person come from those events.
 
 The project's **AI** tab shows them: an overview of cost, calls, tokens, latency and errors over
@@ -10,7 +10,7 @@ or `otel:<service>` from OpenTelemetry) count in the totals but not in the per-p
 
 ## Node SDK
 
-`@footprint/node/ai` records calls made through the Anthropic and OpenAI SDKs and the Vercel AI SDK,
+`@tracemark/node/ai` records calls made through the Anthropic and OpenAI SDKs and the Vercel AI SDK,
 without changing what they return:
 
 ```ts
@@ -18,11 +18,11 @@ import Anthropic from '@anthropic-ai/sdk';
 import OpenAI from 'openai';
 import { wrapLanguageModel } from 'ai';
 import { openai as openaiModels } from '@ai-sdk/openai';
-import { Footprint } from '@footprint/node';
-import { createAi } from '@footprint/node/ai';
+import { Tracemark } from '@tracemark/node';
+import { createAi } from '@tracemark/node/ai';
 
-const footprint = new Footprint({ apiKey: 'fp_pub_…', host: 'https://footprint.example.com' });
-const ai = createAi(footprint);
+const tracemark = new Tracemark({ apiKey: 'fp_pub_…', host: 'https://tracemark.example.com' });
+const ai = createAi(tracemark);
 
 const anthropic = ai.wrapAnthropic(new Anthropic());
 const openai = ai.wrapOpenAI(new OpenAI());
@@ -52,7 +52,7 @@ The trace is recorded as a `$ai_trace` event with what the function returned (or
 span as a `$ai_span`. Traces follow async calls through `AsyncLocalStorage`, so calls made deep
 inside the function join them without passing anything along.
 
-`createAi(footprint, { privacyMode: true })`, or `privacyMode: true` on a trace, leaves out inputs,
+`createAi(tracemark, { privacyMode: true })`, or `privacyMode: true` on a trace, leaves out inputs,
 outputs and trace state: only models, tokens, cost and timing are sent. `properties` and `groups`
 on either are added to every event.
 
@@ -91,13 +91,13 @@ Properties, all optional except where noted:
 
 ## OpenTelemetry
 
-Instrumentation that exports OpenTelemetry traces can send them to footprint instead of using an
-SDK wrapper. `POST /v1/traces` on your footprint host takes OTLP/HTTP, as protobuf
+Instrumentation that exports OpenTelemetry traces can send them to tracemark instead of using an
+SDK wrapper. `POST /v1/traces` on your tracemark host takes OTLP/HTTP, as protobuf
 (`application/x-protobuf`) or JSON (`application/json`), optionally gzipped. Authenticate with the
 project's public key:
 
 ```sh
-OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=https://footprint.example.com/v1/traces
+OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=https://tracemark.example.com/v1/traces
 OTEL_EXPORTER_OTLP_TRACES_HEADERS="Authorization=Bearer fp_pub_…"
 ```
 
@@ -116,12 +116,12 @@ Each span becomes one event:
 - spans whose `gen_ai.operation.name` is `chat`, `text_completion` or `generate_content`, and the
   Vercel AI SDK's `doGenerate` and `doStream` spans, become `$ai_generation`;
 - `embeddings` spans and the Vercel AI SDK's `doEmbed` spans become `$ai_embedding`;
-- other spans with `gen_ai.*`, `ai.*`, `llm.*` or `footprint.*` attributes become `$ai_span`;
+- other spans with `gen_ai.*`, `ai.*`, `llm.*` or `tracemark.*` attributes become `$ai_span`;
 - all other spans, such as HTTP and database spans, are dropped.
 
 The trace and span ids become `$ai_trace_id`, `$ai_span_id` and `$ai_parent_id`; model, provider,
 token counts, messages and errors are read from the GenAI semantic conventions and the Vercel AI
-SDK's attributes. The person is the first of `footprint.distinct_id`, the Vercel AI SDK metadata
+SDK's attributes. The person is the first of `tracemark.distinct_id`, the Vercel AI SDK metadata
 `distinct_id` or `userId`, `user.id` and `enduser.id`, on the span or its resource; spans that name
 nobody are recorded for `otel:<service.name>`. Other Vercel AI SDK metadata becomes event
 properties. The event id is derived from the trace and span ids, so a retried export repeats the
@@ -136,7 +136,7 @@ and `$ai_embedding` that has a `$ai_model` and token counts:
   (the input price when a model has none);
 - output: output tokens × the output price.
 
-Prices are USD per million tokens. footprint ships prices for common Anthropic, OpenAI and Google
+Prices are USD per million tokens. tracemark ships prices for common Anthropic, OpenAI and Google
 models, and each project can add or change prices under Settings → Model prices. A model uses the
 price with its exact name, else the longest name it starts with, ignoring case and any `provider/`
 prefix: `gpt-4o` prices `gpt-4o-2024-08-06` and `openai/gpt-4o`, while `gpt-4o-mini` keeps its own

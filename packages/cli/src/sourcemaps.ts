@@ -1,4 +1,4 @@
-// Finds a build's source maps and uploads them to footprint, one `POST /sourcemaps` per map.
+// Finds a build's source maps and uploads them to tracemark, one `POST /sourcemaps` per map.
 import { readdir, readFile, rm, stat } from 'node:fs/promises';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { promisify } from 'node:util';
@@ -12,7 +12,7 @@ const SKIP = new Set(['node_modules', '.git']);
 const COMMENT = /\/\/[#@]\s*sourceMappingURL=(\S+)\s*$/;
 
 export interface FoundMap {
-	/** The minified file as footprint stores it: the URL prefix plus its path in the build. */
+	/** The minified file as tracemark stores it: the URL prefix plus its path in the build. */
 	name: string;
 	script: string;
 	/** The map file, or undefined for a map inlined as a data URL. */

@@ -2,7 +2,7 @@
 // See docs/ai.md for the events. Wrappers observe calls without changing what they return.
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { aiMiddleware, type MiddlewareOptions, wrapAnthropic, wrapOpenAI } from './ai-providers';
-import type { Footprint, Properties } from './index';
+import type { Properties, Tracemark } from './index';
 import { uuidv7 } from './uuid';
 
 export interface AiOptions {
@@ -79,13 +79,13 @@ const status = (error: unknown): number | undefined => {
 const defined = (props: Properties) =>
 	Object.fromEntries(Object.entries(props).filter(([, value]) => value !== undefined));
 
-/** AI helpers bound to a client; create one with `createAi(footprint)`. */
-export class FootprintAi {
-	readonly #client: Footprint;
+/** AI helpers bound to a client; create one with `createAi(tracemark)`. */
+export class TracemarkAi {
+	readonly #client: Tracemark;
 	readonly #options: AiOptions;
 	readonly #storage = new AsyncLocalStorage<Context>();
 
-	constructor(client: Footprint, options: AiOptions = {}) {
+	constructor(client: Tracemark, options: AiOptions = {}) {
 		this.#client = client;
 		this.#options = options;
 	}
@@ -211,6 +211,6 @@ export class FootprintAi {
 }
 
 /** The AI helpers for a client: wrappers for Anthropic and OpenAI, traces and spans. */
-export function createAi(client: Footprint, options?: AiOptions): FootprintAi {
-	return new FootprintAi(client, options);
+export function createAi(client: Tracemark, options?: AiOptions): TracemarkAi {
+	return new TracemarkAi(client, options);
 }

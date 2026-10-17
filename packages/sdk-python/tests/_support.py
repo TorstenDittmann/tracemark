@@ -1,4 +1,4 @@
-"""Shared test helpers: the import path, repo fixtures, a fake footprint server and the ingest
+"""Shared test helpers: the import path, repo fixtures, a fake tracemark server and the ingest
 schema rules from docs/ingest-protocol.md."""
 
 from __future__ import annotations
@@ -36,7 +36,7 @@ Responder = Union[Response, Callable[["Recorded"], Response]]
 
 
 class FakeServer:
-    """A local footprint: records every request and answers from per-path scripts.
+    """A local tracemark: records every request and answers from per-path scripts.
 
     ``script(path, *responses)`` queues answers for a path; once used up, the default answers
     (``202`` for ``/e``, ``404`` otherwise) apply.

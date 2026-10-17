@@ -11,7 +11,7 @@ imagePullSecrets: []
 
 app:
   image:
-    repository: ghcr.io/torstendittmann/footprint-app
+    repository: ghcr.io/torstendittmann/tracemark-app
     # Defaults to the chart's appVersion.
     tag: ""
     pullPolicy: IfNotPresent
@@ -36,7 +36,7 @@ app:
 
 ingest:
   image:
-    repository: ghcr.io/torstendittmann/footprint-ingest
+    repository: ghcr.io/torstendittmann/tracemark-ingest
     tag: ""
     pullPolicy: IfNotPresent
   replicas: 1
@@ -67,11 +67,11 @@ clickhouse:
     repository: clickhouse/clickhouse-server
     tag: "25.8"
     pullPolicy: IfNotPresent
-  user: footprint
+  user: tracemark
   # Generated on install when empty, or taken from existingSecret (key CLICKHOUSE_PASSWORD).
   password: ""
   existingSecret: ""
-  database: footprint
+  database: tracemark
   persistence:
     size: 50Gi
     storageClass: ""
@@ -95,5 +95,5 @@ ingress:
   annotations: {}
   host: ""
   tls: []
-  #  - secretName: footprint-tls
+  #  - secretName: tracemark-tls
   #    hosts: [analytics.example.com]

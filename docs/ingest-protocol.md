@@ -32,7 +32,7 @@ The key is in the body (not a header) because `navigator.sendBeacon` cannot set 
 | Field | Type | Required | Rules |
 | --- | --- | --- | --- |
 | `uuid` | string | yes | UUID (v7 recommended); used for dedup |
-| `event` | string | yes | 1–200 chars. Names starting with `$` are reserved for footprint |
+| `event` | string | yes | 1–200 chars. Names starting with `$` are reserved for tracemark |
 | `distinct_id` | string | yes | 1–200 chars |
 | `timestamp` | string | yes | RFC 3339 / ISO 8601 with timezone, between 1900 and 2299 after skew correction |
 | `session_id` | string | no | ≤ 200 chars |
@@ -62,7 +62,7 @@ Unknown top-level fields are ignored, and `null` optional fields count as absent
 OpenTelemetry trace export (OTLP/HTTP, protobuf or JSON) for LLM instrumentation. Spans become
 `$ai_*` events and then go through the same validation and enrichment as `POST /e` batches, except
 that location is not looked up. The key comes as `Authorization: Bearer fp_pub_…`, an
-`x-footprint-api-key` header or an `api_key` query parameter. Success is `200` with an empty
+`x-tracemark-api-key` header or an `api_key` query parameter. Success is `200` with an empty
 `ExportTraceServiceResponse`; errors use the responses above. See [ai.md](ai.md#opentelemetry).
 
 ## Enrichment

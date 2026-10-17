@@ -16,7 +16,7 @@ const failure = (status: number, error: string, message?: string) =>
 
 /**
  * Uploads one source map: `POST /sourcemaps?name=~/assets/app.js&release=1.4.0` with the map as
- * the body (optionally gzipped) and the project's secret key as a bearer token. `@footprint/cli`
+ * the body (optionally gzipped) and the project's secret key as a bearer token. `@tracemark/cli`
  * does this for a whole build, see docs/errors.md.
  */
 export const POST: RequestHandler = async ({ request, url }) => {

@@ -1,4 +1,4 @@
-import { exceptionList } from '@footprint/errors';
+import { exceptionList } from '@tracemark/errors';
 import {
 	evaluate,
 	type FlagContext,
@@ -6,7 +6,7 @@ import {
 	type FlagResult,
 	InconclusiveError,
 	parseFlag
-} from '@footprint/flags';
+} from '@tracemark/flags';
 import { uuidv7 } from './uuid';
 import { VERSION } from './version';
 
@@ -14,10 +14,10 @@ export { VERSION };
 export type FlagValue = boolean | string;
 export type Properties = Record<string, unknown>;
 
-export interface FootprintOptions {
+export interface TracemarkOptions {
 	/** Public project key (`fp_pub_…`), used to send events and to ask the server for flags. */
 	apiKey: string;
-	/** Base URL of your footprint instance. Events go to `${host}/e`, flags to `${host}/flags`. */
+	/** Base URL of your tracemark instance. Events go to `${host}/e`, flags to `${host}/flags`. */
 	host: string;
 	/**
 	 * Secret project key (`fp_sec_…`). With it, flag definitions are fetched every
@@ -63,7 +63,7 @@ export interface ExceptionOptions {
 }
 
 /** One person's view of the client, for code that serves one request. */
-export interface FootprintScope {
+export interface TracemarkScope {
 	/** Undefined when the request doesn't say who it is. */
 	readonly distinctId: string | undefined;
 	capture(event: string, properties?: Properties): void;
@@ -115,12 +115,12 @@ interface WireEvent {
 const MAX_EXPOSURES = 50_000;
 const BATCH = 1000;
 
-/** A footprint client for servers. Create one per process and call `shutdown()` before exit. */
-export class Footprint {
+/** A tracemark client for servers. Create one per process and call `shutdown()` before exit. */
+export class Tracemark {
 	readonly #options: Required<
-		Omit<FootprintOptions, 'secretKey' | 'fetch' | 'onError' | 'release'>
+		Omit<TracemarkOptions, 'secretKey' | 'fetch' | 'onError' | 'release'>
 	> &
-		Pick<FootprintOptions, 'secretKey' | 'onError' | 'release'>;
+		Pick<TracemarkOptions, 'secretKey' | 'onError' | 'release'>;
 	readonly #fetch: typeof fetch;
 	#queue: WireEvent[] = [];
 	#sending: Promise<void> = Promise.resolve();
@@ -131,8 +131,8 @@ export class Footprint {
 	#exposed = new Set<string>();
 	#closed = false;
 
-	constructor(options: FootprintOptions) {
-		if (!options?.apiKey || !options.host) throw new Error('footprint needs apiKey and host');
+	constructor(options: TracemarkOptions) {
+		if (!options?.apiKey || !options.host) throw new Error('tracemark needs apiKey and host');
 		this.#options = {
 			flushAt: 20,
 			flushIntervalMs: 10_000,
@@ -192,7 +192,7 @@ export class Footprint {
 			event,
 			distinct_id: distinctId,
 			timestamp: timestamp.toISOString(),
-			properties: { $lib: 'footprint-node', $lib_version: VERSION, ...message.properties }
+			properties: { $lib: 'tracemark-node', $lib_version: VERSION, ...message.properties }
 		};
 		if (message.set || message.setOnce) {
 			wire.person = {};
@@ -446,7 +446,7 @@ export class Footprint {
 	scope(
 		distinctId: string | undefined,
 		defaults: { properties?: Properties } = {}
-	): FootprintScope {
+	): TracemarkScope {
 		const off = { flags: {}, payloads: {} };
 		return {
 			distinctId,

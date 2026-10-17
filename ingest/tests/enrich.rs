@@ -5,7 +5,7 @@ use std::net::{IpAddr, Ipv4Addr};
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use common::{TEST_KEY, app, app_with, drain, fake_keys, send};
-use footprint_ingest::enrich::Enricher;
+use tracemark_ingest::enrich::Enricher;
 use maxminddb_writer::Database;
 use maxminddb_writer::metadata::IpVersion;
 use maxminddb_writer::paths::IpAddrWithMask;
@@ -19,7 +19,7 @@ const GOOGLEBOT: &str = "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.goo
 fn geoip() -> maxminddb::Reader<Vec<u8>> {
     let mut db = Database::default();
     db.metadata.ip_version = IpVersion::V4;
-    db.metadata.database_type = "footprint-test-city".into();
+    db.metadata.database_type = "tracemark-test-city".into();
     db.metadata.binary_format_major_version = 2;
     let berlin = db
         .insert_value(json!({
@@ -214,7 +214,7 @@ async fn fingerprints_exceptions_only() {
     .await;
     assert_eq!(
         props[0]["$exception_fingerprint"],
-        json!(footprint_ingest::exceptions::fingerprint(Some(&list)))
+        json!(tracemark_ingest::exceptions::fingerprint(Some(&list)))
     );
     assert_eq!(props[1]["$exception_fingerprint"], "mine");
     assert!(!props[2].contains_key("$exception_fingerprint"));

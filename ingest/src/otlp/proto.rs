@@ -1,4 +1,4 @@
-//! The parts of the OTLP trace request footprint reads, decodable from both OTLP/protobuf (field
+//! The parts of the OTLP trace request tracemark reads, decodable from both OTLP/protobuf (field
 //! tags from opentelemetry-proto) and OTLP/JSON (lowerCamelCase names, hex ids, 64-bit integers as
 //! strings). Fields not listed here are skipped by both decoders.
 

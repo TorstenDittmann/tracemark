@@ -1,7 +1,7 @@
 {
-	"name": "@footprint/node",
+	"name": "@tracemark/node",
 	"version": "0.0.0",
-	"description": "Node.js SDK for footprint, self-hosted product analytics",
+	"description": "Node.js SDK for tracemark, self-hosted product analytics",
 	"license": "MIT",
 	"type": "module",
 	"sideEffects": false,
@@ -55,8 +55,8 @@
 	},
 	"devDependencies": {
 		"@anthropic-ai/sdk": "0.135.0",
-		"@footprint/errors": "workspace:*",
-		"@footprint/flags": "workspace:*",
+		"@tracemark/errors": "workspace:*",
+		"@tracemark/flags": "workspace:*",
 		"@types/express": "5.0.6",
 		"@types/node": "22.20.3",
 		"ai": "7.0.143",

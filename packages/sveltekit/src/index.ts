@@ -1,5 +1,5 @@
 // SvelteKit client hook: captures errors from loads and rendering in the browser.
-import type { Errors } from '@footprint/browser/errors';
+import type { Errors } from '@tracemark/browser/errors';
 
 /** What the client `handleError` receives: `kind` in SvelteKit 3, `status` in SvelteKit 2. */
 export interface ClientCaughtError {
@@ -12,7 +12,7 @@ export interface ClientCaughtError {
  * A client `handleError` hook that captures unexpected errors (not 404s or errors thrown with
  * `error()`), then returns what `then` returns.
  */
-export function footprintClientHandleError<Input extends ClientCaughtError, Result = void>(
+export function tracemarkClientHandleError<Input extends ClientCaughtError, Result = void>(
 	errors: Errors,
 	then?: (input: Input) => Result
 ) {

@@ -1,4 +1,4 @@
-package footprint
+package tracemark
 
 import (
 	"context"
@@ -44,22 +44,22 @@ func (c *Client) ReloadFlags(ctx context.Context) error {
 	res, err := c.do(ctx, http.MethodGet, "/flags/definitions",
 		http.Header{"Authorization": {"Bearer " + c.cfg.SecretKey}}, nil)
 	if err != nil {
-		return fmt.Errorf("footprint: loading flag definitions: %w", err)
+		return fmt.Errorf("tracemark: loading flag definitions: %w", err)
 	}
 	if res.status < 200 || res.status >= 300 {
-		return fmt.Errorf("footprint: loading flag definitions failed with HTTP %d", res.status)
+		return fmt.Errorf("tracemark: loading flag definitions failed with HTTP %d", res.status)
 	}
 	var body struct {
 		Flags []any `json:"flags"`
 	}
 	if err := json.Unmarshal(res.body, &body); err != nil {
-		return fmt.Errorf("footprint: loading flag definitions: %w", err)
+		return fmt.Errorf("tracemark: loading flag definitions: %w", err)
 	}
 	defs := make([]flagDefinition, 0, len(body.Flags))
 	for _, raw := range body.Flags {
 		def, err := parseFlag(raw)
 		if err != nil {
-			c.logger.Warn("footprint: skipped an invalid flag definition", "error", err)
+			c.logger.Warn("tracemark: skipped an invalid flag definition", "error", err)
 			continue
 		}
 		defs = append(defs, def)
@@ -80,7 +80,7 @@ func (c *Client) pollLoop() {
 	defer c.workers.Done()
 	reload := func() {
 		if err := c.ReloadFlags(c.bg); err != nil && c.bg.Err() == nil {
-			c.logger.Warn("footprint: refreshing flag definitions failed; keeping the last ones", "error", err)
+			c.logger.Warn("tracemark: refreshing flag definitions failed; keeping the last ones", "error", err)
 		}
 	}
 	reload()
@@ -111,18 +111,18 @@ func (c *Client) remote(ctx context.Context, req FlagRequest) (*remoteFlags, err
 		GroupProperties  map[string]Properties `json:"group_properties,omitempty"`
 	}{c.cfg.APIKey, req.DistinctID, req.PersonProperties, req.Groups, req.GroupProperties})
 	if err != nil {
-		return nil, fmt.Errorf("footprint: encoding flag request: %w", err)
+		return nil, fmt.Errorf("tracemark: encoding flag request: %w", err)
 	}
 	res, err := c.do(ctx, http.MethodPost, "/flags", http.Header{"Content-Type": {"application/json"}}, body)
 	if err != nil {
-		return nil, fmt.Errorf("footprint: evaluating flags: %w", err)
+		return nil, fmt.Errorf("tracemark: evaluating flags: %w", err)
 	}
 	if res.status < 200 || res.status >= 300 {
-		return nil, fmt.Errorf("footprint: evaluating flags failed with HTTP %d", res.status)
+		return nil, fmt.Errorf("tracemark: evaluating flags failed with HTTP %d", res.status)
 	}
 	var out remoteFlags
 	if err := json.Unmarshal(res.body, &out); err != nil {
-		return nil, fmt.Errorf("footprint: evaluating flags: %w", err)
+		return nil, fmt.Errorf("tracemark: evaluating flags: %w", err)
 	}
 	return &out, nil
 }
@@ -141,7 +141,7 @@ func flagValueOf(v any) (FlagValue, bool) {
 func (c *Client) decide(ctx context.Context, req FlagRequest, only *string) (Flags, error) {
 	out := Flags{Flags: map[string]FlagValue{}, Payloads: map[string]any{}}
 	if req.DistinctID == "" {
-		return out, errors.New("footprint: FlagRequest needs a DistinctID")
+		return out, errors.New("tracemark: FlagRequest needs a DistinctID")
 	}
 	select {
 	case <-c.defsReady:
@@ -272,6 +272,6 @@ func (c *Client) expose(key string, value FlagValue, req FlagRequest) {
 		Groups:     req.Groups,
 	})
 	if err != nil && !errors.Is(err, ErrClosed) {
-		c.logger.Warn("footprint: capturing a flag exposure failed", "error", err)
+		c.logger.Warn("tracemark: capturing a flag exposure failed", "error", err)
 	}
 }

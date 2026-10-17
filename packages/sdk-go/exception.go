@@ -1,4 +1,4 @@
-package footprint
+package tracemark
 
 import (
 	"context"
@@ -94,7 +94,7 @@ func (p panicValue) Error() string { return fmt.Sprint(p.value) }
 
 func (c *Client) exception(err error, opts ExceptionOptions, frames []stackFrame) error {
 	if err == nil {
-		return errors.New("footprint: CaptureException needs an error")
+		return errors.New("tracemark: CaptureException needs an error")
 	}
 	if opts.DistinctID == "" {
 		opts.DistinctID = "$server"

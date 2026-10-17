@@ -17,17 +17,17 @@ jobs:
       - run: bun run check
       - run: bun run typecheck
       - run: bun run test
-      - run: bun run --filter '@footprint/browser' build
-      - run: bun run --filter '@footprint/browser' size
-      - run: bun run --filter '@footprint/node' build
-      - run: bun run --filter '@footprint/react' build
-      - run: bun run --filter '@footprint/svelte' build
-      - run: bun run --filter '@footprint/cli' build
-      - run: bun run --filter '@footprint/sveltekit' build
-      - run: bun run --filter '@footprint/next' build
-      - run: bun run --filter '@footprint/vue' build
-      - run: bun run --filter '@footprint/nuxt' build
-      - run: bun run --filter '@footprint/astro' build
+      - run: bun run --filter '@tracemark/browser' build
+      - run: bun run --filter '@tracemark/browser' size
+      - run: bun run --filter '@tracemark/node' build
+      - run: bun run --filter '@tracemark/react' build
+      - run: bun run --filter '@tracemark/svelte' build
+      - run: bun run --filter '@tracemark/cli' build
+      - run: bun run --filter '@tracemark/sveltekit' build
+      - run: bun run --filter '@tracemark/next' build
+      - run: bun run --filter '@tracemark/vue' build
+      - run: bun run --filter '@tracemark/nuxt' build
+      - run: bun run --filter '@tracemark/astro' build
       - run: cd app && bun run build
 
   rust:
@@ -53,8 +53,8 @@ jobs:
       clickhouse:
         image: clickhouse/clickhouse-server:25.8
         env:
-          CLICKHOUSE_USER: footprint
-          CLICKHOUSE_PASSWORD: footprint
+          CLICKHOUSE_USER: tracemark
+          CLICKHOUSE_PASSWORD: tracemark
         ports: ['8123:8123']
     steps:
       - uses: actions/checkout@v5
@@ -66,8 +66,8 @@ jobs:
         working-directory: app
         env:
           DATABASE_URL: file:./data/ci.db
-          CLICKHOUSE_USER: footprint
-          CLICKHOUSE_PASSWORD: footprint
+          CLICKHOUSE_USER: tracemark
+          CLICKHOUSE_PASSWORD: tracemark
         run: |
           for i in 1 2 3 4 5 6 7 8 9 10; do curl -sf http://localhost:8123/ping && break; sleep 2; done
           bun run migrate
@@ -76,8 +76,8 @@ jobs:
         working-directory: app
         env:
           CLICKHOUSE_TEST_URL: http://localhost:8123
-          CLICKHOUSE_TEST_USER: footprint
-          CLICKHOUSE_TEST_PASSWORD: footprint
+          CLICKHOUSE_TEST_USER: tracemark
+          CLICKHOUSE_TEST_PASSWORD: tracemark
         run: bunx vitest --run src/lib/server/*.clickhouse.spec.ts
 
   app-image:
@@ -86,21 +86,21 @@ jobs:
       clickhouse:
         image: clickhouse/clickhouse-server:25.8
         env:
-          CLICKHOUSE_USER: footprint
-          CLICKHOUSE_PASSWORD: footprint
+          CLICKHOUSE_USER: tracemark
+          CLICKHOUSE_PASSWORD: tracemark
         ports: ['8123:8123']
     steps:
       - uses: actions/checkout@v5
-      - run: docker build -f app/Dockerfile -t footprint-app .
-      - run: docker image ls footprint-app
+      - run: docker build -f app/Dockerfile -t tracemark-app .
+      - run: docker image ls tracemark-app
       - name: Start the image and check it migrates and serves
         run: |
           for i in 1 2 3 4 5 6 7 8 9 10; do curl -sf http://localhost:8123/ping && break; sleep 2; done
           docker run -d --name app --network host \
             -e INTERNAL_TOKEN=ci -e AUTH_SECRET=0123456789abcdef0123456789abcdef \
             -e PUBLIC_URL=http://localhost:3000 -e PROTOCOL_HEADER=x-forwarded-proto \
-            -e CLICKHOUSE_URL=http://localhost:8123 -e CLICKHOUSE_USER=footprint -e CLICKHOUSE_PASSWORD=footprint \
-            footprint-app
+            -e CLICKHOUSE_URL=http://localhost:8123 -e CLICKHOUSE_USER=tracemark -e CLICKHOUSE_PASSWORD=tracemark \
+            tracemark-app
           for i in $(seq 1 30); do curl -sf http://localhost:3000/health >/dev/null 2>&1 && break; sleep 1; done
           docker logs app
           test "$(curl -s -o /dev/null -w '%{redirect_url}' -H 'x-forwarded-proto: http' http://localhost:3000/)" = "http://localhost:3000/setup"
@@ -113,11 +113,11 @@ jobs:
       - uses: azure/setup-helm@v4
         with:
           version: v3.18.4
-      - run: helm lint deploy/helm/footprint --strict --set publicUrl=https://analytics.example.com
+      - run: helm lint deploy/helm/tracemark --strict --set publicUrl=https://analytics.example.com
       - name: Render with the bundled and with an external ClickHouse
         run: |
-          helm template fp deploy/helm/footprint --set publicUrl=https://analytics.example.com > /dev/null
-          helm template fp deploy/helm/footprint --set publicUrl=https://analytics.example.com \
+          helm template fp deploy/helm/tracemark --set publicUrl=https://analytics.example.com > /dev/null
+          helm template fp deploy/helm/tracemark --set publicUrl=https://analytics.example.com \
             --set clickhouse.enabled=false --set clickhouse.external.url=https://ch.example.com:8443 > /dev/null
 
   python:

@@ -172,7 +172,7 @@ describe.skipIf(!clickhouseTestUrl)('groups migration', () => {
 
 	it('backfills group properties from events sent before it', async () => {
 		const all = resolve(import.meta.dirname, '../../../../clickhouse/migrations');
-		const before = await mkdtemp(join(tmpdir(), 'footprint-migrations-'));
+		const before = await mkdtemp(join(tmpdir(), 'tracemark-migrations-'));
 		for (const file of await readdir(all)) {
 			if (file < '0003_groups.sql') await copyFile(join(all, file), join(before, file));
 		}
@@ -180,7 +180,7 @@ describe.skipIf(!clickhouseTestUrl)('groups migration', () => {
 			url: clickhouseTestUrl ?? '',
 			user: process.env.CLICKHOUSE_TEST_USER ?? 'default',
 			password: process.env.CLICKHOUSE_TEST_PASSWORD ?? '',
-			database: `footprint_test_groups_upgrade_${Date.now()}`
+			database: `tracemark_test_groups_upgrade_${Date.now()}`
 		};
 		await migrateClickhouse(upgraded, before);
 		await insertEvents(

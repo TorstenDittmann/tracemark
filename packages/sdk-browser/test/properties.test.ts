@@ -55,7 +55,7 @@ describe('event envelope and default properties', () => {
 			$referrer: 'https://www.google.com/search?q=x',
 			$referring_domain: 'www.google.com',
 			$title: 'Pricing',
-			$lib: 'footprint-browser',
+			$lib: 'tracemark-browser',
 			$lib_version: VERSION,
 			utm_source: 'news',
 			utm_medium: 'email',

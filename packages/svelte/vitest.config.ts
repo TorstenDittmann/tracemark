@@ -7,9 +7,9 @@ const browser = (path: string) =>
 export default defineConfig({
 	resolve: {
 		alias: [
-			{ find: /^@footprint\/browser\/flags$/, replacement: browser('flags-entry.ts') },
-			{ find: /^@footprint\/browser\/errors$/, replacement: browser('errors-entry.ts') },
-			{ find: /^@footprint\/browser$/, replacement: browser('index.ts') }
+			{ find: /^@tracemark\/browser\/flags$/, replacement: browser('flags-entry.ts') },
+			{ find: /^@tracemark\/browser\/errors$/, replacement: browser('errors-entry.ts') },
+			{ find: /^@tracemark\/browser$/, replacement: browser('index.ts') }
 		]
 	},
 	test: {
