@@ -4,7 +4,7 @@
 // starts with `demo-`, which is how adding again replaces the old mock events and how removing
 // finds them; definitions are found by their key or name. Real data is never touched.
 import { createHash } from 'node:crypto';
-import { evaluate, type FlagDefinition, parseFlag } from '@footprint/flags';
+import { evaluate, type FlagDefinition, parseFlag } from '@tracemark/flags';
 import { and, eq, inArray } from 'drizzle-orm';
 import { DEFAULT_PRICES, normalizeModel } from '../ai-prices';
 import type { ExperimentMetric } from '../experiments';
