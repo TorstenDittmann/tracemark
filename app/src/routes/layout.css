@@ -234,6 +234,9 @@
 	:where(code, pre, kbd) {
 		@apply font-mono;
 	}
+	:where(input[type="checkbox"], input[type="radio"], progress) {
+		accent-color: var(--primary);
+	}
 }
 
 @media (prefers-reduced-motion: reduce) {

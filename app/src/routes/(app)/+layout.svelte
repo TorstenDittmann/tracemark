@@ -14,7 +14,10 @@ import type { LayoutProps } from './$types';
 let { data, children }: LayoutProps = $props();
 
 let searchOpen = $state(false);
-const projectId = $derived(page.params.id);
+// Organization pages use `[id]` too, so only project routes pick a project.
+const projectId = $derived(
+	page.route.id?.startsWith('/(app)/projects/[id]') ? page.params.id : undefined
+);
 const project = $derived(data.projects.find((p) => p.id === projectId));
 const section = $derived(projectId ? activeNavItem(projectId, page.url.pathname) : undefined);
 const crumb = $derived(
