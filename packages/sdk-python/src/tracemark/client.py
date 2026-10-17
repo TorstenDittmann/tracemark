@@ -1,4 +1,4 @@
-"""The footprint client for Python servers."""
+"""The tracemark client for Python servers."""
 
 from __future__ import annotations
 
@@ -33,9 +33,9 @@ from .flags import (
 )
 from .version import VERSION
 
-__all__ = ["Footprint", "FlagsAndPayloads", "Properties"]
+__all__ = ["Tracemark", "FlagsAndPayloads", "Properties"]
 
-logger = logging.getLogger("footprint")
+logger = logging.getLogger("tracemark")
 
 Properties = Mapping[str, Any]
 
@@ -44,7 +44,7 @@ MAX_BATCH = 1000
 MAX_BODY_BYTES = 4_500_000
 """Uncompressed batch size to stay under, below the ingest limit of 5 MB."""
 MAX_EXPOSURES = 50_000
-LIB = "footprint-python"
+LIB = "tracemark-python"
 
 
 @dataclass
@@ -101,8 +101,8 @@ def _value_text(value: FlagValue) -> str:
     return str(value)
 
 
-class Footprint:
-    """A footprint client for servers. Create one per process; :meth:`shutdown` runs at exit
+class Tracemark:
+    """A tracemark client for servers. Create one per process; :meth:`shutdown` runs at exit
     (or use the client as a context manager)."""
 
     def __init__(
@@ -124,7 +124,7 @@ class Footprint:
     ) -> None:
         """
         :param api_key: Public project key (``fp_pub_…``), used to send events and ask for flags.
-        :param host: Base URL of your footprint instance. Events go to ``{host}/e``.
+        :param host: Base URL of your tracemark instance. Events go to ``{host}/e``.
         :param secret_key: Secret project key (``fp_sec_…``). With it, flag definitions are fetched
             every ``flags_poll_interval`` seconds and flags are evaluated in-process.
         :param flush_at: Send once this many events are queued.
@@ -141,7 +141,7 @@ class Footprint:
         :param release: Your app's version, sent as ``$release`` with exceptions.
         """
         if not api_key or not host:
-            raise ValueError("footprint needs api_key and host")
+            raise ValueError("tracemark needs api_key and host")
         self.api_key = api_key
         self.host = host.rstrip("/")
         self.secret_key = secret_key
@@ -171,18 +171,18 @@ class Footprint:
         self._exposed_lock = threading.Lock()
 
         self._opener = urllib.request.build_opener()
-        self._consumer = threading.Thread(target=self._consume, name="footprint-consumer", daemon=True)
+        self._consumer = threading.Thread(target=self._consume, name="tracemark-consumer", daemon=True)
         self._consumer.start()
         self._poller: Optional[threading.Thread] = None
         if secret_key:
-            self._poller = threading.Thread(target=self._poll, name="footprint-flags", daemon=True)
+            self._poller = threading.Thread(target=self._poll, name="tracemark-flags", daemon=True)
             self._poller.start()
         atexit.register(self.shutdown)
 
     # --- plumbing ---------------------------------------------------------------------------
 
     def _error(self, error: BaseException, level: int = logging.ERROR) -> None:
-        logger.log(level, "footprint: %s", error)
+        logger.log(level, "tracemark: %s", error)
         if self.on_error is not None:
             try:
                 self.on_error(error)
@@ -472,7 +472,7 @@ class Footprint:
             if attempt >= self.max_retries:
                 self._error(failure)
                 return False
-            logger.debug("footprint: %s, retrying", failure)
+            logger.debug("tracemark: %s, retrying", failure)
             time.sleep(self.retry_backoff * (2**attempt))
             attempt += 1
 
@@ -492,7 +492,7 @@ class Footprint:
             self._consumer.join(self.request_timeout)
         self.flush()
 
-    def __enter__(self) -> "Footprint":
+    def __enter__(self) -> "Tracemark":
         return self
 
     def __exit__(

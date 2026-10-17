@@ -67,9 +67,7 @@ const crumb = $derived(
 			</div>
 		</header>
 		<main class="mx-auto w-full max-w-7xl flex-1 px-4 py-6 md:px-8 md:py-8">
-			{#key page.url.pathname}
-				<div class="animate-enter">{@render children()}</div>
-			{/key}
+			{@render children()}
 		</main>
 	</Sidebar.Inset>
 </Sidebar.Provider>

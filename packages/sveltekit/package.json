@@ -1,7 +1,7 @@
 {
-	"name": "@footprint/sveltekit",
+	"name": "@tracemark/sveltekit",
 	"version": "0.0.0",
-	"description": "SvelteKit hooks for footprint: per-request flags, server flag bootstrap and error capture",
+	"description": "SvelteKit hooks for tracemark: per-request flags, server flag bootstrap and error capture",
 	"license": "MIT",
 	"type": "module",
 	"sideEffects": false,
@@ -27,12 +27,12 @@
 		"typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json"
 	},
 	"peerDependencies": {
-		"@footprint/browser": "*",
-		"@footprint/node": "*"
+		"@tracemark/browser": "*",
+		"@tracemark/node": "*"
 	},
 	"devDependencies": {
-		"@footprint/browser": "workspace:*",
-		"@footprint/node": "workspace:*",
+		"@tracemark/browser": "workspace:*",
+		"@tracemark/node": "workspace:*",
 		"@sveltejs/kit": "^3.0.1",
 		"@types/node": "22.20.3",
 		"happy-dom": "20.14.5",

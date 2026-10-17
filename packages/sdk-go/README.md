@@ -1,6 +1,6 @@
-# footprint Go SDK
+# tracemark Go SDK
 
-Send events and evaluate feature flags from Go servers with [footprint](https://github.com/TorstenDittmann/footprint), self-hosted product analytics. Go 1.22+, standard library only.
+Send events and evaluate feature flags from Go servers with [tracemark](https://github.com/TorstenDittmann/footprint), self-hosted product analytics. Go 1.22+, standard library only.
 
 ```sh
 go get github.com/TorstenDittmann/footprint/packages/sdk-go
@@ -14,29 +14,29 @@ import (
 	"log"
 	"os"
 
-	footprint "github.com/TorstenDittmann/footprint/packages/sdk-go"
+	tracemark "github.com/TorstenDittmann/footprint/packages/sdk-go"
 )
 
 func main() {
-	client, err := footprint.New(footprint.Config{
+	client, err := tracemark.New(tracemark.Config{
 		APIKey:    "fp_pub_…",
-		Host:      "https://footprint.example.com",
-		SecretKey: os.Getenv("FOOTPRINT_SECRET_KEY"), // optional: local flag evaluation
+		Host:      "https://tracemark.example.com",
+		SecretKey: os.Getenv("TRACEMARK_SECRET_KEY"), // optional: local flag evaluation
 	})
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer client.Close(context.Background())
 
-	client.Capture(footprint.Event{
+	client.Capture(tracemark.Event{
 		DistinctID: "user_123",
 		Event:      "invoice_paid",
-		Properties: footprint.Properties{"amount": 49},
+		Properties: tracemark.Properties{"amount": 49},
 	})
 
-	on, err := client.IsFeatureEnabled(context.Background(), "new-checkout", footprint.FlagRequest{
+	on, err := client.IsFeatureEnabled(context.Background(), "new-checkout", tracemark.FlagRequest{
 		DistinctID:       "user_123",
-		PersonProperties: footprint.Properties{"plan": "pro"},
+		PersonProperties: tracemark.Properties{"plan": "pro"},
 	})
 	if err != nil {
 		log.Print(err)

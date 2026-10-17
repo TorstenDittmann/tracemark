@@ -1,9 +1,9 @@
 'use client';
-// React bindings for the footprint browser SDK: a provider for the client and the flags plugin,
+// React bindings for the tracemark browser SDK: a provider for the client and the flags plugin,
 // and hooks that re-render when flags change.
-import { type Config, type FootprintClient, footprint } from '@footprint/browser';
-import type { Errors } from '@footprint/browser/errors';
-import type { Flags, FlagValue } from '@footprint/browser/flags';
+import { type Config, type TracemarkClient, tracemark } from '@tracemark/browser';
+import type { Errors } from '@tracemark/browser/errors';
+import type { Flags, FlagValue } from '@tracemark/browser/flags';
 import {
 	Component,
 	createContext,
@@ -16,17 +16,17 @@ import {
 	useSyncExternalStore
 } from 'react';
 
-interface FootprintContext {
-	client: FootprintClient;
+interface TracemarkContext {
+	client: TracemarkClient;
 	flags?: Flags;
 	errors?: Errors;
 }
 
-const Context = createContext<FootprintContext>({ client: footprint });
+const Context = createContext<TracemarkContext>({ client: tracemark });
 
-export interface FootprintProviderProps {
-	/** The client to use. Defaults to the SDK's default `footprint` client. */
-	client?: FootprintClient;
+export interface TracemarkProviderProps {
+	/** The client to use. Defaults to the SDK's default `tracemark` client. */
+	client?: TracemarkClient;
 	/** Initializes the client in the browser if it isn't yet. */
 	options?: Config;
 	/** The flags plugin from `createFlags()`; added to the client. */
@@ -37,13 +37,13 @@ export interface FootprintProviderProps {
 }
 
 /** Makes a client, and optionally its flags, available to the hooks below. */
-export function FootprintProvider({
-	client = footprint,
+export function TracemarkProvider({
+	client = tracemark,
 	options,
 	flags,
 	errors,
 	children
-}: FootprintProviderProps) {
+}: TracemarkProviderProps) {
 	// Initialization happens once per client; later changes to `options` are ignored.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: see above
 	useEffect(() => {
@@ -54,20 +54,20 @@ export function FootprintProvider({
 	return createElement(Context.Provider, { value: { client, flags, errors } }, children);
 }
 
-/** The footprint client, for `capture`, `identify` and friends. */
-export function useFootprint(): FootprintClient {
+/** The tracemark client, for `capture`, `identify` and friends. */
+export function useTracemark(): TracemarkClient {
 	return useContext(Context).client;
 }
 
-/** The errors plugin passed to `FootprintProvider`, if any. */
+/** The errors plugin passed to `TracemarkProvider`, if any. */
 export function useErrors(): Errors | undefined {
 	return useContext(Context).errors;
 }
 
-/** The flags plugin passed to `FootprintProvider`. */
+/** The flags plugin passed to `TracemarkProvider`. */
 export function useFlags(): Flags {
 	const { flags } = useContext(Context);
-	if (!flags) throw new Error('[footprint] pass `flags` to <FootprintProvider> to use flag hooks');
+	if (!flags) throw new Error('[tracemark] pass `flags` to <TracemarkProvider> to use flag hooks');
 	return flags;
 }
 
@@ -121,12 +121,12 @@ export function useFeatureFlagPayload<T = unknown>(key: string): T | undefined {
 	return (value === false ? undefined : flags.getPayload(key)) as T | undefined;
 }
 
-export interface FootprintErrorBoundaryProps {
+export interface TracemarkErrorBoundaryProps {
 	/** Shown instead of the children after they threw. Without one, nothing is shown. */
 	fallback?: ReactNode | ((props: { error: unknown; reset: () => void }) => ReactNode);
 	/** Called after the error was captured. */
 	onError?: (error: unknown, info: ErrorInfo) => void;
-	/** The errors plugin, if not the one passed to `FootprintProvider`. */
+	/** The errors plugin, if not the one passed to `TracemarkProvider`. */
 	errors?: Errors;
 	children?: ReactNode;
 }
@@ -137,9 +137,9 @@ interface BoundaryState {
 }
 
 /** Captures errors thrown while rendering its children, and shows `fallback` instead. */
-export class FootprintErrorBoundary extends Component<FootprintErrorBoundaryProps, BoundaryState> {
+export class TracemarkErrorBoundary extends Component<TracemarkErrorBoundaryProps, BoundaryState> {
 	static override contextType = Context;
-	declare context: FootprintContext;
+	declare context: TracemarkContext;
 	override state: BoundaryState = { failed: false, error: undefined };
 
 	static getDerivedStateFromError(error: unknown): BoundaryState {
@@ -155,7 +155,7 @@ export class FootprintErrorBoundary extends Component<FootprintErrorBoundaryProp
 				{ mechanism: 'react-error-boundary', handled: false }
 			);
 		} else {
-			console.warn('[footprint] pass `errors` to <FootprintProvider> to capture render errors');
+			console.warn('[tracemark] pass `errors` to <TracemarkProvider> to capture render errors');
 		}
 		this.props.onError?.(error, info);
 	}
@@ -189,6 +189,6 @@ export function reactErrorHandler(
 	};
 }
 
-export type { Config, FootprintClient } from '@footprint/browser';
-export type { Errors, ErrorsOptions } from '@footprint/browser/errors';
-export type { Flags, FlagsOptions, FlagValue } from '@footprint/browser/flags';
+export type { Config, TracemarkClient } from '@tracemark/browser';
+export type { Errors, ErrorsOptions } from '@tracemark/browser/errors';
+export type { Flags, FlagsOptions, FlagValue } from '@tracemark/browser/flags';

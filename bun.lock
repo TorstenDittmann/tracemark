@@ -3,14 +3,14 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "footprint",
+      "name": "tracemark",
       "devDependencies": {
         "@biomejs/biome": "2.5.15",
         "typescript": "^6.0.3",
       },
     },
     "app": {
-      "name": "@footprint/app",
+      "name": "@tracemark/app",
       "version": "0.0.0",
       "dependencies": {
         "@libsql/client": "^0.18.0",
@@ -20,7 +20,6 @@
       "devDependencies": {
         "@fontsource-variable/geist": "^5.3.0",
         "@fontsource-variable/geist-mono": "^5.3.0",
-        "@footprint/flags": "workspace:*",
         "@internationalized/date": "^3.12.4",
         "@jridgewell/trace-mapping": "0.3.31",
         "@lucide/svelte": "^1.52.0",
@@ -28,6 +27,7 @@
         "@sveltejs/kit": "^3.0.1",
         "@sveltejs/vite-plugin-svelte": "^7.2.0",
         "@tailwindcss/vite": "^4.3.3",
+        "@tracemark/flags": "workspace:*",
         "@types/bun": "^1.4.2",
         "bits-ui": "^2.19.5",
         "clsx": "^2.1.1",
@@ -47,11 +47,11 @@
       },
     },
     "packages/astro": {
-      "name": "@footprint/astro",
+      "name": "@tracemark/astro",
       "version": "0.0.0",
       "devDependencies": {
-        "@footprint/browser": "workspace:*",
-        "@footprint/node": "workspace:*",
+        "@tracemark/browser": "workspace:*",
+        "@tracemark/node": "workspace:*",
         "@types/node": "22.20.3",
         "happy-dom": "20.14.5",
         "tsdown": "0.23.0",
@@ -59,18 +59,18 @@
         "vitest": "4.1.11",
       },
       "peerDependencies": {
-        "@footprint/browser": "*",
-        "@footprint/node": "*",
+        "@tracemark/browser": "*",
+        "@tracemark/node": "*",
       },
       "optionalPeers": [
-        "@footprint/node",
+        "@tracemark/node",
       ],
     },
     "packages/cli": {
-      "name": "@footprint/cli",
+      "name": "@tracemark/cli",
       "version": "0.0.0",
       "bin": {
-        "footprint": "./dist/index.js",
+        "tracemark": "./dist/index.js",
       },
       "devDependencies": {
         "@types/node": "22.20.3",
@@ -80,7 +80,7 @@
       },
     },
     "packages/errors": {
-      "name": "@footprint/errors",
+      "name": "@tracemark/errors",
       "version": "0.0.0",
       "devDependencies": {
         "@types/node": "22.20.3",
@@ -89,7 +89,7 @@
       },
     },
     "packages/flags": {
-      "name": "@footprint/flags",
+      "name": "@tracemark/flags",
       "version": "0.0.0",
       "devDependencies": {
         "@types/node": "22.20.3",
@@ -98,12 +98,12 @@
       },
     },
     "packages/next": {
-      "name": "@footprint/next",
+      "name": "@tracemark/next",
       "version": "0.0.0",
       "devDependencies": {
-        "@footprint/browser": "workspace:*",
-        "@footprint/node": "workspace:*",
-        "@footprint/react": "workspace:*",
+        "@tracemark/browser": "workspace:*",
+        "@tracemark/node": "workspace:*",
+        "@tracemark/react": "workspace:*",
         "@types/node": "22.20.3",
         "@types/react": "19.2.2",
         "@types/react-dom": "19.2.2",
@@ -115,17 +115,17 @@
         "vitest": "4.1.11",
       },
       "peerDependencies": {
-        "@footprint/browser": "*",
-        "@footprint/node": "*",
-        "@footprint/react": "*",
+        "@tracemark/browser": "*",
+        "@tracemark/node": "*",
+        "@tracemark/react": "*",
         "react": "^18.0.0 || ^19.0.0",
       },
     },
     "packages/nuxt": {
-      "name": "@footprint/nuxt",
+      "name": "@tracemark/nuxt",
       "version": "0.0.0",
       "devDependencies": {
-        "@footprint/node": "workspace:*",
+        "@tracemark/node": "workspace:*",
         "@types/node": "22.20.3",
         "h3": "2.0.2",
         "tsdown": "0.23.0",
@@ -133,14 +133,14 @@
         "vitest": "4.1.11",
       },
       "peerDependencies": {
-        "@footprint/node": "*",
+        "@tracemark/node": "*",
       },
     },
     "packages/react": {
-      "name": "@footprint/react",
+      "name": "@tracemark/react",
       "version": "0.0.0",
       "devDependencies": {
-        "@footprint/browser": "workspace:*",
+        "@tracemark/browser": "workspace:*",
         "@types/node": "22.20.3",
         "@types/react": "19.2.2",
         "@types/react-dom": "19.2.2",
@@ -152,15 +152,15 @@
         "vitest": "4.1.11",
       },
       "peerDependencies": {
-        "@footprint/browser": "*",
+        "@tracemark/browser": "*",
         "react": "^18.0.0 || ^19.0.0",
       },
     },
     "packages/sdk-browser": {
-      "name": "@footprint/browser",
+      "name": "@tracemark/browser",
       "version": "0.0.0",
       "devDependencies": {
-        "@footprint/errors": "workspace:*",
+        "@tracemark/errors": "workspace:*",
         "@types/node": "22.20.3",
         "happy-dom": "20.14.5",
         "tsdown": "0.23.0",
@@ -169,12 +169,12 @@
       },
     },
     "packages/sdk-node": {
-      "name": "@footprint/node",
+      "name": "@tracemark/node",
       "version": "0.0.0",
       "devDependencies": {
         "@anthropic-ai/sdk": "0.135.0",
-        "@footprint/errors": "workspace:*",
-        "@footprint/flags": "workspace:*",
+        "@tracemark/errors": "workspace:*",
+        "@tracemark/flags": "workspace:*",
         "@types/express": "5.0.6",
         "@types/node": "22.20.3",
         "ai": "7.0.143",
@@ -195,10 +195,10 @@
       ],
     },
     "packages/svelte": {
-      "name": "@footprint/svelte",
+      "name": "@tracemark/svelte",
       "version": "0.0.0",
       "devDependencies": {
-        "@footprint/browser": "workspace:*",
+        "@tracemark/browser": "workspace:*",
         "@types/node": "22.20.3",
         "happy-dom": "20.14.5",
         "svelte": "^5.57.2",
@@ -207,17 +207,17 @@
         "vitest": "4.1.11",
       },
       "peerDependencies": {
-        "@footprint/browser": "*",
+        "@tracemark/browser": "*",
         "svelte": "^4.0.0 || ^5.0.0",
       },
     },
     "packages/sveltekit": {
-      "name": "@footprint/sveltekit",
+      "name": "@tracemark/sveltekit",
       "version": "0.0.0",
       "devDependencies": {
-        "@footprint/browser": "workspace:*",
-        "@footprint/node": "workspace:*",
         "@sveltejs/kit": "^3.0.1",
+        "@tracemark/browser": "workspace:*",
+        "@tracemark/node": "workspace:*",
         "@types/node": "22.20.3",
         "happy-dom": "20.14.5",
         "tsdown": "0.23.0",
@@ -225,15 +225,15 @@
         "vitest": "4.1.11",
       },
       "peerDependencies": {
-        "@footprint/browser": "*",
-        "@footprint/node": "*",
+        "@tracemark/browser": "*",
+        "@tracemark/node": "*",
       },
     },
     "packages/vue": {
-      "name": "@footprint/vue",
+      "name": "@tracemark/vue",
       "version": "0.0.0",
       "devDependencies": {
-        "@footprint/browser": "workspace:*",
+        "@tracemark/browser": "workspace:*",
         "@types/node": "22.20.3",
         "happy-dom": "20.14.5",
         "tsdown": "0.23.0",
@@ -242,7 +242,7 @@
         "vue": "3.5.44",
       },
       "peerDependencies": {
-        "@footprint/browser": "*",
+        "@tracemark/browser": "*",
         "vue": "^3.3.0",
       },
     },
@@ -386,32 +386,6 @@
 
     "@fontsource-variable/geist-mono": ["@fontsource-variable/geist-mono@5.3.0", "", {}, "sha512-vBbuwDEo9AkrqADMXOrlAR3DFcJi4/JxeuU43FoiQERnNwsfXNnvxvReZG02cQKmyk4DZkZdBZX3oTDvy2zBAw=="],
 
-    "@footprint/app": ["@footprint/app@workspace:app"],
-
-    "@footprint/astro": ["@footprint/astro@workspace:packages/astro"],
-
-    "@footprint/browser": ["@footprint/browser@workspace:packages/sdk-browser"],
-
-    "@footprint/cli": ["@footprint/cli@workspace:packages/cli"],
-
-    "@footprint/errors": ["@footprint/errors@workspace:packages/errors"],
-
-    "@footprint/flags": ["@footprint/flags@workspace:packages/flags"],
-
-    "@footprint/next": ["@footprint/next@workspace:packages/next"],
-
-    "@footprint/node": ["@footprint/node@workspace:packages/sdk-node"],
-
-    "@footprint/nuxt": ["@footprint/nuxt@workspace:packages/nuxt"],
-
-    "@footprint/react": ["@footprint/react@workspace:packages/react"],
-
-    "@footprint/svelte": ["@footprint/svelte@workspace:packages/svelte"],
-
-    "@footprint/sveltekit": ["@footprint/sveltekit@workspace:packages/sveltekit"],
-
-    "@footprint/vue": ["@footprint/vue@workspace:packages/vue"],
-
     "@internationalized/date": ["@internationalized/date@3.12.4", "", { "dependencies": { "@swc/helpers": "^0.5.0" } }, "sha512-M1dEn4c1U1HsSlaVR8upZtSqvXrTkHDfv18H01uCSJyjVLDxnBR38v/fMxecmlwXKR4i9HeZcmgQAPE6A+aGJQ=="],
 
     "@jridgewell/gen-mapping": ["@jridgewell/gen-mapping@0.3.13", "", { "dependencies": { "@jridgewell/sourcemap-codec": "^1.5.0", "@jridgewell/trace-mapping": "^0.3.24" } }, "sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA=="],
@@ -553,6 +527,32 @@
     "@tokenizer/inflate": ["@tokenizer/inflate@0.5.1", "", { "dependencies": { "debug": "^4.4.3", "token-types": "^6.1.2" } }, "sha512-56U2O6fDLFtqokwWh597IdeUgtM7j+TT9tb1soybhgA6cy163gAcVmoQr8H4Ud/CkgCkViwcuLyqtn6wYqw59Q=="],
 
     "@tokenizer/token": ["@tokenizer/token@0.3.0", "", {}, "sha512-OvjF+z51L3ov0OyAU0duzsYuvO01PH7x4t6DJx+guahgTnBHkhJdG7soQeTSFLWN3efnHyibZ4Z8l2EuWwJN3A=="],
+
+    "@tracemark/app": ["@tracemark/app@workspace:app"],
+
+    "@tracemark/astro": ["@tracemark/astro@workspace:packages/astro"],
+
+    "@tracemark/browser": ["@tracemark/browser@workspace:packages/sdk-browser"],
+
+    "@tracemark/cli": ["@tracemark/cli@workspace:packages/cli"],
+
+    "@tracemark/errors": ["@tracemark/errors@workspace:packages/errors"],
+
+    "@tracemark/flags": ["@tracemark/flags@workspace:packages/flags"],
+
+    "@tracemark/next": ["@tracemark/next@workspace:packages/next"],
+
+    "@tracemark/node": ["@tracemark/node@workspace:packages/sdk-node"],
+
+    "@tracemark/nuxt": ["@tracemark/nuxt@workspace:packages/nuxt"],
+
+    "@tracemark/react": ["@tracemark/react@workspace:packages/react"],
+
+    "@tracemark/svelte": ["@tracemark/svelte@workspace:packages/svelte"],
+
+    "@tracemark/sveltekit": ["@tracemark/sveltekit@workspace:packages/sveltekit"],
+
+    "@tracemark/vue": ["@tracemark/vue@workspace:packages/vue"],
 
     "@types/body-parser": ["@types/body-parser@1.19.6", "", { "dependencies": { "@types/connect": "*", "@types/node": "*" } }, "sha512-HLFeCYgz89uk22N5Qg3dvGvsv46B8GLvKKo1zKG4NybA8U2DiEO3w9lqGg29t/tfLRJpJ6iQxnVw4OnB7MoM9g=="],
 

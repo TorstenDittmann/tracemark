@@ -180,7 +180,7 @@ const hoverRows = $derived(
 					<stop offset="1" style:stop-color={color(0)} stop-opacity="0" />
 				</linearGradient>
 			</defs>
-			<g class="reveal">
+			<g>
 				{#if area}
 					<path d={area} fill="url(#area-{gradientId})" />
 				{/if}
@@ -264,17 +264,6 @@ const hoverRows = $derived(
 </div>
 
 <style>
-.reveal {
-	animation: reveal 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both;
-}
-@keyframes reveal {
-	from {
-		clip-path: inset(0 100% 0 0);
-	}
-	to {
-		clip-path: inset(0 0 0 0);
-	}
-}
 .dot {
 	transition:
 		cx 100ms ease-out,

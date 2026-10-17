@@ -7,7 +7,7 @@ from typing import Any, Dict
 
 from _support import VECTORS, load_json
 
-from footprint.flags import (
+from tracemark.flags import (
     FlagContext,
     InconclusiveError,
     _text,

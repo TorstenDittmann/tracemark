@@ -13,7 +13,7 @@ const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', tim
 </script>
 
 <svelte:head>
-	<title>Saved insights · {data.project.name} · footprint</title>
+	<title>Saved insights · {data.project.name} · Tracemark</title>
 </svelte:head>
 
 <Card.Root class="min-w-0 py-2">

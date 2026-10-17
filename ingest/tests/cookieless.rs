@@ -6,10 +6,10 @@ use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use chrono::Utc;
 use common::{TEST_KEY, TEST_PROJECT, app_with, drain, send};
-use footprint_ingest::cookieless::{PLACEHOLDER, visitor_id};
-use footprint_ingest::enrich::Enricher;
-use footprint_ingest::keys::{KeyStore, Snapshot};
 use serde_json::{Value, json};
+use tracemark_ingest::cookieless::{PLACEHOLDER, visitor_id};
+use tracemark_ingest::enrich::Enricher;
+use tracemark_ingest::keys::{KeyStore, Snapshot};
 
 fn keys(salt: Option<&str>) -> KeyStore {
     let mut salts = HashMap::new();

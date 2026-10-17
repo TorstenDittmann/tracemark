@@ -1,15 +1,15 @@
 {
-	"name": "@footprint/browser",
+	"name": "@tracemark/browser",
 	"version": "0.0.0",
-	"description": "Browser SDK for footprint, self-hosted product analytics",
+	"description": "Browser SDK for tracemark, self-hosted product analytics",
 	"license": "MIT",
 	"type": "module",
 	"sideEffects": false,
 	"main": "./dist/index.js",
 	"module": "./dist/index.js",
 	"types": "./dist/index.d.ts",
-	"unpkg": "./dist/footprint.iife.js",
-	"jsdelivr": "./dist/footprint.iife.js",
+	"unpkg": "./dist/tracemark.iife.js",
+	"jsdelivr": "./dist/tracemark.iife.js",
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
@@ -19,13 +19,13 @@
 			"types": "./dist/flags.d.ts",
 			"import": "./dist/flags.js"
 		},
-		"./iife": "./dist/footprint.iife.js",
-		"./flags/iife": "./dist/footprint-flags.iife.js",
+		"./iife": "./dist/tracemark.iife.js",
+		"./flags/iife": "./dist/tracemark-flags.iife.js",
 		"./errors": {
 			"types": "./dist/errors.d.ts",
 			"import": "./dist/errors.js"
 		},
-		"./errors/iife": "./dist/footprint-errors.iife.js",
+		"./errors/iife": "./dist/tracemark-errors.iife.js",
 		"./package.json": "./package.json"
 	},
 	"files": [
@@ -38,7 +38,7 @@
 		"size": "bun scripts/size.ts"
 	},
 	"devDependencies": {
-		"@footprint/errors": "workspace:*",
+		"@tracemark/errors": "workspace:*",
 		"@types/node": "22.20.3",
 		"happy-dom": "20.14.5",
 		"tsdown": "0.23.0",

@@ -32,7 +32,7 @@ const numericProperties = $derived(data.properties.filter((p) => p.numeric).map(
 </script>
 
 <svelte:head>
-	<title>Insights · {data.project.name} · footprint</title>
+	<title>Insights · {data.project.name} · Tracemark</title>
 </svelte:head>
 
 <div class="grid gap-6">

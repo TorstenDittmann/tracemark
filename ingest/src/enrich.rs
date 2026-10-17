@@ -260,7 +260,7 @@ fn merge_missing(props: &mut Map<String, Value>, derived: &Map<String, Value>) {
     }
 }
 
-/// The subset of the GeoIP2 / DB-IP City record that footprint stores.
+/// The subset of the GeoIP2 / DB-IP City record that tracemark stores.
 #[derive(Deserialize, Default)]
 #[serde(default)]
 struct City<'a> {

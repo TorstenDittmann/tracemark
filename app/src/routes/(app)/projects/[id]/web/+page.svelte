@@ -122,7 +122,7 @@ const metrics: { key: Metric; label: string }[] = [
 </script>
 
 <svelte:head>
-	<title>Web analytics · {data.project.name} · footprint</title>
+	<title>Web analytics · {data.project.name} · Tracemark</title>
 </svelte:head>
 
 <div class="grid gap-6">
@@ -174,7 +174,7 @@ const metrics: { key: Metric; label: string }[] = [
 			Web analytics are unavailable because ClickHouse could not be reached.
 		</p>
 	{:else}
-		<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5 stagger">
+		<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
 			{#each tiles as tile (tile.label)}
 				<StatCard label={tile.label} value={tile.value} trend={tile.trend} />
 			{/each}

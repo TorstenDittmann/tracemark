@@ -3,14 +3,14 @@ requires = ["hatchling>=1.18"]
 build-backend = "hatchling.build"
 
 [project]
-name = "footprint-sdk"
+name = "tracemark-sdk"
 version = "0.1.0"
-description = "Python server SDK for footprint, self-hosted product analytics"
+description = "Python server SDK for tracemark, self-hosted product analytics"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.9"
 dependencies = []
-keywords = ["analytics", "product-analytics", "feature-flags", "footprint"]
+keywords = ["analytics", "product-analytics", "feature-flags", "tracemark"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -26,10 +26,10 @@ classifiers = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/footprint"]
+packages = ["src/tracemark"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src/footprint", "tests", "README.md", "pyproject.toml"]
+include = ["src/tracemark", "tests", "README.md", "pyproject.toml"]
 
 [tool.pyright]
 include = ["src"]

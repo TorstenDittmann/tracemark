@@ -7,5 +7,5 @@ export default defineConfig({
 	target: 'es2020',
 	dts: true,
 	clean: true,
-	external: ['react', /^@footprint\/browser/]
+	external: ['react', /^@tracemark\/browser/]
 });

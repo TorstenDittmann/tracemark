@@ -26,7 +26,7 @@ const activityHref = (property: string) =>
 </script>
 
 <svelte:head>
-	<title>Properties · {data.project.name} · footprint</title>
+	<title>Properties · {data.project.name} · Tracemark</title>
 </svelte:head>
 
 <div class="grid gap-4">

@@ -25,7 +25,7 @@ const allProperties = $derived(data.properties.map((p) => p.name));
 </script>
 
 <svelte:head>
-	<title>Events · {data.project.name} · footprint</title>
+	<title>Events · {data.project.name} · Tracemark</title>
 </svelte:head>
 
 <div class="grid gap-6">

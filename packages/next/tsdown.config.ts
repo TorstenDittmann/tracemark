@@ -7,5 +7,5 @@ export default defineConfig({
 	target: 'es2022',
 	dts: true,
 	clean: true,
-	external: [/^@footprint\//, /^react/, /^next/]
+	external: [/^@tracemark\//, /^react/, /^next/]
 });

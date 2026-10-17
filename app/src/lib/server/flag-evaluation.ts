@@ -7,7 +7,7 @@ import {
 	type FlagResult,
 	matches,
 	type PropertyMatch
-} from '@footprint/flags';
+} from '@tracemark/flags';
 import type { CohortSpec } from '../cohorts';
 import type { PropertyFilter } from '../insights';
 import { type ClickHouseConfig, clickhouseQuery } from './clickhouse';

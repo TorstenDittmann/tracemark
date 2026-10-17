@@ -8,7 +8,7 @@ from typing import Any, Dict, List
 
 from _support import VECTORS, FakeServer, Recorded, batch_errors, load_json
 
-from footprint import Footprint
+from tracemark import Tracemark
 
 VECTOR_DATA = load_json(VECTORS)
 DEFINITIONS = [group["flag"] for group in VECTOR_DATA["flags"]]
@@ -29,17 +29,17 @@ class FlagsTest(unittest.TestCase):
         self.server = FakeServer()
         self.server.on("/flags", remote_answer)
         self.server.on("/flags/definitions", (200, {"flags": DEFINITIONS}))
-        self.clients: List[Footprint] = []
+        self.clients: List[Tracemark] = []
 
     def tearDown(self) -> None:
         for client in self.clients:
             client.shutdown()
         self.server.close()
 
-    def client(self, **options: Any) -> Footprint:
+    def client(self, **options: Any) -> Tracemark:
         settings: Dict[str, Any] = {"flush_interval": 60.0, "retry_backoff": 0.01}
         settings.update(options)
-        client = Footprint("fp_pub_test", self.server.url, **settings)
+        client = Tracemark("fp_pub_test", self.server.url, **settings)
         self.clients.append(client)
         return client
 
@@ -94,7 +94,7 @@ class Remote(FlagsTest):
         self.server.on("/flags", (500, {"error": "boom"}))
         errors: List[BaseException] = []
         fp = self.client(on_error=errors.append)
-        with self.assertLogs("footprint", logging.ERROR):
+        with self.assertLogs("tracemark", logging.ERROR):
             self.assertIs(fp.get_feature_flag("pricing", "u"), False)
             self.assertEqual(fp.get_all_flags("u"), {})
         self.assertEqual(len(errors), 2)
@@ -175,7 +175,7 @@ class Local(FlagsTest):
         fp = self.client(secret_key="fp_sec_test", flags_poll_interval=60)
         self.assertIs(fp.get_feature_flag("new-checkout", "grace"), True)
         self.server.on("/flags/definitions", (500, {"error": "boom"}))
-        with self.assertLogs("footprint", logging.ERROR):
+        with self.assertLogs("tracemark", logging.ERROR):
             fp.reload_feature_flags()
         self.assertIs(fp.get_feature_flag("new-checkout", "grace"), True)
         self.assertEqual(self.server.to("/flags"), [])
@@ -186,13 +186,13 @@ class Local(FlagsTest):
 
     def test_skips_definitions_that_do_not_parse(self) -> None:
         self.server.on("/flags/definitions", (200, {"flags": [{"key": "!bad"}, DEFINITIONS[0]]}))
-        with self.assertLogs("footprint", logging.WARNING):
+        with self.assertLogs("tracemark", logging.WARNING):
             fp = self.client(secret_key="fp_sec_test")
             self.assertIs(fp.get_feature_flag("new-checkout", "grace"), True)
 
     def test_falls_back_to_the_server_when_definitions_never_load(self) -> None:
         self.server.on("/flags/definitions", (401, {"error": "invalid_secret_key"}))
-        with self.assertLogs("footprint", logging.ERROR):
+        with self.assertLogs("tracemark", logging.ERROR):
             fp = self.client(secret_key="fp_sec_wrong")
             self.assertIs(fp.get_feature_flag("new-checkout", "ada"), True)
         self.assertEqual(len(self.server.to("/flags")), 1)

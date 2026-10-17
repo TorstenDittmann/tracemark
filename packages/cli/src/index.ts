@@ -1,19 +1,19 @@
 #!/usr/bin/env node
-// footprint CLI. `footprint sourcemaps upload <dir>` is the only command so far.
+// tracemark CLI. `tracemark sourcemaps upload <dir>` is the only command so far.
 import { parseArgs } from 'node:util';
 import { findSourcemaps, uploadSourcemaps } from './sourcemaps';
 
-const HELP = `Usage: footprint sourcemaps upload <dir> [options]
+const HELP = `Usage: tracemark sourcemaps upload <dir> [options]
 
-Uploads the source maps of a build so footprint shows original source in error stack traces.
+Uploads the source maps of a build so tracemark shows original source in error stack traces.
 Each script under <dir> with a map (its sourceMappingURL, or <script>.map beside it) is uploaded
 under the URL it is served from: --url-prefix plus its path in <dir>.
 
 Options:
-  --host <url>         Your footprint instance (env FOOTPRINT_HOST)
-  --secret-key <key>   The project's secret key, fp_sec_… (env FOOTPRINT_SECRET_KEY)
+  --host <url>         Your tracemark instance (env TRACEMARK_HOST)
+  --secret-key <key>   The project's secret key, fp_sec_… (env TRACEMARK_SECRET_KEY)
   --release <version>  Release the build belongs to; set the same \`release\` in the SDK
-                       (env FOOTPRINT_RELEASE). Without one, maps match events of any release.
+                       (env TRACEMARK_RELEASE). Without one, maps match events of any release.
   --url-prefix <path>  Where <dir> is served: ~/ for the site root on any origin (default),
                        ~/static/, or a full URL such as https://cdn.example.com/app/
   --delete-after       Delete the map files once uploaded, so they aren't deployed
@@ -42,9 +42,9 @@ async function main(argv: string[]): Promise<number> {
 	}
 
 	const env = process.env;
-	const host = values.host ?? env.FOOTPRINT_HOST;
-	const secretKey = values['secret-key'] ?? env.FOOTPRINT_SECRET_KEY;
-	const release = values.release ?? env.FOOTPRINT_RELEASE;
+	const host = values.host ?? env.TRACEMARK_HOST;
+	const secretKey = values['secret-key'] ?? env.TRACEMARK_SECRET_KEY;
+	const release = values.release ?? env.TRACEMARK_RELEASE;
 
 	const maps = await findSourcemaps(dir, values['url-prefix']);
 	if (!maps.length) {
@@ -57,7 +57,7 @@ async function main(argv: string[]): Promise<number> {
 		return 0;
 	}
 	if (!host || !secretKey) {
-		console.error('Set --host and --secret-key, or FOOTPRINT_HOST and FOOTPRINT_SECRET_KEY.');
+		console.error('Set --host and --secret-key, or TRACEMARK_HOST and TRACEMARK_SECRET_KEY.');
 		return 2;
 	}
 

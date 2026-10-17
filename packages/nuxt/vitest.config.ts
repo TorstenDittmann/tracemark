@@ -5,7 +5,7 @@ const source = (path: string) => fileURLToPath(new URL(`../${path}`, import.meta
 
 export default defineConfig({
 	resolve: {
-		alias: [{ find: /^@footprint\/node$/, replacement: source('sdk-node/src/index.ts') }]
+		alias: [{ find: /^@tracemark\/node$/, replacement: source('sdk-node/src/index.ts') }]
 	},
 	test: {
 		include: ['test/**/*.test.ts'],

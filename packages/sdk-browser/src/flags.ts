@@ -1,6 +1,6 @@
 // Feature flags plugin: fetches every flag for the current person from `POST /flags` (see
 // docs/flags-api.md), caches the answer for the next page load, and records exposures.
-import type { FootprintClient, Plugin } from './client';
+import type { Plugin, TracemarkClient } from './client';
 import type { Properties } from './properties';
 
 export type FlagValue = boolean | string;
@@ -49,9 +49,9 @@ const isSnapshot = (value: unknown): value is FlagsSnapshot =>
 	typeof (value as FlagsSnapshot).flags === 'object' &&
 	(value as FlagsSnapshot).flags !== null;
 
-/** Creates the flags plugin; pass it to `footprint.use()`. */
+/** Creates the flags plugin; pass it to `tracemark.use()`. */
 export function createFlags(options: FlagsOptions = {}): Flags {
-	let client: FootprintClient | undefined;
+	let client: TracemarkClient | undefined;
 	let snapshot: FlagsSnapshot = options.bootstrap ?? { flags: {} };
 	let properties: Properties = { ...options.personProperties };
 	/** Distinct id the current snapshot is for; exposures are recorded once per id. */

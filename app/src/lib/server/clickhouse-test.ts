@@ -11,7 +11,7 @@ export async function createTestDatabase(name: string): Promise<ClickHouseConfig
 		url: clickhouseTestUrl ?? '',
 		user: process.env.CLICKHOUSE_TEST_USER ?? 'default',
 		password: process.env.CLICKHOUSE_TEST_PASSWORD ?? '',
-		database: `footprint_test_${name}_${Date.now()}`
+		database: `tracemark_test_${name}_${Date.now()}`
 	};
 	await migrateClickhouse(
 		config,

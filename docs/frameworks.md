@@ -1,26 +1,26 @@
 # Frameworks
 
-The browser SDK (`@footprint/browser`) and the Node SDK (`@footprint/node`) work in any
+The browser SDK (`@tracemark/browser`) and the Node SDK (`@tracemark/node`) work in any
 framework. These packages and recipes cover the common setups.
 
-## React: `@footprint/react`
+## React: `@tracemark/react`
 
 ```tsx
-import { footprint } from '@footprint/browser';
-import { createFlags } from '@footprint/browser/flags';
-import { FootprintProvider, useFeatureFlag, useFeatureFlagPayload } from '@footprint/react';
+import { tracemark } from '@tracemark/browser';
+import { createFlags } from '@tracemark/browser/flags';
+import { TracemarkProvider, useFeatureFlag, useFeatureFlagPayload } from '@tracemark/react';
 
 const flags = createFlags();
 
 export function App() {
   return (
-    <FootprintProvider
-      client={footprint}
+    <TracemarkProvider
+      client={tracemark}
       options={{ apiKey: 'fp_pub_…', host: 'https://ingest.example.com' }}
       flags={flags}
     >
       <Pricing />
-    </FootprintProvider>
+    </TracemarkProvider>
   );
 }
 
@@ -31,28 +31,28 @@ function Pricing() {
 }
 ```
 
-- `FootprintProvider` initializes the client once in the browser if you pass `options`, and adds
-  the flags plugin. Without `client` it uses the default `footprint` client.
-- `useFootprint()` returns the client for `capture`, `identify` and the rest.
+- `TracemarkProvider` initializes the client once in the browser if you pass `options`, and adds
+  the flags plugin. Without `client` it uses the default `tracemark` client.
+- `useTracemark()` returns the client for `capture`, `identify` and the rest.
 - `useFeatureFlag(key)`, `useFeatureFlagEnabled(key)` and `useFeatureFlagPayload(key)` re-render
   when flags change, and record a `$feature_flag_called` exposure once per person and value.
 - `useFlags()` returns the plugin itself, for `reload()` or `setPersonProperties()`.
 
 ### Error boundaries
 
-Pass the errors plugin to the provider and wrap parts of your tree in `FootprintErrorBoundary`:
+Pass the errors plugin to the provider and wrap parts of your tree in `TracemarkErrorBoundary`:
 
 ```tsx
-import { createErrors } from '@footprint/browser/errors';
-import { FootprintErrorBoundary, reactErrorHandler } from '@footprint/react';
+import { createErrors } from '@tracemark/browser/errors';
+import { TracemarkErrorBoundary, reactErrorHandler } from '@tracemark/react';
 
 const errors = createErrors({ release: '1.4.0' });
 
-<FootprintProvider options={options} flags={flags} errors={errors}>
-  <FootprintErrorBoundary fallback={({ reset }) => <button onClick={reset}>Try again</button>}>
+<TracemarkProvider options={options} flags={flags} errors={errors}>
+  <TracemarkErrorBoundary fallback={({ reset }) => <button onClick={reset}>Try again</button>}>
     <Checkout />
-  </FootprintErrorBoundary>
-</FootprintProvider>;
+  </TracemarkErrorBoundary>
+</TracemarkProvider>;
 
 // React 19 roots also report errors no boundary caught:
 createRoot(el, { onUncaughtError: reactErrorHandler(errors) });
@@ -61,66 +61,66 @@ createRoot(el, { onUncaughtError: reactErrorHandler(errors) });
 The boundary captures what its children throw while rendering, with the component stack as
 `$react_component_stack`, and shows `fallback`. `useErrors()` returns the plugin.
 
-## Next.js (App Router): `@footprint/next`
+## Next.js (App Router): `@tracemark/next`
 
 ```tsx
-// lib/footprint.ts (server only)
-import { Footprint } from '@footprint/node';
-export const footprint = new Footprint({
-  apiKey: process.env.NEXT_PUBLIC_FOOTPRINT_KEY!,
-  host: process.env.NEXT_PUBLIC_FOOTPRINT_HOST!,
-  secretKey: process.env.FOOTPRINT_SECRET_KEY, // local evaluation, optional
+// lib/tracemark.ts (server only)
+import { Tracemark } from '@tracemark/node';
+export const tracemark = new Tracemark({
+  apiKey: process.env.NEXT_PUBLIC_TRACEMARK_KEY!,
+  host: process.env.NEXT_PUBLIC_TRACEMARK_HOST!,
+  secretKey: process.env.TRACEMARK_SECRET_KEY, // local evaluation, optional
   release: process.env.NEXT_PUBLIC_RELEASE
 });
 
 // app/layout.tsx
 import { cookies } from 'next/headers';
-import { flagsBootstrap } from '@footprint/next/server';
-import { FootprintNextProvider } from '@footprint/next';
+import { flagsBootstrap } from '@tracemark/next/server';
+import { TracemarkNextProvider } from '@tracemark/next';
 
 export default async function RootLayout({ children }) {
   const user = await currentUser();
-  const bootstrap = await flagsBootstrap(footprint, await cookies(), user?.id);
+  const bootstrap = await flagsBootstrap(tracemark, await cookies(), user?.id);
   return (
     <html><body>
-      <FootprintNextProvider
-        options={{ apiKey: process.env.NEXT_PUBLIC_FOOTPRINT_KEY!, host: process.env.NEXT_PUBLIC_FOOTPRINT_HOST! }}
+      <TracemarkNextProvider
+        options={{ apiKey: process.env.NEXT_PUBLIC_TRACEMARK_KEY!, host: process.env.NEXT_PUBLIC_TRACEMARK_HOST! }}
         bootstrap={bootstrap}
         distinctId={user?.id}
         errors={{ release: process.env.NEXT_PUBLIC_RELEASE }}
       >
         {children}
-      </FootprintNextProvider>
+      </TracemarkNextProvider>
     </body></html>
   );
 }
 ```
 
-- `FootprintNextProvider` sets up the browser SDK with the flags and errors plugins, and keeps
+- `TracemarkNextProvider` sets up the browser SDK with the flags and errors plugins, and keeps
   the visitor's id in a cookie (`persistence: 'cookie'`) so the server can read it. Page views
-  follow client-side navigation on their own. The hooks from `@footprint/react` work inside it.
+  follow client-side navigation on their own. The hooks from `@tracemark/react` work inside it.
 - `flagsBootstrap(client, cookies, distinctId?)` evaluates every flag for the signed-in user, or
   the visitor in the cookie, so the first render shows the right variant. It returns nothing for
-  a first-time visitor. `footprintScope(client, await cookies())` gives the same person's
+  a first-time visitor. `tracemarkScope(client, await cookies())` gives the same person's
   `getFlag`, `isEnabled` and `capture` in server components and route handlers.
 - Errors: `useCaptureException(error)` in `error.tsx` captures what the page shows (pass the
   errors plugin in `global-error.tsx`, which renders outside the provider). For server errors,
   add to `instrumentation.ts`:
 
 ```ts
-import { createOnRequestError } from '@footprint/next/server';
-import { footprint } from './lib/footprint';
-export const onRequestError = createOnRequestError(footprint);
+import { createOnRequestError } from '@tracemark/next/server';
+import { tracemark } from './lib/tracemark';
+export const onRequestError = createOnRequestError(tracemark);
 ```
 
-## Svelte and SvelteKit: `@footprint/svelte`
+## Svelte and SvelteKit: `@tracemark/svelte`
 
 Stores that work with `$` in Svelte 4 and 5 components:
 
 ```svelte
 <script lang="ts">
-  import { featureFlag, featureFlagPayload } from '@footprint/svelte';
-  import { flags } from '$lib/footprint';
+  import { featureFlag, featureFlagPayload } from '@tracemark/svelte';
+  import { flags } from '$lib/tracemark';
 
   const pricing = featureFlag(flags, 'pricing-page');
   const payload = featureFlagPayload<{ price: number }>(flags, 'pricing-page');
@@ -134,7 +134,7 @@ Stores that work with `$` in Svelte 4 and 5 components:
 without recording anything.
 
 Svelte 5's `<svelte:boundary>` captures render errors with `boundaryError` from
-`@footprint/svelte` and the errors plugin:
+`@tracemark/svelte` and the errors plugin:
 
 ```svelte
 <svelte:boundary onerror={boundaryError(errors)}>
@@ -143,54 +143,54 @@ Svelte 5's `<svelte:boundary>` captures render errors with `boundaryError` from
 </svelte:boundary>
 ```
 
-## SvelteKit: `@footprint/sveltekit`
+## SvelteKit: `@tracemark/sveltekit`
 
 ```ts
-// src/lib/server/footprint.ts
-import { Footprint } from '@footprint/node';
-export const footprint = new Footprint({ apiKey, host, secretKey, release });
+// src/lib/server/tracemark.ts
+import { Tracemark } from '@tracemark/node';
+export const tracemark = new Tracemark({ apiKey, host, secretKey, release });
 
 // src/hooks.server.ts
-import { footprintHandle, footprintHandleError } from '@footprint/sveltekit/server';
-export const handle = footprintHandle(footprint, { distinctId: (event) => event.locals.user?.id });
-export const handleError = footprintHandleError(footprint);
+import { tracemarkHandle, tracemarkHandleError } from '@tracemark/sveltekit/server';
+export const handle = tracemarkHandle(tracemark, { distinctId: (event) => event.locals.user?.id });
+export const handleError = tracemarkHandleError(tracemark);
 
 // src/routes/+layout.server.ts
-import { flagsBootstrap } from '@footprint/sveltekit/server';
+import { flagsBootstrap } from '@tracemark/sveltekit/server';
 export const load = async (event) => ({ flags: await flagsBootstrap(event) });
 
 // src/hooks.client.ts
-import { footprint } from '@footprint/browser';
-import { createErrors } from '@footprint/browser/errors';
-import { footprintClientHandleError } from '@footprint/sveltekit';
+import { tracemark } from '@tracemark/browser';
+import { createErrors } from '@tracemark/browser/errors';
+import { tracemarkClientHandleError } from '@tracemark/sveltekit';
 export const errors = createErrors({ release });
-footprint.init({ apiKey: 'fp_pub_…', host: 'https://footprint.example.com', persistence: 'cookie' });
-footprint.use(errors);
-export const handleError = footprintClientHandleError(errors);
+tracemark.init({ apiKey: 'fp_pub_…', host: 'https://tracemark.example.com', persistence: 'cookie' });
+tracemark.use(errors);
+export const handleError = tracemarkClientHandleError(errors);
 ```
 
-- `footprintHandle` sets `event.locals.footprint` to the request's person: your `distinctId`
+- `tracemarkHandle` sets `event.locals.tracemark` to the request's person: your `distinctId`
   callback, or the visitor id the browser SDK keeps in its cookie (use `persistence: 'cookie'`).
-  Type it in `src/app.d.ts` with `footprint: import('@footprint/node').FootprintScope` in `Locals`.
+  Type it in `src/app.d.ts` with `tracemark: import('@tracemark/node').TracemarkScope` in `Locals`.
   Combine it with your own hooks using `sequence()`.
 - `flagsBootstrap(event)` returns that person's flags for `createFlags({ bootstrap: data.flags })`.
-  During server rendering the `@footprint/svelte` stores keep that bootstrap.
-- `footprintHandleError` and `footprintClientHandleError` capture unexpected errors, not 404s or
+  During server rendering the `@tracemark/svelte` stores keep that bootstrap.
+- `tracemarkHandleError` and `tracemarkClientHandleError` capture unexpected errors, not 404s or
   errors thrown with `error()`, then return what the function you pass returns. They work with
   SvelteKit 2 and 3.
 
-## Vue: `@footprint/vue`
+## Vue: `@tracemark/vue`
 
 ```ts
 // main.ts
-import { createErrors } from '@footprint/browser/errors';
-import { createFlags } from '@footprint/browser/flags';
-import { createFootprint } from '@footprint/vue';
+import { createErrors } from '@tracemark/browser/errors';
+import { createFlags } from '@tracemark/browser/flags';
+import { createTracemark } from '@tracemark/vue';
 
 const app = createApp(App);
 app.use(
-  createFootprint({
-    options: { apiKey: 'fp_pub_…', host: 'https://footprint.example.com' },
+  createTracemark({
+    options: { apiKey: 'fp_pub_…', host: 'https://tracemark.example.com' },
     flags: createFlags(),
     errors: createErrors({ release })
   })
@@ -199,15 +199,15 @@ app.use(
 
 ```vue
 <script setup lang="ts">
-import { useFeatureFlag, useFeatureFlagEnabled, useFootprint } from '@footprint/vue';
+import { useFeatureFlag, useFeatureFlagEnabled, useTracemark } from '@tracemark/vue';
 const pricing = useFeatureFlag('pricing-page'); // Ref: variant, true, or false
 const beta = useFeatureFlagEnabled('beta'); // ComputedRef<boolean>
-const footprint = useFootprint();
+const tracemark = useTracemark();
 </script>
 
 <template>
   <CheaperPricing v-if="pricing === 'cheaper'" />
-  <button v-if="beta" @click="footprint.capture('beta_clicked')">Try the beta</button>
+  <button v-if="beta" @click="tracemark.capture('beta_clicked')">Try the beta</button>
 </template>
 ```
 
@@ -218,38 +218,38 @@ const footprint = useFootprint();
 - Setup only runs in the browser, so the plugin also works with server rendering, where the
   composables hold the flags' bootstrap values.
 
-## Nuxt: `@footprint/nuxt`
+## Nuxt: `@tracemark/nuxt`
 
-On the server, `@footprint/nuxt` gives each request a scope, bootstraps the browser's flags and
-captures errors. In the browser, use `@footprint/vue`.
+On the server, `@tracemark/nuxt` gives each request a scope, bootstraps the browser's flags and
+captures errors. In the browser, use `@tracemark/vue`.
 
 ```ts
-// server/utils/footprint.ts
-import { Footprint } from '@footprint/node';
-export const footprint = new Footprint({ apiKey, host, secretKey, release });
+// server/utils/tracemark.ts
+import { Tracemark } from '@tracemark/node';
+export const tracemark = new Tracemark({ apiKey, host, secretKey, release });
 
-// server/middleware/footprint.ts
-import { footprintMiddleware } from '@footprint/nuxt';
-export default defineEventHandler(footprintMiddleware(footprint));
+// server/middleware/tracemark.ts
+import { tracemarkMiddleware } from '@tracemark/nuxt';
+export default defineEventHandler(tracemarkMiddleware(tracemark));
 
-// server/plugins/footprint.ts
-import { footprintErrorHook } from '@footprint/nuxt';
+// server/plugins/tracemark.ts
+import { tracemarkErrorHook } from '@tracemark/nuxt';
 export default defineNitroPlugin((nitroApp) => {
-  nitroApp.hooks.hook('error', footprintErrorHook(footprint));
-  nitroApp.hooks.hook('close', () => footprint.shutdown());
+  nitroApp.hooks.hook('error', tracemarkErrorHook(tracemark));
+  nitroApp.hooks.hook('close', () => tracemark.shutdown());
 });
 
-// app/plugins/footprint.ts
-import { createErrors } from '@footprint/browser/errors';
-import { createFlags, type FlagsSnapshot } from '@footprint/browser/flags';
-import { flagsBootstrap } from '@footprint/nuxt';
-import { createFootprint } from '@footprint/vue';
+// app/plugins/tracemark.ts
+import { createErrors } from '@tracemark/browser/errors';
+import { createFlags, type FlagsSnapshot } from '@tracemark/browser/flags';
+import { flagsBootstrap } from '@tracemark/nuxt';
+import { createTracemark } from '@tracemark/vue';
 export default defineNuxtPlugin(async (nuxtApp) => {
-  const bootstrap = useState<FlagsSnapshot | undefined>('footprint-flags');
+  const bootstrap = useState<FlagsSnapshot | undefined>('tracemark-flags');
   if (import.meta.server) bootstrap.value = await flagsBootstrap(useRequestEvent());
   nuxtApp.vueApp.use(
-    createFootprint({
-      options: { apiKey: 'fp_pub_…', host: 'https://footprint.example.com', persistence: 'cookie' },
+    createTracemark({
+      options: { apiKey: 'fp_pub_…', host: 'https://tracemark.example.com', persistence: 'cookie' },
       flags: createFlags({ bootstrap: bootstrap.value }),
       errors: createErrors({ release })
     })
@@ -257,21 +257,21 @@ export default defineNuxtPlugin(async (nuxtApp) => {
 });
 ```
 
-- `footprintMiddleware` sets `event.context.footprint` (with `getFlag`, `capture` and friends) to
+- `tracemarkMiddleware` sets `event.context.tracemark` (with `getFlag`, `capture` and friends) to
   the request's person: your `distinctId` callback, or the visitor id the browser SDK keeps in its
   cookie (use `persistence: 'cookie'`). It works with h3 1 (Nuxt 3 and 4) and h3 2.
 - `flagsBootstrap(event)` evaluates that person's flags on the server, so pages render with the
   right variant and no flicker.
-- `footprintErrorHook` captures unexpected server errors, not 4xx responses.
+- `tracemarkErrorHook` captures unexpected server errors, not 4xx responses.
 
-## Astro: `@footprint/astro`
+## Astro: `@tracemark/astro`
 
 ```js
 // astro.config.mjs
-import footprint from '@footprint/astro';
+import tracemark from '@tracemark/astro';
 export default defineConfig({
   integrations: [
-    footprint({ apiKey: 'fp_pub_…', host: 'https://footprint.example.com', errors: true })
+    tracemark({ apiKey: 'fp_pub_…', host: 'https://tracemark.example.com', errors: true })
   ]
 });
 ```
@@ -284,63 +284,63 @@ For server-rendered pages and endpoints, add the middleware:
 
 ```ts
 // src/middleware.ts
-import { Footprint } from '@footprint/node';
-import { footprintMiddleware } from '@footprint/astro/middleware';
-const footprint = new Footprint({ apiKey, host, secretKey, release });
-export const onRequest = footprintMiddleware(footprint, {
+import { Tracemark } from '@tracemark/node';
+import { tracemarkMiddleware } from '@tracemark/astro/middleware';
+const tracemark = new Tracemark({ apiKey, host, secretKey, release });
+export const onRequest = tracemarkMiddleware(tracemark, {
   distinctId: (context) => context.locals.user?.id
 });
 ```
 
 ```astro
 ---
-const cheaper = (await Astro.locals.footprint.getFlag('pricing-page')) === 'cheaper';
+const cheaper = (await Astro.locals.tracemark.getFlag('pricing-page')) === 'cheaper';
 ---
 {cheaper ? <CheaperPricing /> : <Pricing />}
 ```
 
-Type `Astro.locals.footprint` in `src/env.d.ts` with
-`footprint: import('@footprint/node').FootprintScope` in `App.Locals`. Errors thrown while
+Type `Astro.locals.tracemark` in `src/env.d.ts` with
+`tracemark: import('@tracemark/node').TracemarkScope` in `App.Locals`. Errors thrown while
 rendering are captured with the request's URL and person; `flagsBootstrap(Astro)` returns the
 person's flags for client code.
 
 ## Node servers: Hono, Express, Fastify and Elysia
 
-Create one `Footprint` per process and add the middleware:
+Create one `Tracemark` per process and add the middleware:
 
 ```ts
-import { Footprint } from '@footprint/node';
-const footprint = new Footprint({ apiKey, host, secretKey, release });
+import { Tracemark } from '@tracemark/node';
+const tracemark = new Tracemark({ apiKey, host, secretKey, release });
 
 // Hono
-import { footprint as footprintMiddleware, getFootprint } from '@footprint/node/hono';
-app.use(footprintMiddleware(footprint, { distinctId: (c) => c.get('user')?.id }));
+import { tracemark as tracemarkMiddleware, getTracemark } from '@tracemark/node/hono';
+app.use(tracemarkMiddleware(tracemark, { distinctId: (c) => c.get('user')?.id }));
 app.get('/pricing', async (c) => {
-  const fp = getFootprint(c);
+  const fp = getTracemark(c);
   return c.json({ variant: await fp.getFlag('pricing-page') });
 });
 
 // Express
-import { footprint as footprintMiddleware, footprintErrorHandler } from '@footprint/node/express';
-app.use(footprintMiddleware(footprint, { distinctId: (req) => req.user?.id }));
+import { tracemark as tracemarkMiddleware, tracemarkErrorHandler } from '@tracemark/node/express';
+app.use(tracemarkMiddleware(tracemark, { distinctId: (req) => req.user?.id }));
 app.get('/pricing', async (req, res) => {
-  res.json({ variant: await req.footprint?.getFlag('pricing-page') });
+  res.json({ variant: await req.tracemark?.getFlag('pricing-page') });
 });
-app.use(footprintErrorHandler(footprint)); // after your routes, before your own error handler
+app.use(tracemarkErrorHandler(tracemark)); // after your routes, before your own error handler
 
 // Fastify: the plugin applies to every route, including ones registered in child plugins
-import { footprint as footprintPlugin } from '@footprint/node/fastify';
-await app.register(footprintPlugin(footprint, { distinctId: (request) => request.headers['x-user-id'] }));
-app.get('/pricing', async (request) => ({ variant: await request.footprint.getFlag('pricing-page') }));
+import { tracemark as tracemarkPlugin } from '@tracemark/node/fastify';
+await app.register(tracemarkPlugin(tracemark, { distinctId: (request) => request.headers['x-user-id'] }));
+app.get('/pricing', async (request) => ({ variant: await request.tracemark.getFlag('pricing-page') }));
 
-// Elysia (Bun): handlers get the scope as `footprint` in their context
-import { footprint as footprintPlugin } from '@footprint/node/elysia';
+// Elysia (Bun): handlers get the scope as `tracemark` in their context
+import { tracemark as tracemarkPlugin } from '@tracemark/node/elysia';
 const app = new Elysia()
-  .use(footprintPlugin(footprint))
-  .get('/pricing', async ({ footprint }) => ({ variant: await footprint.getFlag('pricing-page') }));
+  .use(tracemarkPlugin(tracemark))
+  .get('/pricing', async ({ tracemark }) => ({ variant: await tracemark.getFlag('pricing-page') }));
 
 process.on('SIGTERM', async () => {
-  await footprint.shutdown();
+  await tracemark.shutdown();
   process.exit(0);
 });
 ```
@@ -350,8 +350,8 @@ Each request gets a scope with `capture`, `captureException`, `getFlag`, `isEnab
 browser SDK keeps in its cookie (`persistence: 'cookie'`). Without either, flags read as off.
 Errors a handler throws are captured with the request's URL, method and person (Elysia leaves out
 404s, validation and parse errors); pass
-`captureErrors: false` to leave them alone. For other frameworks, `footprint.scope(distinctId)`
-and `footprint.distinctIdFromCookie(cookieHeader)` are the same building blocks.
+`captureErrors: false` to leave them alone. For other frameworks, `tracemark.scope(distinctId)`
+and `tracemark.distinctIdFromCookie(cookieHeader)` are the same building blocks.
 
 `getAllFlags` records no exposures; use `getFlag` or `isEnabled` where the value actually changes
 what someone sees, so experiments count them. With a `secretKey`, flags that only depend on

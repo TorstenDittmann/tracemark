@@ -1,4 +1,4 @@
-import type { FlagDefinition } from '@footprint/flags';
+import type { FlagDefinition } from '@tracemark/flags';
 
 export const MAX_PAYLOAD_BYTES = 10_000;
 export const MAX_DESCRIPTION = 500;

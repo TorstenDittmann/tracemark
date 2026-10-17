@@ -26,7 +26,7 @@ const allProperties = $derived(data.properties.map((p) => p.name));
 </script>
 
 <svelte:head>
-	<title>Funnels · {data.project.name} · footprint</title>
+	<title>Funnels · {data.project.name} · Tracemark</title>
 </svelte:head>
 
 <div class="grid gap-6">

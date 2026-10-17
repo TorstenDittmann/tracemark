@@ -1,8 +1,8 @@
-import { createClient, type WireEvent } from '@footprint/browser';
-import { createErrors } from '@footprint/browser/errors';
 import type { HandleClientError } from '@sveltejs/kit/hooks';
+import { createClient, type WireEvent } from '@tracemark/browser';
+import { createErrors } from '@tracemark/browser/errors';
 import { describe, expect, it, vi } from 'vitest';
-import { footprintClientHandleError } from '../src/index';
+import { tracemarkClientHandleError } from '../src/index';
 
 describe('client hook', () => {
 	it('captures unexpected client errors', async () => {
@@ -17,12 +17,12 @@ describe('client hook', () => {
 		const c = createClient();
 		c.init({
 			apiKey: 'fp_pub_test',
-			host: 'https://footprint.example.com',
+			host: 'https://tracemark.example.com',
 			autocapturePageviews: false
 		});
 		const errors = createErrors({ autocapture: false });
 		c.use(errors);
-		const handleError: HandleClientError = footprintClientHandleError(errors);
+		const handleError: HandleClientError = tracemarkClientHandleError(errors);
 		const navigation = { url: new URL('https://shop.example.com/') } as never;
 		handleError({ kind: 'unknown', error: new Error('load failed'), event: navigation });
 		handleError({

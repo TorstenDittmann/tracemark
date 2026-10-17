@@ -18,11 +18,11 @@ function pageHref(before: string | null): string {
 	return `${url.pathname}${url.search}`;
 }
 
-const example = `footprint.group('company', 'acme', { name: 'Acme Inc' });`;
+const example = `tracemark.group('company', 'acme', { name: 'Acme Inc' });`;
 </script>
 
 <svelte:head>
-	<title>Groups · {data.project.name} · footprint</title>
+	<title>Groups · {data.project.name} · Tracemark</title>
 </svelte:head>
 
 {#if !data.types}

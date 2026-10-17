@@ -18,7 +18,7 @@ use uuid::Uuid;
 use proto::{AnyValue, ExportTraceServiceRequest, KeyValue, STATUS_ERROR, Span};
 
 /// Spans with an attribute under one of these prefixes are kept.
-const PREFIXES: [&str; 4] = ["gen_ai.", "ai.", "llm.", "footprint."];
+const PREFIXES: [&str; 4] = ["gen_ai.", "ai.", "llm.", "tracemark."];
 /// The distinct id of spans that name no user, followed by the service name.
 pub const FALLBACK_DISTINCT_ID: &str = "otel";
 
@@ -224,7 +224,7 @@ fn event(span: &Span, resource: &HashMap<&str, Value>, now: DateTime<Utc>) -> Op
         &mut props,
         "$ai_span_name",
         attrs
-            .string(&["ai.telemetry.functionId", "footprint.span_name"])
+            .string(&["ai.telemetry.functionId", "tracemark.span_name"])
             .or_else(|| Some(span.name.clone()).filter(|n| !n.is_empty())),
     );
     if span.end_time_unix_nano > span.start_time_unix_nano && span.start_time_unix_nano > 0 {
@@ -365,7 +365,7 @@ fn event(span: &Span, resource: &HashMap<&str, Value>, now: DateTime<Utc>) -> Op
 
     let distinct_id = attrs
         .either(&[
-            "footprint.distinct_id",
+            "tracemark.distinct_id",
             "ai.telemetry.metadata.distinct_id",
             "ai.telemetry.metadata.userId",
             "user.id",

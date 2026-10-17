@@ -1,7 +1,7 @@
 {
-	"name": "@footprint/errors",
+	"name": "@tracemark/errors",
 	"version": "0.0.0",
-	"description": "Turns JavaScript errors into footprint $exception properties; shared by the browser and Node SDKs",
+	"description": "Turns JavaScript errors into tracemark $exception properties; shared by the browser and Node SDKs",
 	"license": "MIT",
 	"private": true,
 	"type": "module",

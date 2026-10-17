@@ -7,5 +7,5 @@ export default defineConfig({
 	target: 'es2020',
 	dts: true,
 	clean: true,
-	external: [/^vue/, /^@footprint\/browser/]
+	external: [/^vue/, /^@tracemark\/browser/]
 });

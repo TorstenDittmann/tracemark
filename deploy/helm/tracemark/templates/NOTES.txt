@@ -1,0 +1,12 @@
+tracemark is starting. The app applies migrations on its first start, which can take a minute.
+
+Open {{ .Values.publicUrl }}; the first visit asks you to create the owner account and an organization.
+{{- if not .Values.ingress.enabled }}
+
+The ingress is disabled. Route /e and /v1/traces to the {{ include "tracemark.fullname" . }}-ingest
+service (port 8081) and everything else to {{ include "tracemark.fullname" . }}-app (port 3000).
+{{- end }}
+{{- if and (not .Values.existingSecret) (not .Values.internalToken) }}
+
+INTERNAL_TOKEN and AUTH_SECRET were generated and stored in the Secret {{ include "tracemark.fullname" . }}.
+{{- end }}

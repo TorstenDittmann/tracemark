@@ -1,9 +1,9 @@
-// Package footprint is the Go server SDK for footprint, self-hosted product analytics.
+// Package tracemark is the Go server SDK for tracemark, self-hosted product analytics.
 //
 // A Client queues events and sends them to POST /e in gzipped batches from a background
 // goroutine, and evaluates feature flags, in-process when it has the project's secret key.
 // Create one Client per process and call Close before the process exits.
-package footprint
+package tracemark
 
 import (
 	"context"
@@ -23,7 +23,7 @@ import (
 const Version = "0.1.0"
 
 // Lib is sent with every event as $lib.
-const Lib = "footprint-go"
+const Lib = "tracemark-go"
 
 const (
 	maxBatch     = 1000
@@ -34,14 +34,14 @@ const (
 type Properties = map[string]any
 
 // ErrClosed is returned by Capture and friends after Close.
-var ErrClosed = errors.New("footprint: client is closed")
+var ErrClosed = errors.New("tracemark: client is closed")
 
 // Config configures a Client. APIKey and Host are required; everything else has a default.
 type Config struct {
 	// APIKey is the public project key (fp_pub_…), used to send events and to ask the server for
 	// flags.
 	APIKey string
-	// Host is the base URL of your footprint instance. Events go to Host+"/e", flags to
+	// Host is the base URL of your tracemark instance. Events go to Host+"/e", flags to
 	// Host+"/flags".
 	Host string
 	// SecretKey is the secret project key (fp_sec_…). With it, flag definitions are fetched every
@@ -109,10 +109,10 @@ type Client struct {
 // New creates a Client and starts its background goroutines.
 func New(cfg Config) (*Client, error) {
 	if cfg.APIKey == "" || cfg.Host == "" {
-		return nil, errors.New("footprint: Config needs APIKey and Host")
+		return nil, errors.New("tracemark: Config needs APIKey and Host")
 	}
 	if _, err := url.Parse(cfg.Host); err != nil {
-		return nil, fmt.Errorf("footprint: invalid Host: %w", err)
+		return nil, fmt.Errorf("tracemark: invalid Host: %w", err)
 	}
 	cfg.Host = strings.TrimRight(cfg.Host, "/")
 	if cfg.FlushAt <= 0 {
@@ -199,7 +199,7 @@ type wireEvent struct {
 
 func validName(what, s string) error {
 	if n := utf8.RuneCountInString(s); n == 0 || n > 200 {
-		return fmt.Errorf("footprint: %s must be 1 to 200 characters, got %q", what, s)
+		return fmt.Errorf("tracemark: %s must be 1 to 200 characters, got %q", what, s)
 	}
 	return nil
 }
@@ -215,11 +215,11 @@ func (c *Client) Capture(e Event) error {
 		return err
 	}
 	if len(e.Groups) > 5 {
-		return fmt.Errorf("footprint: at most 5 groups per event, got %d", len(e.Groups))
+		return fmt.Errorf("tracemark: at most 5 groups per event, got %d", len(e.Groups))
 	}
 	for t, k := range e.Groups {
 		if utf8.RuneCountInString(t) > 200 || utf8.RuneCountInString(k) > 200 {
-			return fmt.Errorf("footprint: group type and key must be at most 200 characters")
+			return fmt.Errorf("tracemark: group type and key must be at most 200 characters")
 		}
 	}
 	ts := e.Timestamp
@@ -228,7 +228,7 @@ func (c *Client) Capture(e Event) error {
 	}
 	ts = ts.UTC()
 	if ts.Year() < 1900 || ts.Year() > 2299 {
-		return fmt.Errorf("footprint: timestamp %s is out of range", ts)
+		return fmt.Errorf("tracemark: timestamp %s is out of range", ts)
 	}
 	if e.UUID == "" {
 		e.UUID = newUUIDv7(ts)
@@ -255,7 +255,7 @@ func (c *Client) Capture(e Event) error {
 	// Encoding now freezes the event, so callers may reuse their maps right away.
 	raw, err := json.Marshal(wire)
 	if err != nil {
-		return fmt.Errorf("footprint: encoding %s: %w", e.Event, err)
+		return fmt.Errorf("tracemark: encoding %s: %w", e.Event, err)
 	}
 
 	c.mu.Lock()
@@ -364,7 +364,7 @@ func (c *Client) flushLoop() {
 		case <-c.wake:
 		}
 		if err := c.Flush(c.bg); err != nil && c.bg.Err() == nil {
-			c.logger.Warn("footprint: sending events failed; they stay queued", "error", err)
+			c.logger.Warn("tracemark: sending events failed; they stay queued", "error", err)
 		}
 	}
 }

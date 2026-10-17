@@ -1,11 +1,11 @@
 {
-	"name": "@footprint/cli",
+	"name": "@tracemark/cli",
 	"version": "0.0.0",
-	"description": "Command line tools for footprint, self-hosted product analytics",
+	"description": "Command line tools for tracemark, self-hosted product analytics",
 	"license": "MIT",
 	"type": "module",
 	"bin": {
-		"footprint": "./dist/index.js"
+		"tracemark": "./dist/index.js"
 	},
 	"files": [
 		"dist"

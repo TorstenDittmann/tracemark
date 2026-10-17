@@ -10,40 +10,40 @@ export default defineConfig([
 		minify: true,
 		clean: true,
 		// The shared stack parser is bundled in, so the published package has no dependencies.
-		noExternal: ['@footprint/errors']
+		noExternal: ['@tracemark/errors']
 	},
 	{
-		entry: { footprint: 'src/iife.ts' },
+		entry: { tracemark: 'src/iife.ts' },
 		format: 'iife',
 		platform: 'browser',
 		target: 'es2020',
-		globalName: 'footprint',
+		globalName: 'tracemark',
 		dts: false,
 		minify: true,
 		clean: false,
 		outputOptions: { exports: 'default' }
 	},
 	{
-		// Script-tag build of the flags plugin: `window.footprintFlags.createFlags`.
-		entry: { 'footprint-flags': 'src/flags-entry.ts' },
+		// Script-tag build of the flags plugin: `window.tracemarkFlags.createFlags`.
+		entry: { 'tracemark-flags': 'src/flags-entry.ts' },
 		format: 'iife',
 		platform: 'browser',
 		target: 'es2020',
-		globalName: 'footprintFlags',
+		globalName: 'tracemarkFlags',
 		dts: false,
 		minify: true,
 		clean: false
 	},
 	{
-		// Script-tag build of the errors plugin: `window.footprintErrors.createErrors`.
-		entry: { 'footprint-errors': 'src/errors-entry.ts' },
+		// Script-tag build of the errors plugin: `window.tracemarkErrors.createErrors`.
+		entry: { 'tracemark-errors': 'src/errors-entry.ts' },
 		format: 'iife',
 		platform: 'browser',
 		target: 'es2020',
-		globalName: 'footprintErrors',
+		globalName: 'tracemarkErrors',
 		dts: false,
 		minify: true,
 		clean: false,
-		noExternal: ['@footprint/errors']
+		noExternal: ['@tracemark/errors']
 	}
 ]);

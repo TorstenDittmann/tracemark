@@ -11,8 +11,8 @@ from typing import Any, Dict, List
 
 from _support import FakeServer, batch_errors
 
-from footprint import Footprint
-from footprint._exceptions import MAX_CAUSES, in_app
+from tracemark import Tracemark
+from tracemark._exceptions import MAX_CAUSES, in_app
 
 
 class CheckoutError(Exception):
@@ -33,7 +33,7 @@ def checkout() -> None:
 class ExceptionsTest(unittest.TestCase):
     def setUp(self) -> None:
         self.server = FakeServer()
-        self.fp = Footprint("fp_pub_test", self.server.url, flush_interval=60, release="1.4.0")
+        self.fp = Tracemark("fp_pub_test", self.server.url, flush_interval=60, release="1.4.0")
 
     def tearDown(self) -> None:
         self.fp.shutdown()
@@ -60,7 +60,7 @@ class ExceptionsTest(unittest.TestCase):
         self.assertEqual(props["route"], "/checkout")
         self.assertEqual(props["$release"], "1.4.0")
         self.assertEqual(props["$exception_level"], "error")
-        self.assertEqual(props["$lib"], "footprint-python")
+        self.assertEqual(props["$lib"], "tracemark-python")
 
         first, cause = props["$exception_list"]
         self.assertEqual(first["type"], "CheckoutError")
@@ -131,7 +131,7 @@ class ExceptionsTest(unittest.TestCase):
         self.assertEqual(event["properties"]["$exception_level"], "fatal")
 
     def test_without_any_exception_nothing_is_sent(self) -> None:
-        with self.assertLogs("footprint", logging.WARNING):
+        with self.assertLogs("tracemark", logging.WARNING):
             self.fp.capture_exception()
         self.assertEqual(self.sent(), [])
 

@@ -1,5 +1,5 @@
 {
-	"name": "@footprint/app",
+	"name": "@tracemark/app",
 	"private": true,
 	"version": "0.0.0",
 	"license": "MIT",
@@ -24,7 +24,7 @@
 	"devDependencies": {
 		"@fontsource-variable/geist": "^5.3.0",
 		"@fontsource-variable/geist-mono": "^5.3.0",
-		"@footprint/flags": "workspace:*",
+		"@tracemark/flags": "workspace:*",
 		"@internationalized/date": "^3.12.4",
 		"@jridgewell/trace-mapping": "0.3.31",
 		"@lucide/svelte": "^1.52.0",

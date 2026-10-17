@@ -1,12 +1,12 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { evaluate, parseFlag } from '@footprint/flags';
-import vectors from '@footprint/flags/vectors.json';
+import { evaluate, parseFlag } from '@tracemark/flags';
+import vectors from '@tracemark/flags/vectors.json';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { Footprint, type FootprintOptions } from '../src';
+import { Tracemark, type TracemarkOptions } from '../src';
 import { VERSION } from '../src/version';
 
-const HOST = 'https://footprint.example.com';
+const HOST = 'https://tracemark.example.com';
 
 interface Server {
 	definitions?: unknown[] | null;
@@ -14,7 +14,7 @@ interface Server {
 	events?: number;
 }
 
-/** A fake footprint instance. Returns what it was sent. */
+/** A fake tracemark instance. Returns what it was sent. */
 function server(config: Server = {}) {
 	const sent = {
 		batches: [] as { api_key: string; batch: Record<string, unknown>[] }[],
@@ -50,9 +50,9 @@ function server(config: Server = {}) {
 	return { fetch: fetch as unknown as typeof globalThis.fetch, sent };
 }
 
-const clients: Footprint[] = [];
-function make(fetch: typeof globalThis.fetch, options: Partial<FootprintOptions> = {}) {
-	const client = new Footprint({ apiKey: 'fp_pub_test', host: `${HOST}/`, fetch, ...options });
+const clients: Tracemark[] = [];
+function make(fetch: typeof globalThis.fetch, options: Partial<TracemarkOptions> = {}) {
+	const client = new Tracemark({ apiKey: 'fp_pub_test', host: `${HOST}/`, fetch, ...options });
 	clients.push(client);
 	return client;
 }
@@ -87,7 +87,7 @@ describe('events', () => {
 			event: 'purchase',
 			distinct_id: 'ada',
 			timestamp: '2026-10-16T12:00:00.000Z',
-			properties: { $lib: 'footprint-node', $lib_version: VERSION, amount: 9 },
+			properties: { $lib: 'tracemark-node', $lib_version: VERSION, amount: 9 },
 			groups: { company: 'acme' }
 		});
 		expect(set).toMatchObject({

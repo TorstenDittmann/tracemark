@@ -13,7 +13,7 @@ const flag = $derived(data.flag.definition);
 </script>
 
 <svelte:head>
-	<title>{flag.key} · {data.project.name} · footprint</title>
+	<title>{flag.key} · {data.project.name} · Tracemark</title>
 </svelte:head>
 
 <div class="grid gap-4">

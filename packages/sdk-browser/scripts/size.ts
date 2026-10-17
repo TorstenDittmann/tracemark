@@ -4,9 +4,9 @@ import { gzipSync } from 'node:zlib';
 
 // Gzip budgets from the plan: the core under 10 KB, each plugin under 3 KB.
 const BUDGETS: Record<string, number> = {
-	'dist/footprint.iife.js': 10 * 1024,
-	'dist/footprint-flags.iife.js': 3 * 1024,
-	'dist/footprint-errors.iife.js': 3 * 1024
+	'dist/tracemark.iife.js': 10 * 1024,
+	'dist/tracemark-flags.iife.js': 3 * 1024,
+	'dist/tracemark-errors.iife.js': 3 * 1024
 };
 let failed = false;
 for (const file of [...Object.keys(BUDGETS), 'dist/index.js', 'dist/flags.js', 'dist/errors.js']) {

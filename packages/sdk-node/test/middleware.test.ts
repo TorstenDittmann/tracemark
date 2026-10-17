@@ -4,13 +4,13 @@ import express from 'express';
 import Fastify from 'fastify';
 import { Hono } from 'hono';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { Footprint } from '../src';
-import { footprint as elysiaFootprint } from '../src/elysia';
-import { footprint as expressFootprint, footprintErrorHandler } from '../src/express';
-import { footprint as fastifyFootprint } from '../src/fastify';
-import { getFootprint, footprint as honoFootprint } from '../src/hono';
+import { Tracemark } from '../src';
+import { tracemark as elysiaTracemark } from '../src/elysia';
+import { tracemark as expressTracemark, tracemarkErrorHandler } from '../src/express';
+import { tracemark as fastifyTracemark } from '../src/fastify';
+import { getTracemark, tracemark as honoTracemark } from '../src/hono';
 
-const HOST = 'https://footprint.example.com';
+const HOST = 'https://tracemark.example.com';
 const COOKIE = `fp_fp_pub_test=${encodeURIComponent(JSON.stringify({ id: 'visitor-1', sid: 's' }))}`;
 
 function setup() {
@@ -25,7 +25,7 @@ function setup() {
 		}
 		return Response.json({});
 	});
-	const client = new Footprint({
+	const client = new Tracemark({
 		apiKey: 'fp_pub_test',
 		host: HOST,
 		fetch: fetch as unknown as typeof globalThis.fetch,
@@ -35,7 +35,7 @@ function setup() {
 	return { client, events, flagRequests };
 }
 
-const clients: Footprint[] = [];
+const clients: Tracemark[] = [];
 afterEach(async () => {
 	await Promise.all(clients.splice(0).map((c) => c.shutdown()));
 });
@@ -82,8 +82,8 @@ describe('hono', () => {
 	it('gives handlers the visitor scope and captures thrown errors', async () => {
 		const { client, events } = setup();
 		const app = new Hono();
-		app.use(honoFootprint(client));
-		app.get('/flags', async (c) => c.json(await getFootprint(c).getAllFlags()));
+		app.use(honoTracemark(client));
+		app.get('/flags', async (c) => c.json(await getTracemark(c).getAllFlags()));
 		app.get('/boom', () => {
 			throw new Error('kaput');
 		});
@@ -113,9 +113,9 @@ describe('hono', () => {
 		const { client, events } = setup();
 		const app = new Hono();
 		app.use(
-			honoFootprint(client, { distinctId: (c) => c.req.header('x-user'), captureErrors: false })
+			honoTracemark(client, { distinctId: (c) => c.req.header('x-user'), captureErrors: false })
 		);
-		app.get('/me', (c) => c.text(getFootprint(c).distinctId ?? 'nobody'));
+		app.get('/me', (c) => c.text(getTracemark(c).distinctId ?? 'nobody'));
 		app.get('/boom', () => {
 			throw new Error('kaput');
 		});
@@ -138,14 +138,14 @@ describe('express', () => {
 	it('gives handlers the visitor scope and captures errors', async () => {
 		const { client, events } = setup();
 		const app = express();
-		app.use(expressFootprint(client));
+		app.use(expressTracemark(client));
 		app.get('/flags', async (req, res) => {
-			res.json(await req.footprint?.getAllFlags());
+			res.json(await req.tracemark?.getAllFlags());
 		});
 		app.get('/boom', () => {
 			throw new Error('kaput');
 		});
-		app.use(footprintErrorHandler(client));
+		app.use(tracemarkErrorHandler(client));
 		app.use(
 			(
 				_error: unknown,
@@ -183,10 +183,10 @@ describe('fastify', () => {
 	it('gives handlers the visitor scope and captures errors', async () => {
 		const { client, events } = setup();
 		const app = Fastify();
-		await app.register(fastifyFootprint(client));
+		await app.register(fastifyTracemark(client));
 		// Registered in a child context: the plugin's hooks still apply to it.
 		await app.register(async (child) => {
-			child.get('/flags', async (request) => request.footprint.getAllFlags());
+			child.get('/flags', async (request) => request.tracemark.getAllFlags());
 			child.get('/boom', async () => {
 				throw new Error('kaput');
 			});
@@ -217,9 +217,9 @@ describe('elysia', () => {
 	it('gives handlers the visitor scope and captures unexpected errors', async () => {
 		const { client, events } = setup();
 		const app = new Elysia()
-			.use(elysiaFootprint(client))
-			.get('/flags', ({ footprint }) => footprint.getAllFlags())
-			.get('/me', ({ footprint }) => footprint.distinctId ?? 'nobody')
+			.use(elysiaTracemark(client))
+			.get('/flags', ({ tracemark }) => tracemark.getAllFlags())
+			.get('/me', ({ tracemark }) => tracemark.distinctId ?? 'nobody')
 			.get('/boom', () => {
 				throw new Error('kaput');
 			});

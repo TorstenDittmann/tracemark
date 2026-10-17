@@ -3,13 +3,13 @@ use std::process::ExitCode;
 use std::sync::Arc;
 use std::time::Duration;
 
-use footprint_ingest::config::Config;
-use footprint_ingest::enrich::Enricher;
-use footprint_ingest::keys::{self, KeySource, KeyStore};
-use footprint_ingest::protocol::MAX_EVENTS;
-use footprint_ingest::routes::{self, AppState};
-use footprint_ingest::writer::{self, ClickHouse, WriterSettings};
 use tokio::sync::mpsc;
+use tracemark_ingest::config::Config;
+use tracemark_ingest::enrich::Enricher;
+use tracemark_ingest::keys::{self, KeySource, KeyStore};
+use tracemark_ingest::protocol::MAX_EVENTS;
+use tracemark_ingest::routes::{self, AppState};
+use tracemark_ingest::writer::{self, ClickHouse, WriterSettings};
 use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
@@ -17,7 +17,7 @@ async fn main() -> ExitCode {
     let config = match Config::from_env() {
         Ok(config) => config,
         Err(error) => {
-            eprintln!("footprint-ingest: {error}");
+            eprintln!("tracemark-ingest: {error}");
             return ExitCode::FAILURE;
         }
     };

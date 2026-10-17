@@ -6,7 +6,7 @@ let { data }: PageProps = $props();
 </script>
 
 <svelte:head>
-	<title>Team · footprint</title>
+	<title>Team · Tracemark</title>
 </svelte:head>
 
 <div class="grid gap-6">

@@ -7,16 +7,16 @@ export default defineConfig({
 	resolve: {
 		alias: [
 			{
-				find: /^@footprint\/browser\/errors$/,
+				find: /^@tracemark\/browser\/errors$/,
 				replacement: source('sdk-browser/src/errors-entry.ts')
 			},
 			{
-				find: /^@footprint\/browser\/flags$/,
+				find: /^@tracemark\/browser\/flags$/,
 				replacement: source('sdk-browser/src/flags-entry.ts')
 			},
-			{ find: /^@footprint\/browser$/, replacement: source('sdk-browser/src/index.ts') },
-			{ find: /^@footprint\/node$/, replacement: source('sdk-node/src/index.ts') },
-			{ find: /^@footprint\/react$/, replacement: source('react/src/index.ts') }
+			{ find: /^@tracemark\/browser$/, replacement: source('sdk-browser/src/index.ts') },
+			{ find: /^@tracemark\/node$/, replacement: source('sdk-node/src/index.ts') },
+			{ find: /^@tracemark\/react$/, replacement: source('react/src/index.ts') }
 		]
 	},
 	test: {

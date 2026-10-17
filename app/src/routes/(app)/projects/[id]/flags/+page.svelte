@@ -22,7 +22,7 @@ const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' });
 </script>
 
 <svelte:head>
-	<title>Feature flags · {data.project.name} · footprint</title>
+	<title>Feature flags · {data.project.name} · Tracemark</title>
 </svelte:head>
 
 <div class="grid gap-4">

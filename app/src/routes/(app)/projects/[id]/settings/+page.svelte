@@ -37,7 +37,7 @@ function formatBytes(bytes: number): string {
 </script>
 
 <svelte:head>
-	<title>Settings · {data.project.name} · footprint</title>
+	<title>Settings · {data.project.name} · Tracemark</title>
 </svelte:head>
 
 <div class="grid gap-6">
@@ -147,7 +147,7 @@ function formatBytes(bytes: number): string {
 			<Card.Title>Source maps</Card.Title>
 			<Card.Description>
 				Uploaded with
-				<code class="font-mono">npx @footprint/cli sourcemaps upload ./dist --release 1.4.0</code>,
+				<code class="font-mono">npx @tracemark/cli sourcemaps upload ./dist --release 1.4.0</code>,
 				so issues show your original source. See docs/errors.md.
 			</Card.Description>
 		</Card.Header>

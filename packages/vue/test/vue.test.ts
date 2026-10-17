@@ -1,15 +1,15 @@
-import { createClient, type FootprintClient, type WireEvent } from '@footprint/browser';
-import { createErrors } from '@footprint/browser/errors';
-import { createFlags } from '@footprint/browser/flags';
+import { createClient, type TracemarkClient, type WireEvent } from '@tracemark/browser';
+import { createErrors } from '@tracemark/browser/errors';
+import { createFlags } from '@tracemark/browser/flags';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp, createSSRApp, defineComponent, h, nextTick } from 'vue';
 import { renderToString } from 'vue/server-renderer';
 import {
-	createFootprint,
+	createTracemark,
 	useFeatureFlag,
 	useFeatureFlagEnabled,
 	useFeatureFlagPayload,
-	useFootprint
+	useTracemark
 } from '../src/index';
 
 const HOST = 'https://ingest.example.com';
@@ -17,7 +17,7 @@ const options = { apiKey: 'fp_pub_test', host: HOST, autocapturePageviews: false
 
 let answer: unknown;
 let events: WireEvent[];
-const clients: FootprintClient[] = [];
+const clients: TracemarkClient[] = [];
 const unmounts: (() => void)[] = [];
 
 beforeEach(() => {
@@ -42,7 +42,7 @@ afterEach(() => {
 
 function mount(
 	component: ReturnType<typeof defineComponent>,
-	plugin: ReturnType<typeof createFootprint>
+	plugin: ReturnType<typeof createTracemark>
 ) {
 	const app = createApp(component);
 	app.use(plugin);
@@ -66,11 +66,11 @@ describe('vue plugin', () => {
 			const pricing = useFeatureFlag('pricing');
 			const beta = useFeatureFlagEnabled('beta');
 			const payload = useFeatureFlagPayload<{ price: number }>('pricing');
-			const fp = useFootprint();
+			const fp = useTracemark();
 			return () =>
 				h('p', `${pricing.value} ${beta.value} ${payload.value?.price ?? '-'} ${fp === client}`);
 		});
-		const { el } = mount(Pricing, createFootprint({ client, options, flags }));
+		const { el } = mount(Pricing, createTracemark({ client, options, flags }));
 		expect(client.config?.apiKey).toBe('fp_pub_test');
 		expect(el.textContent).toBe('control false - true');
 		await flags.ready();
@@ -112,7 +112,7 @@ describe('vue plugin', () => {
 		app.config.errorHandler = (error) => {
 			seen.push(error);
 		};
-		app.use(createFootprint({ client, options, errors }));
+		app.use(createTracemark({ client, options, errors }));
 		app.mount(document.createElement('div'));
 		unmounts.push(() => app.unmount());
 		await client.flush();
@@ -133,7 +133,7 @@ describe('vue plugin', () => {
 			return () => h('p', String(pricing.value));
 		});
 		const app = createSSRApp(Pricing);
-		app.use(createFootprint({ flags }));
+		app.use(createTracemark({ flags }));
 		expect(await renderToString(app)).toBe('<p>control</p>');
 		expect(fetch).not.toHaveBeenCalled();
 	});
@@ -145,7 +145,7 @@ describe('vue plugin', () => {
 		});
 		const app = createApp(Pricing);
 		app.config.warnHandler = () => {};
-		app.use(createFootprint({}));
+		app.use(createTracemark({}));
 		expect(() => app.mount(document.createElement('div'))).toThrow(/pass `flags`/);
 	});
 });

@@ -27,7 +27,7 @@ export function defaultProperties(): Properties {
 		$screen_height: window.screen?.height,
 		$viewport_width: window.innerWidth,
 		$viewport_height: window.innerHeight,
-		$lib: 'footprint-browser',
+		$lib: 'tracemark-browser',
 		$lib_version: VERSION,
 		$browser_language: navigator.language
 	};

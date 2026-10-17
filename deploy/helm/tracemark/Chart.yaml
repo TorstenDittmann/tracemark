@@ -1,5 +1,5 @@
 apiVersion: v2
-name: footprint
+name: tracemark
 description: Self-hosted product analytics, feature flags, error tracking and AI observability
 type: application
 version: 0.1.0

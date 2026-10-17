@@ -5,7 +5,7 @@
 		"types": [],
 		// Type against the Node SDK's sources, so nothing needs building first.
 		"paths": {
-			"@footprint/node": ["../sdk-node/src/index.ts"]
+			"@tracemark/node": ["../sdk-node/src/index.ts"]
 		}
 	},
 	"include": ["src"]

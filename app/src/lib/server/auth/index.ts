@@ -39,7 +39,7 @@ async function canSignUp(db: Db, email: string): Promise<boolean> {
 
 export function createAuth(db: Db, config: AuthConfig = {}) {
 	return betterAuth({
-		appName: 'footprint',
+		appName: 'tracemark',
 		baseURL: config.baseURL || undefined,
 		secret: config.secret || undefined,
 		database: drizzleAdapter(db, { provider: 'sqlite', usePlural: true, schema }),

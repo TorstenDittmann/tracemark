@@ -1,13 +1,13 @@
 'use client';
 // Next.js App Router client side: a provider that sets up the browser SDK with flags and error
 // capture, and a hook for `error.tsx` pages.
-import { type Config, type FootprintClient, footprint } from '@footprint/browser';
-import { createErrors, type Errors, type ErrorsOptions } from '@footprint/browser/errors';
-import { createFlags, type FlagsOptions, type FlagsSnapshot } from '@footprint/browser/flags';
-import { FootprintProvider, useErrors } from '@footprint/react';
+import { type Config, type TracemarkClient, tracemark } from '@tracemark/browser';
+import { createErrors, type Errors, type ErrorsOptions } from '@tracemark/browser/errors';
+import { createFlags, type FlagsOptions, type FlagsSnapshot } from '@tracemark/browser/flags';
+import { TracemarkProvider, useErrors } from '@tracemark/react';
 import { createElement, type ReactNode, useEffect, useState } from 'react';
 
-export interface FootprintNextProviderProps {
+export interface TracemarkNextProviderProps {
 	/**
 	 * Browser SDK options. `persistence` defaults to `'cookie'` here, so server components and
 	 * route handlers can read who the visitor is.
@@ -21,21 +21,21 @@ export interface FootprintNextProviderProps {
 	flags?: Omit<FlagsOptions, 'bootstrap'> | false;
 	/** Options for the errors plugin, or `false` to leave it out. */
 	errors?: ErrorsOptions | false;
-	/** The client to use. Defaults to the SDK's default `footprint` client. */
-	client?: FootprintClient;
+	/** The client to use. Defaults to the SDK's default `tracemark` client. */
+	client?: TracemarkClient;
 	children?: ReactNode;
 }
 
 /** Put it in your root layout, around `children`. Page views follow client-side navigation. */
-export function FootprintNextProvider({
+export function TracemarkNextProvider({
 	options,
 	bootstrap,
 	distinctId,
 	flags: flagOptions,
 	errors: errorOptions,
-	client = footprint,
+	client = tracemark,
 	children
-}: FootprintNextProviderProps) {
+}: TracemarkNextProviderProps) {
 	// Created once; later prop changes are ignored, like the options.
 	const [plugins] = useState(() => ({
 		flags: flagOptions === false ? undefined : createFlags({ ...flagOptions, bootstrap }),
@@ -49,7 +49,7 @@ export function FootprintNextProvider({
 		}
 	}, [client, distinctId]);
 	return createElement(
-		FootprintProvider,
+		TracemarkProvider,
 		{ client, options: config, flags: plugins.flags, errors: plugins.errors },
 		children
 	);

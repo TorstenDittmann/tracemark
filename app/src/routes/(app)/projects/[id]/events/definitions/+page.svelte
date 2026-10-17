@@ -21,7 +21,7 @@ const trendHref = (event: string) =>
 </script>
 
 <svelte:head>
-	<title>Event definitions · {data.project.name} · footprint</title>
+	<title>Event definitions · {data.project.name} · Tracemark</title>
 </svelte:head>
 
 {#if !data.definitions}

@@ -1,4 +1,4 @@
-package footprint
+package tracemark
 
 import (
 	"bytes"
@@ -21,7 +21,7 @@ type batchBody struct {
 	Batch  []map[string]any `json:"batch"`
 }
 
-// fakeServer is a footprint instance that records what it was sent.
+// fakeServer is a tracemark instance that records what it was sent.
 type fakeServer struct {
 	*httptest.Server
 	t *testing.T
