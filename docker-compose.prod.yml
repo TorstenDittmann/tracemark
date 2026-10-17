@@ -1,0 +1,88 @@
+# Production: runs the published images from GitHub Container Registry instead of building from source.
+# Needs this file, Caddyfile and .env next to each other:
+#   cp .env.example .env   # set INTERNAL_TOKEN, AUTH_SECRET, CLICKHOUSE_PASSWORD, TRACEMARK_HOST and PUBLIC_URL
+#   docker compose -f docker-compose.prod.yml up -d
+# Point the hostname's DNS at this machine first; Caddy fetches the TLS certificate on ports 80 and 443.
+services:
+  proxy:
+    image: caddy:2
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      TRACEMARK_HOST: ${TRACEMARK_HOST:?set TRACEMARK_HOST in .env, e.g. analytics.example.com}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on: [app, ingest]
+    restart: unless-stopped
+
+  app:
+    image: ghcr.io/torstendittmann/tracemark-app:${TRACEMARK_VERSION:-latest}
+    environment:
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:?set INTERNAL_TOKEN in .env}
+      AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET in .env}
+      PUBLIC_URL: ${PUBLIC_URL:?set PUBLIC_URL in .env, e.g. https://analytics.example.com}
+      CLICKHOUSE_URL: http://clickhouse:8123
+      CLICKHOUSE_USER: tracemark
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:?set CLICKHOUSE_PASSWORD in .env}
+      CLICKHOUSE_DATABASE: tracemark
+      PROTOCOL_HEADER: x-forwarded-proto
+      HOST_HEADER: x-forwarded-host
+      # Client IPs for sign-in rate limiting; Caddy is the only proxy in front of the app.
+      ADDRESS_HEADER: x-forwarded-for
+      XFF_DEPTH: 1
+    volumes:
+      - app-data:/data
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    restart: unless-stopped
+
+  ingest:
+    image: ghcr.io/torstendittmann/tracemark-ingest:${TRACEMARK_VERSION:-latest}
+    environment:
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:?set INTERNAL_TOKEN in .env}
+      APP_INTERNAL_URL: http://app:3000
+      CLICKHOUSE_URL: http://clickhouse:8123
+      CLICKHOUSE_USER: tracemark
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:?set CLICKHOUSE_PASSWORD in .env}
+      CLICKHOUSE_DATABASE: tracemark
+      # Client IPs for location lookups; Caddy is the only proxy in front of ingest. IPs are never stored.
+      ADDRESS_HEADER: x-forwarded-for
+      XFF_DEPTH: 1
+      # Optional city database, e.g. /geoip/dbip-city-lite.mmdb (see README).
+      GEOIP_DB: ${GEOIP_DB:-}
+    volumes:
+      # The image pre-creates /app/spill owned by the nonroot user; mounting there keeps it writable.
+      - ingest-spill:/app/spill
+      - ./geoip:/geoip:ro
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    restart: unless-stopped
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:25.8
+    environment:
+      CLICKHOUSE_USER: tracemark
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:?set CLICKHOUSE_PASSWORD in .env}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+    ulimits:
+      nofile: { soft: 262144, hard: 262144 }
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--user", "tracemark", "--password", "${CLICKHOUSE_PASSWORD}", "--query", "SELECT 1"]
+      interval: 5s
+      retries: 20
+    restart: unless-stopped
+
+volumes:
+  caddy-data:
+  caddy-config:
+  app-data:
+  ingest-spill:
+  clickhouse-data:
