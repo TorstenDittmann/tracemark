@@ -22,6 +22,11 @@ function editPrice(p: PageProps['data']['modelPrices'][number]) {
 		cacheWrite: p.cacheWrite === undefined ? '' : String(p.cacheWrite)
 	};
 }
+let priceSearch = $state('');
+const shownPrices = $derived.by(() => {
+	const query = priceSearch.trim().toLowerCase();
+	return query ? data.modelPrices.filter((p) => p.model.includes(query)) : data.modelPrices;
+});
 const usd = (value: number | undefined) => (value === undefined ? '' : `$${value}`);
 
 const canManage = $derived(data.role === 'owner' || data.role === 'admin');
@@ -212,13 +217,23 @@ function formatBytes(bytes: number): string {
 		<Card.Header>
 			<Card.Title>Model prices</Card.Title>
 			<Card.Description>
-				USD per million tokens, used to compute the cost of AI generations as they arrive. A model
-				uses the price with its exact name, else the longest name it starts with. Cached tokens cost
-				the input price unless set. Check your provider's current prices; changes apply to new
-				events only.
+				USD per million tokens, used to compute the cost of AI generations as they arrive. Built-in
+				prices come from
+				<a class="underline" href="https://models.dev" target="_blank" rel="noreferrer"
+					>models.dev</a
+				>
+				and update daily. A model uses the price with its exact name, else the longest name it
+				starts with. Cached tokens cost the input price unless set; changes apply to new events
+				only.
 			</Card.Description>
 		</Card.Header>
 		<Card.Content class="grid gap-4">
+			<Input
+				type="search"
+				placeholder="Search {data.modelPrices.length} models"
+				aria-label="Search models"
+				bind:value={priceSearch}
+			/>
 			<div class="relative max-h-96 overflow-auto">
 				<table class="data-table w-full text-sm">
 					<thead class="sticky top-0 bg-card text-left text-xs text-muted-foreground">
@@ -232,7 +247,7 @@ function formatBytes(bytes: number): string {
 						</tr>
 					</thead>
 					<tbody>
-						{#each data.modelPrices as p (p.model)}
+						{#each shownPrices as p (p.model)}
 							<tr class="border-t">
 								<td class="py-2 pr-4 font-mono whitespace-nowrap">
 									{p.model}

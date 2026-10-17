@@ -1,5 +1,6 @@
 import { error, json } from '@sveltejs/kit';
-import { DEFAULT_PRICES, type ModelPrice } from '#lib/ai-prices.js';
+import type { ModelPrice } from '#lib/ai-prices.js';
+import { builtInPrices } from '#lib/server/builtin-prices.js';
 import { getDb } from '#lib/server/db/index.js';
 import { aiModelPrices, projects } from '#lib/server/db/schema.js';
 import { safeEqual } from '#lib/server/keys.js';
@@ -39,6 +40,6 @@ export const GET: RequestHandler = async ({ request }) => {
 	return json({
 		projects: rows,
 		salts: await currentSalts(db),
-		model_prices: { defaults: DEFAULT_PRICES.map(wire), projects: overrides }
+		model_prices: { defaults: builtInPrices().map(wire), projects: overrides }
 	});
 };

@@ -1,6 +1,7 @@
 // A project's model prices: the built-in list with the project's own overrides on top.
 import { and, eq } from 'drizzle-orm';
-import { DEFAULT_PRICES, type ModelPrice, normalizeModel } from '../ai-prices';
+import { type ModelPrice, normalizeModel } from '../ai-prices';
+import { builtInPrices } from './builtin-prices';
 import type { Db } from './db/client';
 import { aiModelPrices } from './db/schema';
 
@@ -13,7 +14,7 @@ export interface EffectivePrice extends ModelPrice {
 export async function modelPrices(db: Db, projectId: string): Promise<EffectivePrice[]> {
 	const own = await db.select().from(aiModelPrices).where(eq(aiModelPrices.projectId, projectId));
 	const prices = new Map<string, EffectivePrice>(
-		DEFAULT_PRICES.map((price) => [price.model, { ...price, custom: false }])
+		builtInPrices().map((price) => [price.model, { ...price, custom: false }])
 	);
 	for (const row of own) {
 		prices.set(row.model, {
