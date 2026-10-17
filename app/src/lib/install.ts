@@ -89,7 +89,7 @@ export const FRAMEWORKS: Framework[] = [
 				files: [
 					{
 						name: '.env.local',
-						language: 'sh',
+						language: 'dotenv',
 						code: ({ key, host }) => `NEXT_PUBLIC_TRACEMARK_KEY=${key}
 NEXT_PUBLIC_TRACEMARK_HOST=${host}`
 					}
@@ -1008,3 +1008,47 @@ defer client.Close(context.Background())`
 		]
 	}
 ];
+
+const FENCE = '```';
+
+function guideMarkdown(framework: Framework, ctx: GuideContext, heading: string): string {
+	const parts = [`${heading} ${framework.label}`];
+	framework.steps.forEach((step, i) => {
+		const title = step.optional ? `${step.title} (optional)` : step.title;
+		parts.push(`${heading}# ${i + 1}. ${title}`, step.body);
+		if (step.packages) parts.push(`Install: \`${step.packages.join(' ')}\``);
+		if (step.command) parts.push(`Run: \`${step.command}\``);
+		for (const file of step.files ?? []) {
+			parts.push(`\`${file.name}\`:\n${FENCE}${file.language}\n${file.code(ctx)}\n${FENCE}`);
+		}
+	});
+	return parts.join('\n\n');
+}
+
+/**
+ * A prompt that asks a coding agent to install Tracemark. With a framework it carries that
+ * framework's guide; without one it asks the agent to detect the stack and carries every guide.
+ */
+export function agentPrompt(framework: Framework | undefined, ctx: GuideContext): string {
+	const intro = [
+		framework
+			? `Add Tracemark analytics to this ${framework.label} project.`
+			: 'Add Tracemark analytics to this project.',
+		`Public project key: ${ctx.key}\nHost: ${ctx.host}`,
+		[
+			'How to work:',
+			'- Use the package manager this project already uses (look at its lockfile).',
+			'- Adapt the file paths below to how this project is laid out, such as a src/ directory.',
+			'- If a file already exists, merge the Tracemark code into it instead of replacing it.',
+			'- Do the optional steps only where the project already has that part, such as server code.',
+			'- The key is public and safe to commit. If the project keeps config in environment variables, put the key and host there.',
+			'- When you are done, summarize what you changed and how to check that events arrive.'
+		].join('\n')
+	];
+	if (framework) return [...intro, guideMarkdown(framework, ctx, '##')].join('\n\n');
+	return [
+		...intro,
+		'First work out which framework this project uses, then follow the matching guide below. If none matches, use the JavaScript guide for browser code and the Node.js, Python or Go guide for server code.',
+		...FRAMEWORKS.map((f) => guideMarkdown(f, ctx, '##'))
+	].join('\n\n');
+}

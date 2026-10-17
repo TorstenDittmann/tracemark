@@ -1,13 +1,17 @@
 <script lang="ts">
+import Bot from '@lucide/svelte/icons/bot';
 import Check from '@lucide/svelte/icons/check';
+import ChevronDown from '@lucide/svelte/icons/chevron-down';
 import FileCode from '@lucide/svelte/icons/file-code';
 import Search from '@lucide/svelte/icons/search';
 import SquareTerminal from '@lucide/svelte/icons/square-terminal';
 import { onMount } from 'svelte';
 import CodeBlock from '#lib/components/code-block.svelte';
+import CopyButton from '#lib/components/copy-button.svelte';
 import LiveDot from '#lib/components/live-dot.svelte';
 import { Button } from '#lib/components/ui/button/index.js';
 import {
+	agentPrompt,
 	CATEGORIES,
 	FRAMEWORKS,
 	installCommand,
@@ -28,6 +32,8 @@ let manager = $state<PackageManager>('npm');
 
 const framework = $derived(FRAMEWORKS.find((f) => f.id === frameworkId));
 const ctx = $derived({ key: publicKey, host });
+const prompt = $derived(agentPrompt(framework, ctx));
+let showPrompt = $state(false);
 
 const matches = $derived.by(() => {
 	const q = query.trim().toLowerCase();
@@ -113,6 +119,52 @@ function setManager(value: PackageManager) {
 		{/each}
 	</fieldset>
 {/snippet}
+
+<!-- Hand the whole setup to a coding agent with one copied prompt. -->
+<div
+	class="mb-8 grid gap-3 rounded-xl border border-primary/20 bg-gradient-to-br from-primary/10 via-primary/[0.03] to-transparent p-4"
+>
+	<div class="flex flex-wrap items-center gap-x-4 gap-y-3">
+		<span
+			class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm shadow-primary/30"
+		>
+			<Bot class="size-5" />
+		</span>
+		<div class="grid min-w-48 flex-1 gap-0.5">
+			<p class="font-medium">Let your coding agent set it up</p>
+			<p class="text-sm text-muted-foreground">
+				Paste one prompt into Claude Code, Cursor, Codex or any other agent.
+				{framework
+					? `It has the ${framework.label} steps and your key.`
+					: 'It works out your framework and has your key.'}
+			</p>
+		</div>
+		<div class="flex items-center gap-2">
+			<Button
+				variant="ghost"
+				size="sm"
+				aria-expanded={showPrompt}
+				onclick={() => (showPrompt = !showPrompt)}
+			>
+				{showPrompt ? 'Hide' : 'Preview'}
+				<ChevronDown class={['transition-transform duration-200', showPrompt && 'rotate-180']} />
+			</Button>
+			<CopyButton
+				text={prompt}
+				label="Copy prompt"
+				toastMessage="Prompt copied. Paste it into your coding agent."
+				showLabel
+				size="sm"
+				variant="default"
+			/>
+		</div>
+	</div>
+	{#if showPrompt}
+		<pre
+			class="max-h-80 overflow-auto rounded-lg border bg-background/80 p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap text-muted-foreground"
+		>{prompt}</pre>
+	{/if}
+</div>
 
 <ol class="grid">
 	<!-- Step 1: pick a framework. -->
@@ -223,14 +275,20 @@ function setManager(value: PackageManager) {
 							code={installCommand(manager, step.packages)}
 							label="Terminal"
 							icon={SquareTerminal}
+							language="sh"
 							actions={managerSwitch}
 						/>
 					{/if}
 					{#if step.command}
-						<CodeBlock code={step.command} label="Terminal" icon={SquareTerminal} />
+						<CodeBlock code={step.command} language="sh" label="Terminal" icon={SquareTerminal} />
 					{/if}
 					{#each step.files ?? [] as file (file.name)}
-						<CodeBlock code={file.code(ctx)} label={file.name} icon={FileCode} />
+						<CodeBlock
+							code={file.code(ctx)}
+							language={file.language}
+							label={file.name}
+							icon={FileCode}
+						/>
 					{/each}
 				</div>
 			</li>

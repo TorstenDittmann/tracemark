@@ -230,3 +230,11 @@
 		/* biome-ignore-end lint/complexity/noImportantStyles: must beat every animation utility */
 	}
 }
+
+/* Highlighted code from #lib/highlight: each token carries both theme colours. */
+.shiki-token {
+	color: var(--shiki-light);
+}
+.dark .shiki-token {
+	color: var(--shiki-dark);
+}
