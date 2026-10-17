@@ -9,6 +9,7 @@ import type { Actions, PageServerLoad } from './$types';
 // Setup is only open while the instance has no users; the first person to finish it becomes the owner.
 export const load: PageServerLoad = async () => {
 	if (await hasUsers(getDb())) redirect(303, '/login');
+	return { minPasswordLength: MIN_PASSWORD_LENGTH };
 };
 
 export const actions: Actions = {

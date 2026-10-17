@@ -1,8 +1,8 @@
 <script lang="ts">
 import { Button } from '#lib/components/ui/button/index.js';
-import * as Card from '#lib/components/ui/card/index.js';
 import { Input } from '#lib/components/ui/input/index.js';
 import { Label } from '#lib/components/ui/label/index.js';
+import { Spinner } from '#lib/components/ui/spinner/index.js';
 import { enhance } from '$app/forms';
 import { page } from '$app/state';
 import type { PageProps } from './$types';
@@ -24,22 +24,34 @@ const submit = () => {
 </script>
 
 <svelte:head>
-	<title>Join {invitation.organizationName} · footprint</title>
+	<title>Join {invitation.organizationName} · Tracemark</title>
 </svelte:head>
 
-<Card.Root>
-	<Card.Header>
-		<Card.Title>Join {invitation.organizationName}</Card.Title>
-		<Card.Description>
-			{invitation.inviterName}
-			invited <strong>{invitation.email}</strong> as
-			{invitation.role === 'admin' ? 'an admin' : 'a member'}.
-		</Card.Description>
-	</Card.Header>
-	<Card.Content class="grid gap-4">
+<div class="grid gap-8">
+	<div class="grid justify-items-start gap-4">
+		<span
+			class="flex size-12 items-center justify-center rounded-xl bg-primary/10 text-lg font-semibold text-primary ring-1 ring-primary/20"
+		>
+			{invitation.organizationName.charAt(0).toUpperCase()}
+		</span>
+		<div class="grid gap-1">
+			<h1 class="text-2xl font-semibold tracking-tight">Join {invitation.organizationName}</h1>
+			<p class="text-sm text-muted-foreground">
+				{invitation.inviterName}
+				invited <strong class="font-medium text-foreground">{invitation.email}</strong> as
+				{invitation.role === 'admin' ? 'an admin' : 'a member'}.
+			</p>
+		</div>
+	</div>
+	<div class="grid gap-4">
 		{#if isRecipient}
 			<form method="POST" action="?/accept" use:enhance={submit}>
-				<Button type="submit" class="w-full" disabled={pending}>Accept invitation</Button>
+				<Button type="submit" class="w-full" disabled={pending}>
+					{#if pending}
+						<Spinner />
+					{/if}
+					Accept invitation
+				</Button>
 			</form>
 		{:else if data.signedInAs}
 			<p class="text-sm text-muted-foreground">
@@ -68,11 +80,16 @@ const submit = () => {
 						required
 					/>
 				</div>
-				<Button type="submit" disabled={pending}>Create account and join</Button>
+				<Button type="submit" disabled={pending}>
+					{#if pending}
+						<Spinner />
+					{/if}
+					Create account and join
+				</Button>
 			</form>
 		{/if}
 		{#if form?.message}
 			<p class="text-sm text-destructive" role="alert">{form.message}</p>
 		{/if}
-	</Card.Content>
-</Card.Root>
+	</div>
+</div>

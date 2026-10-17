@@ -39,7 +39,7 @@ const people = $derived(result.variants.reduce((sum, v) => sum + v.people, 0));
 		</p>
 	</div>
 	<div class="relative overflow-x-auto">
-		<table class="w-full text-sm">
+		<table class="data-table w-full text-sm">
 			<thead class="text-left text-xs text-muted-foreground">
 				<tr>
 					<th class="py-2 pr-4 font-normal">Variant</th>

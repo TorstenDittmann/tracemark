@@ -4,7 +4,7 @@ import { getDb } from '#lib/server/db/index.js';
 import { listOrganizationsForUser, listProjectsForUser } from '#lib/server/projects.js';
 import type { LayoutServerLoad } from './$types';
 
-export const load: LayoutServerLoad = async ({ locals, url }) => {
+export const load: LayoutServerLoad = async ({ locals, url, cookies }) => {
 	const db = getDb();
 	if (!locals.user) {
 		if (!(await hasUsers(db))) redirect(303, '/setup');
@@ -14,5 +14,7 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 		listOrganizationsForUser(db, locals.user.id),
 		listProjectsForUser(db, locals.user.id)
 	]);
-	return { user: locals.user, organizations, projects };
+	// The sidebar remembers whether it was collapsed, so the first paint matches.
+	const sidebarOpen = cookies.get('sidebar_state') !== 'false';
+	return { user: locals.user, organizations, projects, sidebarOpen };
 };

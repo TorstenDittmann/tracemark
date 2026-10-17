@@ -1,5 +1,7 @@
 <script lang="ts">
+import Filter from '@lucide/svelte/icons/filter';
 import LineChart from '#lib/components/charts/line-chart.svelte';
+import StatCard from '#lib/components/stat-card.svelte';
 import * as Card from '#lib/components/ui/card/index.js';
 import { DIMENSIONS, type Dimension, RANGES, type Range } from '#lib/web.js';
 import { page } from '$app/state';
@@ -70,6 +72,12 @@ function href(changes: Record<string, string | null>): string {
 	return `${url.pathname}${url.search}`;
 }
 
+/** The flag emoji for a two-letter country code. */
+function flag(code: string): string {
+	if (!/^[A-Z]{2}$/.test(code)) return '';
+	return String.fromCodePoint(...[...code].map((c) => 0x1f1a5 + c.charCodeAt(0)));
+}
+
 function duration(seconds: number): string {
 	const s = Math.round(seconds);
 	if (s < 60) return `${s}s`;
@@ -87,8 +95,16 @@ const activeFilters = $derived(
 const tiles = $derived(
 	data.web
 		? [
-				{ label: 'Visitors', value: data.web.overview.visitors.toLocaleString() },
-				{ label: 'Page views', value: data.web.overview.pageviews.toLocaleString() },
+				{
+					label: 'Visitors',
+					value: data.web.overview.visitors.toLocaleString(),
+					trend: data.web.series.map((point) => point.visitors)
+				},
+				{
+					label: 'Page views',
+					value: data.web.overview.pageviews.toLocaleString(),
+					trend: data.web.series.map((point) => point.pageviews)
+				},
 				{ label: 'Sessions', value: data.web.overview.sessions.toLocaleString() },
 				{
 					label: 'Bounce rate',
@@ -111,7 +127,7 @@ const metrics: { key: Metric; label: string }[] = [
 
 <div class="grid gap-6">
 	<div class="flex flex-wrap items-center gap-2">
-		<fieldset class="inline-flex rounded-md border p-0.5 text-sm">
+		<fieldset class="inline-flex rounded-lg bg-muted p-0.5 text-sm">
 			<legend class="sr-only">Date range</legend>
 			{#each ranges as range (range)}
 				<a
@@ -119,9 +135,9 @@ const metrics: { key: Metric; label: string }[] = [
 					title={RANGES[range].label}
 					aria-current={data.range === range ? 'true' : undefined}
 					class={[
-						'rounded px-2.5 py-1',
+						'rounded-md px-2.5 py-1 font-medium transition-all duration-200',
 						data.range === range
-							? 'bg-secondary font-medium text-secondary-foreground'
+							? 'bg-background text-foreground shadow-sm dark:bg-input/40'
 							: 'text-muted-foreground hover:text-foreground'
 					]}
 				>
@@ -158,21 +174,16 @@ const metrics: { key: Metric; label: string }[] = [
 			Web analytics are unavailable because ClickHouse could not be reached.
 		</p>
 	{:else}
-		<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+		<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5 stagger">
 			{#each tiles as tile (tile.label)}
-				<Card.Root class="gap-1 py-4">
-					<Card.Header class="px-4">
-						<Card.Description>{tile.label}</Card.Description>
-						<Card.Title class="text-2xl tabular-nums">{tile.value}</Card.Title>
-					</Card.Header>
-				</Card.Root>
+				<StatCard label={tile.label} value={tile.value} trend={tile.trend} />
 			{/each}
 		</div>
 
 		<Card.Root class="gap-4">
 			<Card.Header class="flex flex-row items-center justify-between gap-2">
 				<Card.Title>{metric === 'visitors' ? 'Visitors' : 'Page views'}</Card.Title>
-				<fieldset class="inline-flex rounded-md border p-0.5 text-sm">
+				<fieldset class="inline-flex rounded-lg bg-muted p-0.5 text-sm">
 					<legend class="sr-only">Metric</legend>
 					{#each metrics as m (m.key)}
 						<button
@@ -180,9 +191,9 @@ const metrics: { key: Metric; label: string }[] = [
 							onclick={() => (metric = m.key)}
 							aria-pressed={metric === m.key}
 							class={[
-								'rounded px-2.5 py-1',
+								'rounded-md px-2.5 py-1 font-medium transition-all duration-200',
 								metric === m.key
-									? 'bg-secondary font-medium text-secondary-foreground'
+									? 'bg-background text-foreground shadow-sm dark:bg-input/40'
 									: 'text-muted-foreground hover:text-foreground'
 							]}
 						>
@@ -215,16 +226,19 @@ const metrics: { key: Metric; label: string }[] = [
 					<Card.Header class="flex flex-row flex-wrap items-center justify-between gap-2">
 						<Card.Title>{panel.title}</Card.Title>
 						{#if panel.tabs.length > 1}
-							<fieldset class="flex flex-wrap gap-x-3 gap-y-1 text-sm">
+							<fieldset class="inline-flex flex-wrap rounded-lg bg-muted p-0.5 text-xs">
 								<legend class="sr-only">{panel.title} breakdown</legend>
 								{#each panel.tabs as tab (tab.dimension)}
 									<button
 										type="button"
 										onclick={() => (selected[panel.title] = tab.dimension)}
 										aria-pressed={dimension === tab.dimension}
-										class={dimension === tab.dimension
-											? 'font-medium'
-											: 'text-muted-foreground hover:text-foreground'}
+										class={[
+											'rounded-md px-2 py-0.5 font-medium transition-all duration-200',
+											dimension === tab.dimension
+												? 'bg-background text-foreground shadow-sm dark:bg-input/40'
+												: 'text-muted-foreground hover:text-foreground'
+										]}
 									>
 										{tab.label}
 									</button>
@@ -242,15 +256,29 @@ const metrics: { key: Metric; label: string }[] = [
 							<a
 								href={href({ [dimension]: filtered ? null : row.value })}
 								title={filtered ? 'Remove filter' : `Filter by ${DIMENSIONS[dimension]}`}
-								class="relative flex items-center justify-between gap-4 rounded px-2 py-1.5 hover:bg-accent"
+								class={[
+									'group relative flex items-center justify-between gap-4 overflow-hidden rounded-md px-2 py-1.5 transition-colors hover:bg-muted/60',
+									filtered && 'ring-1 ring-primary/40'
+								]}
 							>
 								<span
-									class="absolute inset-y-0 left-0 rounded bg-series-1/15"
+									class="absolute inset-y-0 left-0 rounded-md bg-primary/10 transition-[width,background-color] duration-700 ease-out group-hover:bg-primary/15"
 									style:width="{(row.visitors / max) * 100}%"
 									aria-hidden="true"
 								></span>
-								<span class="relative min-w-0 truncate">{display(dimension, row.value)}</span>
-								<span class="relative tabular-nums">{row.visitors.toLocaleString()}</span>
+								<span class="relative flex min-w-0 items-center gap-2 truncate">
+									{#if dimension === 'country' && row.value}
+										<span aria-hidden="true">{flag(row.value)}</span>
+									{/if}
+									<span class="truncate">{display(dimension, row.value)}</span>
+								</span>
+								<span class="relative flex items-center gap-2 tabular-nums">
+									<Filter
+										class="size-3 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
+										aria-hidden="true"
+									/>
+									{row.visitors.toLocaleString()}
+								</span>
 							</a>
 						{:else}
 							<p class="px-2 py-6 text-center text-muted-foreground">No data for this range</p>

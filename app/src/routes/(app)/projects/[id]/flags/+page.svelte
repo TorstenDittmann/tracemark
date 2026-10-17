@@ -1,12 +1,22 @@
 <script lang="ts">
+import Plus from '@lucide/svelte/icons/plus';
+import ToggleRight from '@lucide/svelte/icons/toggle-right';
+import EmptyState from '#lib/components/empty-state.svelte';
+import StatusPill from '#lib/components/status-pill.svelte';
 import { Button } from '#lib/components/ui/button/index.js';
 import * as Card from '#lib/components/ui/card/index.js';
+import * as Dialog from '#lib/components/ui/dialog/index.js';
 import { Input } from '#lib/components/ui/input/index.js';
 import { flagHref, flagKind, flagSummary } from '#lib/flags.js';
 import { enhance } from '$app/forms';
 import type { PageProps } from './$types';
 
 let { data, form }: PageProps = $props();
+// Reopen the dialog when the server rejects what was typed.
+let creating = $state(false);
+$effect(() => {
+	if (form?.message) creating = true;
+});
 
 const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' });
 </script>
@@ -16,47 +26,65 @@ const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' });
 </svelte:head>
 
 <div class="grid gap-4">
-	<Card.Root class="min-w-0 gap-4">
-		<Card.Header>
-			<Card.Title>New flag</Card.Title>
-			<Card.Description>
-				Your code asks for a flag by its key. New flags start off, so nothing changes until you turn
-				one on.
-			</Card.Description>
-		</Card.Header>
-		<Card.Content>
-			<form method="POST" action="?/create" use:enhance class="grid max-w-xl gap-2">
-				<div class="flex flex-wrap gap-2">
-					<Input
-						name="key"
-						placeholder="new-checkout"
-						aria-label="Flag key"
-						value={form?.key ?? ''}
-						maxlength={100}
-						required
-						class="w-56 font-mono"
-					/>
-					<Input
-						name="description"
-						placeholder="What it's for (optional)"
-						aria-label="Description"
-						value={form?.description ?? ''}
-						maxlength={500}
-						class="min-w-0 flex-1"
-					/>
-				</div>
-				<div><Button type="submit">Create flag</Button></div>
-				{#if form?.message}
-					<p class="text-sm text-destructive" role="alert">{form.message}</p>
-				{/if}
-			</form>
-		</Card.Content>
-	</Card.Root>
+	<div class="flex flex-wrap items-center justify-between gap-2">
+		<p class="text-sm text-muted-foreground">
+			{data.flags.length}
+			{data.flags.length === 1 ? 'flag' : 'flags'}
+		</p>
+		<Dialog.Root bind:open={creating}>
+			<Dialog.Trigger>
+				{#snippet child({
+					props
+				})}
+					<Button {...props}>
+						<Plus />
+						New flag
+					</Button>
+				{/snippet}
+			</Dialog.Trigger>
+			<Dialog.Content class="sm:max-w-md">
+				<Dialog.Header>
+					<Dialog.Title>New feature flag</Dialog.Title>
+					<Dialog.Description>
+						Your code asks for a flag by its key. New flags start off, so nothing changes until you
+						turn one on.
+					</Dialog.Description>
+				</Dialog.Header>
+				<form method="POST" action="?/create" use:enhance class="grid gap-3">
+					<div class="grid gap-2">
+						<Input
+							name="key"
+							placeholder="new-checkout"
+							aria-label="Flag key"
+							value={form?.key ?? ''}
+							maxlength={100}
+							required
+							class="font-mono"
+						/>
+						<Input
+							name="description"
+							placeholder="What it's for (optional)"
+							aria-label="Description"
+							value={form?.description ?? ''}
+							maxlength={500}
+						/>
+					</div>
+					<Button type="submit">
+						<Plus />
+						Create flag
+					</Button>
+					{#if form?.message}
+						<p class="text-sm text-destructive" role="alert">{form.message}</p>
+					{/if}
+				</form>
+			</Dialog.Content>
+		</Dialog.Root>
+	</div>
 
 	<Card.Root class="min-w-0 py-2">
 		{#if data.flags.length}
 			<div class="relative overflow-x-auto">
-				<table class="w-full text-sm">
+				<table class="data-table w-full text-sm">
 					<thead class="text-left text-xs text-muted-foreground">
 						<tr>
 							<th class="px-6 py-2 font-normal">Key</th>
@@ -83,21 +111,9 @@ const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' });
 									{/if}
 								</td>
 								<td class="px-4 py-2 whitespace-nowrap">
-									<span
-										class={[
-											'inline-flex items-center gap-1.5',
-											flag.active ? '' : 'text-muted-foreground'
-										]}
-									>
-										<span
-											class={[
-												'size-2 rounded-full',
-												flag.active ? 'bg-primary' : 'bg-muted-foreground/40'
-											]}
-											aria-hidden="true"
-										></span>
+									<StatusPill tone={flag.active ? 'success' : 'muted'}>
 										{flag.active ? 'On' : 'Off'}
-									</span>
+									</StatusPill>
 								</td>
 								<td class="px-4 py-2 whitespace-nowrap text-muted-foreground">
 									{flag.definition ? flagKind(flag.definition) : 'Invalid'}
@@ -114,7 +130,11 @@ const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' });
 				</table>
 			</div>
 		{:else}
-			<p class="px-6 py-10 text-center text-sm text-muted-foreground">No feature flags yet.</p>
+			<EmptyState
+				icon={ToggleRight}
+				title="No feature flags yet"
+				description="Create one, then ask for it by key in your code. New flags start off, so nothing changes until you turn one on."
+			/>
 		{/if}
 	</Card.Root>
 </div>

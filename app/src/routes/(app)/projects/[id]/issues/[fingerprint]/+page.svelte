@@ -146,7 +146,7 @@ const actions = $derived(
 				<Card.Title>Recent occurrences</Card.Title>
 			</Card.Header>
 			<div class="relative overflow-x-auto">
-				<table class="w-full text-sm">
+				<table class="data-table w-full text-sm">
 					<thead class="text-left text-xs text-muted-foreground">
 						<tr>
 							<th class="px-6 py-2 font-normal">Time</th>

@@ -110,7 +110,7 @@ const columns = $derived(
 								<dd class="break-all">{event.uuid}</dd>
 							</dl>
 							{#if entries.length}
-								<table class="w-full text-left">
+								<table class="data-table w-full text-left">
 									<caption class="pb-1 text-left text-xs font-medium text-muted-foreground">
 										Properties
 									</caption>

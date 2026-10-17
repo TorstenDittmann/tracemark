@@ -1,5 +1,7 @@
 <script lang="ts">
+import UsersRound from '@lucide/svelte/icons/users-round';
 import { COHORT_KINDS, cohortHref } from '#lib/cohorts.js';
+import EmptyState from '#lib/components/empty-state.svelte';
 import PeopleNav from '#lib/components/people/people-nav.svelte';
 import { Button } from '#lib/components/ui/button/index.js';
 import * as Card from '#lib/components/ui/card/index.js';
@@ -67,7 +69,7 @@ const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' });
 	<Card.Root class="min-w-0 py-2">
 		{#if data.cohorts.length}
 			<div class="relative overflow-x-auto">
-				<table class="w-full text-sm">
+				<table class="data-table w-full text-sm">
 					<thead class="text-left text-xs text-muted-foreground">
 						<tr>
 							<th class="px-6 py-2 font-normal">Name</th>
@@ -100,7 +102,11 @@ const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' });
 				</table>
 			</div>
 		{:else}
-			<p class="px-6 py-10 text-center text-sm text-muted-foreground">No cohorts yet.</p>
+			<EmptyState
+				icon={UsersRound}
+				title="No cohorts yet"
+				description="Group people by what they did or who they are, then use the cohort in insights and flags."
+			/>
 		{/if}
 	</Card.Root>
 </div>
