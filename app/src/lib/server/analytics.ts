@@ -20,6 +20,7 @@ import { projectFlags } from './flags';
 import * as groups from './groups';
 import * as insights from './insights';
 import * as issues from './issues';
+import * as mockData from './mock-data';
 import * as persons from './persons';
 import * as privacy from './privacy';
 import type { SavedQuery } from './saved';
@@ -65,6 +66,13 @@ export const projectEventStats = (projectId: string) =>
 
 export const deleteProjectEvents = (projectId: string) =>
 	events.deleteProjectEvents(config(), projectId);
+
+/** Fills a project with a month of mock data; adding again replaces it. Returns the event count. */
+export const addMockData = (projectId: string, userId: string) =>
+	mockData.addMockData(getDb(), config(), projectId, userId);
+
+export const removeMockData = (projectId: string) =>
+	mockData.removeMockData(getDb(), config(), projectId);
 
 export const personEvents = (projectId: string, distinctIds: string[]) =>
 	privacy.personEvents(config(), projectId, distinctIds);

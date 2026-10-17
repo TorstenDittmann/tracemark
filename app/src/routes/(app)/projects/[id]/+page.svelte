@@ -6,8 +6,10 @@ import ChartSpline from '@lucide/svelte/icons/chart-spline';
 import Check from '@lucide/svelte/icons/check';
 import Eye from '@lucide/svelte/icons/eye';
 import KeyRound from '@lucide/svelte/icons/key-round';
+import LoaderCircle from '@lucide/svelte/icons/loader-circle';
 import MousePointerClick from '@lucide/svelte/icons/mouse-pointer-click';
 import PartyPopper from '@lucide/svelte/icons/party-popper';
+import Sparkles from '@lucide/svelte/icons/sparkles';
 import ToggleRight from '@lucide/svelte/icons/toggle-right';
 import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
 import UserPlus from '@lucide/svelte/icons/user-plus';
@@ -24,6 +26,7 @@ import { Button } from '#lib/components/ui/button/index.js';
 import * as Card from '#lib/components/ui/card/index.js';
 import { PLATFORMS } from '#lib/install.js';
 import { timeAgo } from '#lib/time.js';
+import { enhance } from '$app/forms';
 import { invalidate } from '$app/navigation';
 import type { PageProps } from './$types';
 
@@ -53,7 +56,7 @@ onMount(() => {
 let wasLive: boolean | undefined;
 let celebrate = $state(false);
 $effect(() => {
-	if (wasLive === false && live) {
+	if (wasLive === false && live && !addingMock) {
 		celebrate = true;
 		toast.success('Your first event arrived', {
 			description: 'Tracemark is receiving data from this project.'
@@ -61,6 +64,8 @@ $effect(() => {
 	}
 	wasLive = live;
 });
+
+let addingMock = $state(false);
 
 const steps = $derived([
 	{
@@ -283,6 +288,50 @@ function where(properties: Record<string, unknown>): string {
 		</div>
 		<div class="grid content-start gap-6">
 			{@render checklistCard()}
+			<Card.Root class="gap-3">
+				<Card.Header>
+					<Card.Title class="flex items-center gap-2 text-sm">
+						<Sparkles class="size-4 text-primary" />
+						Just looking around?
+					</Card.Title>
+					<Card.Description>
+						Fill this project with a month of mock data: web traffic, product events, errors, AI
+						traces, people, companies, flags, an experiment and a dashboard. Remove it any time in
+						Settings.
+					</Card.Description>
+				</Card.Header>
+				<Card.Content>
+					<form
+						method="POST"
+						action="?/addMockData"
+						use:enhance={() => {
+							addingMock = true;
+							return async ({ result, update }) => {
+								if (result.type === 'success') {
+									const count = Number(result.data?.mockEvents ?? 0);
+									toast.success('Mock data added', {
+										description: `${count.toLocaleString()} events from made-up people and companies.`
+									});
+								} else if (result.type === 'failure') {
+									toast.error(String(result.data?.message ?? 'Could not add mock data.'));
+								}
+								await update({ invalidateAll: true });
+								addingMock = false;
+							};
+						}}
+					>
+						<Button type="submit" variant="outline" size="sm" disabled={addingMock}>
+							{#if addingMock}
+								<LoaderCircle class="animate-spin" />
+								Adding mock data…
+							{:else}
+								<Sparkles />
+								Add mock data
+							{/if}
+						</Button>
+					</form>
+				</Card.Content>
+			</Card.Root>
 			<Card.Root class="gap-3">
 				<Card.Header>
 					<Card.Title class="text-sm">Privacy-friendly by default</Card.Title>
