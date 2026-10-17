@@ -1,6 +1,17 @@
 {
 	"name": "@tracemark/node",
-	"version": "0.0.0",
+	"version": "0.1.0",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/TorstenDittmann/tracemark.git",
+		"directory": "packages/sdk-node"
+	},
+	"homepage": "https://github.com/TorstenDittmann/tracemark#readme",
+	"bugs": "https://github.com/TorstenDittmann/tracemark/issues",
+	"publishConfig": {
+		"access": "public",
+		"registry": "https://registry.npmjs.org/"
+	},
 	"description": "Node.js SDK for tracemark, self-hosted product analytics",
 	"license": "MIT",
 	"type": "module",

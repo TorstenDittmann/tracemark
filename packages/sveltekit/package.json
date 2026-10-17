@@ -1,6 +1,17 @@
 {
 	"name": "@tracemark/sveltekit",
-	"version": "0.0.0",
+	"version": "0.1.0",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/TorstenDittmann/tracemark.git",
+		"directory": "packages/sveltekit"
+	},
+	"homepage": "https://github.com/TorstenDittmann/tracemark#readme",
+	"bugs": "https://github.com/TorstenDittmann/tracemark/issues",
+	"publishConfig": {
+		"access": "public",
+		"registry": "https://registry.npmjs.org/"
+	},
 	"description": "SvelteKit hooks for tracemark: per-request flags, server flag bootstrap and error capture",
 	"license": "MIT",
 	"type": "module",
@@ -27,8 +38,8 @@
 		"typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json"
 	},
 	"peerDependencies": {
-		"@tracemark/browser": "*",
-		"@tracemark/node": "*"
+		"@tracemark/browser": "^0.1.0",
+		"@tracemark/node": "^0.1.0"
 	},
 	"devDependencies": {
 		"@tracemark/browser": "workspace:*",

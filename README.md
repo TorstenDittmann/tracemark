@@ -79,6 +79,10 @@ cd ingest && INTERNAL_TOKEN=dev APP_INTERNAL_URL=http://localhost:5173 cargo run
 
 Checks: `bun run check`, `bun run typecheck`, `bun run test`, and `cargo fmt --check && cargo clippy && cargo test` in `ingest/`.
 
+## Releasing npm packages
+
+The 10 public JavaScript packages are released together. See [docs/releases.md](docs/releases.md) for first-time npm setup, local publishing and the `npm-v*` GitHub Actions workflow.
+
 ## License
 
 MIT

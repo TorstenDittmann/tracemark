@@ -7,6 +7,11 @@
 		"packages/*"
 	],
 	"scripts": {
+		"build:packages": "bun run --filter './packages/*' build",
+		"release:check": "bun run build:packages && node scripts/release.mjs check",
+		"release:publish": "bun run build:packages && node scripts/release.mjs publish",
+		"release:version": "node scripts/release.mjs version",
+		"test:release": "node --test scripts/release.test.mjs",
 		"check": "biome check .",
 		"format": "biome check --write .",
 		"typecheck": "bun run --filter '*' typecheck",
