@@ -17,14 +17,13 @@ import Users from '@lucide/svelte/icons/users';
 import { onMount } from 'svelte';
 import { toast } from 'svelte-sonner';
 import LineChart from '#lib/components/charts/line-chart.svelte';
-import CodeBlock from '#lib/components/code-block.svelte';
 import CopyButton from '#lib/components/copy-button.svelte';
 import LiveDot from '#lib/components/live-dot.svelte';
+import InstallGuide from '#lib/components/onboarding/install-guide.svelte';
 import StatCard from '#lib/components/stat-card.svelte';
 import * as Alert from '#lib/components/ui/alert/index.js';
 import { Button } from '#lib/components/ui/button/index.js';
 import * as Card from '#lib/components/ui/card/index.js';
-import { PLATFORMS } from '#lib/install.js';
 import { timeAgo } from '#lib/time.js';
 import { enhance } from '$app/forms';
 import { invalidate } from '$app/navigation';
@@ -34,8 +33,6 @@ let { data }: PageProps = $props();
 
 const base = $derived(`/projects/${data.project.id}`);
 const live = $derived(Boolean(data.stats?.lastEventAt));
-let platform = $state(PLATFORMS[0].id);
-const selected = $derived(PLATFORMS.find((p) => p.id === platform) ?? PLATFORMS[0]);
 
 // Poll quickly while waiting for the first event, slower once the live feed is showing.
 let now = $state(Date.now());
@@ -200,7 +197,7 @@ function where(properties: Record<string, unknown>): string {
 					<div class="grid gap-1">
 						<h2 class="text-lg font-semibold tracking-tight">Install Tracemark</h2>
 						<p class="text-sm text-muted-foreground">
-							Pick your platform and add the snippet. It only takes a minute.
+							Pick your framework and follow the steps. It only takes a few minutes.
 						</p>
 					</div>
 					<div
@@ -210,44 +207,8 @@ function where(properties: Record<string, unknown>): string {
 						<span class="font-medium">Listening for events</span>
 					</div>
 				</div>
-				<div class="grid gap-5 p-6">
-					<div class="flex flex-wrap gap-1.5" role="tablist" aria-label="Platform">
-						{#each PLATFORMS as p (p.id)}
-							<button
-								type="button"
-								role="tab"
-								aria-selected={platform === p.id}
-								onclick={() => (platform = p.id)}
-								class={[
-									'rounded-full border px-3 py-1 text-sm transition-all duration-200',
-									platform === p.id
-										? 'border-primary bg-primary text-primary-foreground shadow-sm shadow-primary/25'
-										: 'bg-background text-muted-foreground hover:border-foreground/20 hover:text-foreground'
-								]}
-							>
-								{p.label}
-							</button>
-						{/each}
-					</div>
-					{#key selected.id}
-						<div class="grid gap-4 animate-enter">
-							{#if selected.install}
-								<div class="grid gap-2">
-									<p class="text-sm font-medium">1. Add the package</p>
-									<CodeBlock code={selected.install} />
-								</div>
-							{/if}
-							<div class="grid gap-2">
-								<p class="text-sm font-medium">
-									{selected.install ? '2. ' : ''}{selected.hint}
-								</p>
-								<CodeBlock
-									code={selected.code(data.project.publicKey, data.host)}
-									label={selected.label}
-								/>
-							</div>
-						</div>
-					{/key}
+				<div class="p-6">
+					<InstallGuide publicKey={data.project.publicKey} host={data.host} {live} />
 				</div>
 				<div class="flex flex-wrap items-center gap-3 border-t bg-muted/30 px-6 py-4">
 					<KeyRound class="size-4 text-muted-foreground" />
@@ -262,29 +223,6 @@ function where(properties: Record<string, unknown>): string {
 					/>
 				</div>
 			</Card.Root>
-
-			<div class="relative overflow-hidden rounded-xl border border-dashed bg-card p-6">
-				<div class="flex items-center gap-5">
-					<div class="relative flex size-14 shrink-0 items-center justify-center">
-						<span class="absolute inset-0 rounded-full bg-primary/20 animate-ping-soft"></span>
-						<span
-							class="absolute inset-2 rounded-full bg-primary/20 animate-ping-soft [animation-delay:0.5s]"
-						></span>
-						<span
-							class="relative flex size-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30"
-						>
-							<Activity class="size-5" />
-						</span>
-					</div>
-					<div class="grid gap-1">
-						<p class="font-medium">Waiting for your first event…</p>
-						<p class="text-sm text-muted-foreground">
-							Open your site or app after installing. This page updates by itself the moment data
-							arrives.
-						</p>
-					</div>
-				</div>
-			</div>
 		</div>
 		<div class="grid content-start gap-6">
 			{@render checklistCard()}
