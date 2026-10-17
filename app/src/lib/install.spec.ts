@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BRAND_ICONS } from './brand-icons';
-import { CATEGORIES, FRAMEWORKS, installCommand } from './install';
+import { agentPrompt, CATEGORIES, FRAMEWORKS, installCommand } from './install';
 
 describe('installCommand', () => {
 	it('uses each package manager’s own verb', () => {
@@ -37,5 +37,24 @@ describe('FRAMEWORKS', () => {
 		}
 		const missing = FRAMEWORKS.filter((f) => !BRAND_ICONS[f.icon]).map((f) => f.id);
 		expect(missing).toEqual(['elysia']);
+	});
+});
+
+describe('agentPrompt', () => {
+	const ctx = { key: 'fp_pub_test', host: 'https://ingest.test' };
+
+	it('carries one framework’s steps and the key', () => {
+		const next = FRAMEWORKS.find((f) => f.id === 'nextjs');
+		const prompt = agentPrompt(next, ctx);
+		expect(prompt).toContain('this Next.js project');
+		expect(prompt).toContain(ctx.key);
+		expect(prompt).toContain('app/layout.tsx');
+		expect(prompt).not.toContain('## Nuxt');
+	});
+
+	it('asks the agent to detect the framework when none is picked', () => {
+		const prompt = agentPrompt(undefined, ctx);
+		expect(prompt).toContain('First work out which framework');
+		for (const f of FRAMEWORKS) expect(prompt).toContain(`## ${f.label}`);
 	});
 });

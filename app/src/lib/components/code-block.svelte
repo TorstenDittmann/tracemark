@@ -1,16 +1,20 @@
 <script lang="ts">
 import type { Component, Snippet } from 'svelte';
 import CopyButton from '#lib/components/copy-button.svelte';
+import { highlight, type Token } from '#lib/highlight.js';
 import { cn } from '#lib/utils.js';
 
 let {
 	code,
+	language,
 	label,
 	icon: Icon,
 	actions,
 	class: className
 }: {
 	code: string;
+	/** Colours the code when set, such as `ts` or `sh`. */
+	language?: string;
 	label?: string;
 	/** Shown before the label, such as a file icon. */
 	icon?: Component;
@@ -18,6 +22,22 @@ let {
 	actions?: Snippet;
 	class?: string;
 } = $props();
+
+let lines = $state<Token[][]>();
+$effect(() => {
+	const current = code;
+	lines = undefined;
+	if (!language) return;
+	let stale = false;
+	highlight(current, language)
+		.then((result) => {
+			if (!stale) lines = result;
+		})
+		.catch(() => {});
+	return () => {
+		stale = true;
+	};
+});
 </script>
 
 <div class={cn('group/code overflow-hidden rounded-xl border bg-muted/40', className)}>
@@ -36,7 +56,12 @@ let {
 		</div>
 	{/if}
 	<div class="relative">
-		<pre class="overflow-x-auto p-4 font-mono text-[13px] leading-relaxed"><code>{code}</code></pre>
+		<pre class="overflow-x-auto p-4 font-mono text-[13px] leading-relaxed"><code
+				>{#if lines}{#each lines as line, i (i)}{#each line as token, j (j)}<span
+								class="shiki-token"
+								style={token.style}>{token.content}</span
+							>{/each}{#if i < lines.length - 1}{'\n'}{/if}{/each}{:else}{code}{/if}</code
+			></pre>
 		{#if !label}
 			<CopyButton
 				text={code}
