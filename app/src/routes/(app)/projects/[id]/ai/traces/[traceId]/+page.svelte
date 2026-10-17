@@ -116,7 +116,7 @@ const pretty = (value: unknown) =>
 </script>
 
 <svelte:head>
-	<title>{root?.name ?? 'Trace'} · AI · {data.project.name} · footprint</title>
+	<title>{root?.name ?? 'Trace'} · AI · {data.project.name} · Tracemark</title>
 </svelte:head>
 
 <div class="grid gap-4">

@@ -15,7 +15,7 @@ let renaming = $state(false);
 </script>
 
 <svelte:head>
-	<title>{data.dashboard.name} · {data.project.name} · footprint</title>
+	<title>{data.dashboard.name} · {data.project.name} · Tracemark</title>
 </svelte:head>
 
 <div class="grid gap-6">

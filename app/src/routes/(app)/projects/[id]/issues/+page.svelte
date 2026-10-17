@@ -33,20 +33,20 @@ const rangeLabel = $derived(RANGES[data.range].label.toLowerCase());
 </script>
 
 <svelte:head>
-	<title>Issues · {data.project.name} · footprint</title>
+	<title>Issues · {data.project.name} · Tracemark</title>
 </svelte:head>
 
 <div class="grid gap-4">
 	<div class="flex flex-wrap items-center justify-between gap-2">
-		<nav class="flex gap-1 text-sm" aria-label="Issue status">
+		<nav class="inline-flex rounded-lg bg-muted p-0.5 text-sm" aria-label="Issue status">
 			{#each statuses as status (status)}
 				<a
 					href={statusHref(status)}
 					aria-current={data.status === status ? 'page' : undefined}
 					class={[
-						'rounded-md px-2.5 py-1',
+						'rounded-md px-2.5 py-1 font-medium transition-all duration-200',
 						data.status === status
-							? 'bg-secondary font-medium text-secondary-foreground'
+							? 'bg-background text-foreground shadow-sm dark:bg-input/40'
 							: 'text-muted-foreground hover:text-foreground'
 					]}
 				>
@@ -66,7 +66,7 @@ const rangeLabel = $derived(RANGES[data.range].label.toLowerCase());
 		<Card.Root class="min-w-0 gap-0 py-0">
 			{#if data.list.issues.length}
 				<div class="relative overflow-x-auto">
-					<table class="w-full text-sm">
+					<table class="data-table w-full text-sm">
 						<caption class="sr-only">
 							{STATUSES[data.status]}
 							issues in the {rangeLabel}

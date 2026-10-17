@@ -68,7 +68,7 @@ const converted = $derived(counts.at(-1) ?? 0);
 
 	{#if !compact && result.groups.length}
 		<div class="relative overflow-x-auto">
-			<table class="w-full text-sm">
+			<table class="data-table w-full text-sm">
 				<thead class="text-left text-xs text-muted-foreground">
 					<tr>
 						<th class="py-2 pr-4 font-normal">{breakdown}</th>

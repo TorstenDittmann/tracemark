@@ -21,7 +21,7 @@ function pageHref(before: string | null): string {
 </script>
 
 <svelte:head>
-	<title>People · {data.project.name} · footprint</title>
+	<title>People · {data.project.name} · Tracemark</title>
 </svelte:head>
 
 <div class="grid gap-4">
@@ -52,7 +52,7 @@ function pageHref(before: string | null): string {
 		<Card.Root class="min-w-0 gap-0 py-0">
 			{#if data.people.persons.length}
 				<div class="relative overflow-x-auto">
-					<table class="w-full text-sm">
+					<table class="data-table w-full text-sm">
 						<caption class="sr-only">
 							People seen in the last {LOOKBACK_DAYS} days
 						</caption>

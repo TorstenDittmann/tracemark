@@ -1,4 +1,6 @@
 <script lang="ts">
+import Activity from '@lucide/svelte/icons/activity';
+import EmptyState from '#lib/components/empty-state.svelte';
 import * as Card from '#lib/components/ui/card/index.js';
 import { LOOKBACK_DAYS } from '#lib/explore.js';
 import type { PageProps } from './$types';
@@ -19,7 +21,7 @@ const trendHref = (event: string) =>
 </script>
 
 <svelte:head>
-	<title>Event definitions · {data.project.name} · footprint</title>
+	<title>Event definitions · {data.project.name} · Tracemark</title>
 </svelte:head>
 
 {#if !data.definitions}
@@ -30,7 +32,7 @@ const trendHref = (event: string) =>
 	<Card.Root class="min-w-0 py-2">
 		{#if data.definitions.length}
 			<div class="relative overflow-x-auto">
-				<table class="w-full text-sm">
+				<table class="data-table w-full text-sm">
 					<thead class="text-left text-xs text-muted-foreground">
 						<tr>
 							<th class="px-6 py-2 font-normal">Event</th>
@@ -66,9 +68,11 @@ const trendHref = (event: string) =>
 				</table>
 			</div>
 		{:else}
-			<p class="px-6 py-10 text-center text-sm text-muted-foreground">
-				No events yet. They show up here as soon as the first one arrives.
-			</p>
+			<EmptyState
+				icon={Activity}
+				title="No events yet"
+				description="They show up here as soon as the first one arrives."
+			/>
 		{/if}
 	</Card.Root>
 {/if}

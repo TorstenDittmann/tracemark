@@ -1,5 +1,6 @@
 <script lang="ts">
 import RangePicker from '#lib/components/range-picker.svelte';
+import SubNav from '#lib/components/sub-nav.svelte';
 import type { Range } from '#lib/web.js';
 
 let {
@@ -15,22 +16,14 @@ const links = $derived([
 </script>
 
 <div class="flex flex-wrap items-center justify-between gap-2">
-	<nav class="flex gap-1 text-sm" aria-label="AI">
-		{#each links as link (link.key)}
-			<a
-				href={range ? `${link.href}?range=${range}` : link.href}
-				aria-current={current === link.key ? 'page' : undefined}
-				class={[
-					'rounded-md px-2.5 py-1',
-					current === link.key
-						? 'bg-secondary font-medium text-secondary-foreground'
-						: 'text-muted-foreground hover:text-foreground'
-				]}
-			>
-				{link.label}
-			</a>
-		{/each}
-	</nav>
+	<SubNav
+		label="AI"
+		links={links.map((link) => ({
+			href: range ? `${link.href}?range=${range}` : link.href,
+			label: link.label,
+			active: current === link.key
+		}))}
+	/>
 	{#if range}
 		<RangePicker current={range} />
 	{/if}

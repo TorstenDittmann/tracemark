@@ -42,5 +42,20 @@
 		"parser": {
 			"tailwindDirectives": true
 		}
-	}
+	},
+	"overrides": [
+		{
+			"includes": ["app/src/lib/components/ui/**"],
+			"linter": {
+				"rules": {
+					"a11y": "off",
+					"suspicious": {
+						"noDocumentCookie": "off",
+						"noAssignInExpressions": "off",
+						"noShadowRestrictedNames": "off"
+					}
+				}
+			}
+		}
+	]
 }

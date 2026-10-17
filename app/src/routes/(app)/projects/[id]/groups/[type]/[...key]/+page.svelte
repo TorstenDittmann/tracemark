@@ -20,7 +20,7 @@ function display(value: unknown): string {
 </script>
 
 <svelte:head>
-	<title>{name || 'Group'} · {data.project.name} · footprint</title>
+	<title>{name || 'Group'} · {data.project.name} · Tracemark</title>
 </svelte:head>
 
 <div class="grid gap-6">
@@ -77,7 +77,7 @@ function display(value: unknown): string {
 					</Card.Header>
 					<Card.Content>
 						{#if properties.length}
-							<table class="w-full text-left text-sm">
+							<table class="data-table w-full text-left text-sm">
 								<tbody>
 									{#each properties as [key, value] (key)}
 										<tr class="border-t first:border-t-0">
@@ -105,7 +105,7 @@ function display(value: unknown): string {
 						<Card.Description>The most active people in this group.</Card.Description>
 					</Card.Header>
 					<Card.Content>
-						<table class="w-full text-left text-sm">
+						<table class="data-table w-full text-left text-sm">
 							<thead class="text-xs text-muted-foreground">
 								<tr>
 									<th class="pb-1 font-normal">Person</th>

@@ -36,7 +36,7 @@ function formatBytes(bytes: number): string {
 </script>
 
 <svelte:head>
-	<title>Settings · {data.project.name} · footprint</title>
+	<title>Settings · {data.project.name} · Tracemark</title>
 </svelte:head>
 
 <div class="grid gap-6">
@@ -153,7 +153,7 @@ function formatBytes(bytes: number): string {
 		<Card.Content class="grid gap-3">
 			{#if data.sourcemaps.length}
 				<div class="relative overflow-x-auto">
-					<table class="w-full text-sm">
+					<table class="data-table w-full text-sm">
 						<thead class="text-left text-xs text-muted-foreground">
 							<tr>
 								<th class="py-2 pr-4 font-normal">Release</th>
@@ -220,7 +220,7 @@ function formatBytes(bytes: number): string {
 		</Card.Header>
 		<Card.Content class="grid gap-4">
 			<div class="relative max-h-96 overflow-auto">
-				<table class="w-full text-sm">
+				<table class="data-table w-full text-sm">
 					<thead class="sticky top-0 bg-card text-left text-xs text-muted-foreground">
 						<tr>
 							<th class="py-2 pr-4 font-normal">Model</th>

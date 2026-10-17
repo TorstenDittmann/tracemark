@@ -22,7 +22,7 @@ const example = `tracemark.group('company', 'acme', { name: 'Acme Inc' });`;
 </script>
 
 <svelte:head>
-	<title>Groups · {data.project.name} · footprint</title>
+	<title>Groups · {data.project.name} · Tracemark</title>
 </svelte:head>
 
 {#if !data.types}
@@ -79,7 +79,7 @@ const example = `tracemark.group('company', 'acme', { name: 'Acme Inc' });`;
 			<Card.Root class="min-w-0 gap-0 py-0">
 				{#if data.groups.groups.length}
 					<div class="relative overflow-x-auto">
-						<table class="w-full text-sm">
+						<table class="data-table w-full text-sm">
 							<caption class="sr-only">
 								{data.type}
 								groups seen in the last {LOOKBACK_DAYS} days

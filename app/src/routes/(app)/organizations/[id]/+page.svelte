@@ -1,4 +1,8 @@
 <script lang="ts">
+import UsersRound from '@lucide/svelte/icons/users-round';
+import { selectClass } from '#lib/components/insights/editor.svelte.js';
+import PageHeader from '#lib/components/page-header.svelte';
+import StatusPill from '#lib/components/status-pill.svelte';
 import { Button } from '#lib/components/ui/button/index.js';
 import * as Card from '#lib/components/ui/card/index.js';
 import { Input } from '#lib/components/ui/input/index.js';
@@ -12,6 +16,14 @@ let copied = $state<string | null>(null);
 const manager = $derived(data.role === 'owner' || data.role === 'admin');
 const messageFor = (action: string) => (form?.action === action ? form.message : null);
 
+const initials = (name: string) =>
+	name
+		.split(/[\s@.]+/)
+		.filter(Boolean)
+		.slice(0, 2)
+		.map((part) => part[0]?.toUpperCase())
+		.join('');
+
 const formatDate = (date: Date) => date.toLocaleDateString(undefined, { dateStyle: 'medium' });
 
 async function copy(id: string, link: string) {
@@ -24,16 +36,15 @@ async function copy(id: string, link: string) {
 </script>
 
 <svelte:head>
-	<title>Team · {data.organization.name} · footprint</title>
+	<title>Team · {data.organization.name} · Tracemark</title>
 </svelte:head>
 
 <div class="grid gap-6">
-	<div>
-		<h1 class="text-2xl font-semibold tracking-tight">{data.organization.name}</h1>
-		<p class="text-sm text-muted-foreground">
-			Everyone here can see all of this organization's projects.
-		</p>
-	</div>
+	<PageHeader
+		title={data.organization.name}
+		description="Everyone here can see all of this organization's projects."
+		icon={UsersRound}
+	/>
 
 	<Card.Root>
 		<Card.Header>
@@ -43,11 +54,19 @@ async function copy(id: string, link: string) {
 			<ul class="divide-y">
 				{#each data.members as member (member.id)}
 					<li class="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+						<span
+							class="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary"
+							aria-hidden="true"
+						>
+							{initials(member.name || member.email)}
+						</span>
 						<div class="min-w-0 flex-1">
 							<p class="truncate text-sm font-medium">{member.name}</p>
 							<p class="truncate text-sm text-muted-foreground">{member.email}</p>
 						</div>
-						<span class="text-sm capitalize text-muted-foreground">{member.role}</span>
+						<StatusPill tone={member.role === 'owner' ? 'primary' : 'muted'} class="capitalize">
+							{member.role}
+						</StatusPill>
 						{#if manager && member.userId !== data.user.id && member.role !== 'owner'}
 							<form
 								method="POST"
@@ -74,7 +93,7 @@ async function copy(id: string, link: string) {
 			<Card.Header>
 				<Card.Title>Invite someone</Card.Title>
 				<Card.Description>
-					footprint doesn't send email. Create an invitation, then send the person its link. Links
+					Tracemark doesn't send email. Create an invitation, then send the person its link. Links
 					work for 7 days.
 				</Card.Description>
 			</Card.Header>
@@ -98,11 +117,7 @@ async function copy(id: string, link: string) {
 					</div>
 					<div class="grid gap-2">
 						<Label for="role">Role</Label>
-						<select
-							id="role"
-							name="role"
-							class="h-9 rounded-md border border-input bg-transparent px-3 text-sm shadow-xs dark:bg-input/30"
-						>
+						<select id="role" name="role" class={[selectClass, 'h-9']}>
 							<option value="member">Member</option>
 							<option value="admin">Admin</option>
 						</select>

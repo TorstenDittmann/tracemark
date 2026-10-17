@@ -26,7 +26,7 @@ const activityHref = (property: string) =>
 </script>
 
 <svelte:head>
-	<title>Properties · {data.project.name} · footprint</title>
+	<title>Properties · {data.project.name} · Tracemark</title>
 </svelte:head>
 
 <div class="grid gap-4">
@@ -52,7 +52,7 @@ const activityHref = (property: string) =>
 		<Card.Root class="min-w-0 py-2">
 			{#if data.definitions.length}
 				<div class="relative overflow-x-auto">
-					<table class="w-full text-sm">
+					<table class="data-table w-full text-sm">
 						<thead class="text-left text-xs text-muted-foreground">
 							<tr>
 								<th class="px-6 py-2 font-normal">Property</th>

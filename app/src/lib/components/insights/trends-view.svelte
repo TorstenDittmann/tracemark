@@ -36,7 +36,7 @@ const lines = $derived(
 			height={compact ? 180 : 240}
 		/>
 		{#if !compact}
-			<table class="w-full text-sm">
+			<table class="data-table w-full text-sm">
 				<thead class="text-left text-xs text-muted-foreground">
 					<tr>
 						<th class="py-2 font-normal">Series</th>
