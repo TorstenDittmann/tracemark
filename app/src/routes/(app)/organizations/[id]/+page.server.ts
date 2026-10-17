@@ -8,9 +8,10 @@ import {
 	getOrganizationForUser,
 	invite,
 	listMembers,
-	listPendingInvitations
+	listPendingInvitations,
+	renameOrganization
 } from '#lib/server/members.js';
-import { canManage } from '#lib/server/projects.js';
+import { canManage, validateProjectName } from '#lib/server/projects.js';
 import type { Actions, PageServerLoad, RequestEvent } from './$types';
 
 export const load: PageServerLoad = async ({ locals, params, url }) => {
@@ -45,6 +46,15 @@ function apiFailure(action: string, err: unknown) {
 }
 
 export const actions: Actions = {
+	rename: async (event) => {
+		await requireManager(event);
+		const name = String((await event.request.formData()).get('name') ?? '').trim();
+		const message = validateProjectName(name);
+		if (message) return fail(400, { action: 'rename', message });
+		await renameOrganization(getDb(), event.params.id, name);
+		return { action: 'rename', message: 'Saved.' };
+	},
+
 	invite: async (event) => {
 		await requireManager(event);
 		const form = await event.request.formData();

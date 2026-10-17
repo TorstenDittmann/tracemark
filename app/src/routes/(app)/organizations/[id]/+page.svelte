@@ -91,6 +91,36 @@ async function copy(id: string, link: string) {
 	{#if manager}
 		<Card.Root>
 			<Card.Header>
+				<Card.Title>Organization name</Card.Title>
+			</Card.Header>
+			<Card.Content>
+				<form
+					method="POST"
+					action="?/rename"
+					class="flex gap-2"
+					use:enhance={() =>
+						async ({ update }) =>
+							update({ reset: false })}
+				>
+					<Label for="organization-name" class="sr-only">Organization name</Label>
+					<Input
+						id="organization-name"
+						name="name"
+						required
+						maxlength={100}
+						value={data.organization.name}
+						class="max-w-sm"
+					/>
+					<Button type="submit" variant="outline">Save</Button>
+				</form>
+				{#if messageFor('rename')}
+					<p class="mt-2 text-sm text-muted-foreground" role="status">{messageFor('rename')}</p>
+				{/if}
+			</Card.Content>
+		</Card.Root>
+
+		<Card.Root>
+			<Card.Header>
 				<Card.Title>Invite someone</Card.Title>
 				<Card.Description>
 					Tracemark doesn't send email. Create an invitation, then send the person its link. Links
