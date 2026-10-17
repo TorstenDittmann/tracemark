@@ -1,114 +1,463 @@
 <script lang="ts">
+import Activity from '@lucide/svelte/icons/activity';
+import ArrowRight from '@lucide/svelte/icons/arrow-right';
+import ArrowUpRight from '@lucide/svelte/icons/arrow-up-right';
+import ChartSpline from '@lucide/svelte/icons/chart-spline';
+import Check from '@lucide/svelte/icons/check';
+import Eye from '@lucide/svelte/icons/eye';
+import KeyRound from '@lucide/svelte/icons/key-round';
+import MousePointerClick from '@lucide/svelte/icons/mouse-pointer-click';
+import PartyPopper from '@lucide/svelte/icons/party-popper';
+import ToggleRight from '@lucide/svelte/icons/toggle-right';
+import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
+import UserPlus from '@lucide/svelte/icons/user-plus';
+import Users from '@lucide/svelte/icons/users';
+import { onMount } from 'svelte';
+import { toast } from 'svelte-sonner';
+import LineChart from '#lib/components/charts/line-chart.svelte';
+import CodeBlock from '#lib/components/code-block.svelte';
+import CopyButton from '#lib/components/copy-button.svelte';
+import LiveDot from '#lib/components/live-dot.svelte';
+import StatCard from '#lib/components/stat-card.svelte';
+import * as Alert from '#lib/components/ui/alert/index.js';
 import { Button } from '#lib/components/ui/button/index.js';
 import * as Card from '#lib/components/ui/card/index.js';
+import { PLATFORMS } from '#lib/install.js';
+import { timeAgo } from '#lib/time.js';
+import { invalidate } from '$app/navigation';
 import type { PageProps } from './$types';
 
 let { data }: PageProps = $props();
-let copied = $state<string | null>(null);
 
-const snippet = $derived(`import { footprint } from '@footprint/browser';
+const base = $derived(`/projects/${data.project.id}`);
+const live = $derived(Boolean(data.stats?.lastEventAt));
+let platform = $state(PLATFORMS[0].id);
+const selected = $derived(PLATFORMS.find((p) => p.id === platform) ?? PLATFORMS[0]);
 
-footprint.init({
-	apiKey: '${data.project.publicKey}',
-	host: '${data.host}'
-});`);
+// Poll quickly while waiting for the first event, slower once the live feed is showing.
+let now = $state(Date.now());
+onMount(() => {
+	let timer: ReturnType<typeof setTimeout>;
+	const tick = async () => {
+		if (document.visibilityState === 'visible') {
+			await invalidate('project:home');
+			now = Date.now();
+		}
+		timer = setTimeout(tick, live ? 15_000 : 4_000);
+	};
+	timer = setTimeout(tick, live ? 15_000 : 4_000);
+	return () => clearTimeout(timer);
+});
 
-const lastEvent = $derived(
-	data.stats?.lastEventAt
-		? new Date(data.stats.lastEventAt).toLocaleString(undefined, {
-				dateStyle: 'medium',
-				timeStyle: 'short'
-			})
-		: null
-);
+// Celebrate the moment the first event lands while the guide is open.
+let wasLive: boolean | undefined;
+let celebrate = $state(false);
+$effect(() => {
+	if (wasLive === false && live) {
+		celebrate = true;
+		toast.success('Your first event arrived', {
+			description: 'Tracemark is receiving data from this project.'
+		});
+	}
+	wasLive = live;
+});
 
-async function copy(label: string, text: string) {
-	await navigator.clipboard.writeText(text);
-	copied = label;
-	setTimeout(() => {
-		if (copied === label) copied = null;
-	}, 1500);
+const steps = $derived([
+	{
+		done: live,
+		title: 'Send your first event',
+		text: 'Install an SDK and open your site or app.',
+		href: undefined
+	},
+	{
+		done: data.checklist.insights > 0,
+		title: 'Save an insight',
+		text: 'Chart a trend, funnel or retention.',
+		href: `${base}/insights/trends`,
+		icon: ChartSpline
+	},
+	{
+		done: data.checklist.flags > 0,
+		title: 'Create a feature flag',
+		text: 'Roll out a change to some of your users.',
+		href: `${base}/flags`,
+		icon: ToggleRight
+	},
+	{
+		done: data.checklist.members > 1,
+		title: 'Invite your team',
+		text: 'Analytics is better together.',
+		href: `/organizations/${data.project.organizationId}`,
+		icon: UserPlus
+	}
+]);
+const doneCount = $derived(steps.filter((s) => s.done).length);
+
+const web = $derived(data.web);
+const visitorTrend = $derived(web?.series.map((p) => p.visitors) ?? []);
+const pageviewTrend = $derived(web?.series.map((p) => p.pageviews) ?? []);
+
+function topRows(rows: { value: string; visitors: number }[] | undefined, empty: string) {
+	const list = (rows ?? []).slice(0, 6);
+	const max = Math.max(1, ...list.map((r) => r.visitors));
+	return list.map((r) => ({
+		label: r.value || empty,
+		visitors: r.visitors,
+		share: r.visitors / max
+	}));
+}
+const topPages = $derived(topRows(web?.breakdowns.page, '(unknown)'));
+const topSources = $derived(topRows(web?.breakdowns.referrer, 'Direct'));
+
+function where(properties: Record<string, unknown>): string {
+	const path = properties.$pathname ?? properties.$current_url;
+	return typeof path === 'string' ? path : '';
 }
 </script>
 
 <svelte:head>
-	<title>{data.project.name} · footprint</title>
+	<title>{data.project.name} · Tracemark</title>
 </svelte:head>
 
-<div class="grid gap-6">
-	<div class="grid gap-4 sm:grid-cols-3">
-		<Card.Root class="min-w-0 gap-2">
-			<Card.Header>
-				<Card.Description>Events in the last 24 hours</Card.Description>
-				<Card.Title class="text-3xl tabular-nums">
-					{data.stats ? data.stats.last24h.toLocaleString() : '–'}
-				</Card.Title>
-			</Card.Header>
-		</Card.Root>
-		<Card.Root class="min-w-0 gap-2">
-			<Card.Header>
-				<Card.Description>People in the last 24 hours</Card.Description>
-				<Card.Title class="text-3xl tabular-nums">
-					{data.stats ? data.stats.people24h.toLocaleString() : '–'}
-				</Card.Title>
-			</Card.Header>
-		</Card.Root>
-		<Card.Root class="min-w-0 gap-2">
-			<Card.Header>
-				<Card.Description>Last event</Card.Description>
-				<Card.Title class="text-xl">
-					{#if !data.stats}
-						Unavailable
-					{:else if lastEvent}
-						{lastEvent}
-					{:else}
-						Waiting for the first event
-					{/if}
-				</Card.Title>
-			</Card.Header>
-		</Card.Root>
-	</div>
-	{#if !data.stats}
-		<p class="text-sm text-muted-foreground">
-			Event counts are unavailable because ClickHouse could not be reached.
-		</p>
-	{/if}
-
-	<Card.Root class="min-w-0">
+{#snippet checklistCard()}
+	<Card.Root class="gap-4">
 		<Card.Header>
-			<Card.Title>Public key</Card.Title>
-			<Card.Description>
-				Safe to ship in your website or app. It can only send events, not read them.
-			</Card.Description>
-		</Card.Header>
-		<Card.Content class="flex items-center gap-2">
-			<code class="min-w-0 flex-1 truncate rounded-md border bg-muted px-3 py-2 font-mono text-sm">
-				{data.project.publicKey}
-			</code>
-			<Button variant="outline" onclick={() => copy('key', data.project.publicKey)}>
-				{copied === 'key' ? 'Copied' : 'Copy'}
-			</Button>
-		</Card.Content>
-	</Card.Root>
-
-	<Card.Root class="min-w-0">
-		<Card.Header>
-			<Card.Title>Install the browser SDK</Card.Title>
-			<Card.Description>
-				Add <code class="font-mono">@footprint/browser</code> with your package manager, then
-				initialize it once on page load. Page views are captured automatically. Add
-				<code class="font-mono">cookieless: true</code>
-				to store nothing on your visitors' devices; they are then counted by a hash that changes
-				daily.
-			</Card.Description>
-		</Card.Header>
-		<Card.Content class="grid gap-2">
-			<pre class="overflow-x-auto rounded-md border bg-muted p-4 font-mono text-sm">{snippet}</pre>
-			<div>
-				<Button variant="outline" size="sm" onclick={() => copy('snippet', snippet)}>
-					{copied === 'snippet' ? 'Copied' : 'Copy snippet'}
-				</Button>
+			<div class="flex items-center justify-between gap-2">
+				<Card.Title>Get set up</Card.Title>
+				<span class="text-xs font-medium text-muted-foreground tabular-nums">
+					{doneCount}
+					of {steps.length}
+				</span>
 			</div>
+			<div class="h-1.5 overflow-hidden rounded-full bg-muted">
+				<div
+					class="h-full rounded-full bg-primary transition-[width] duration-700 ease-out"
+					style="width: {(doneCount / steps.length) * 100}%"
+				></div>
+			</div>
+		</Card.Header>
+		<Card.Content class="grid gap-1 px-3">
+			{#each steps as step (step.title)}
+				<svelte:element
+					this={step.href && !step.done ? 'a' : 'div'}
+					href={step.href && !step.done ? step.href : undefined}
+					class={[
+						'group flex items-center gap-3 rounded-lg p-2 transition-colors',
+						step.href && !step.done && 'hover:bg-accent'
+					]}
+				>
+					<span
+						class={[
+							'flex size-6 shrink-0 items-center justify-center rounded-full border transition-all duration-300',
+							step.done ? 'border-success bg-success text-white' : 'bg-background'
+						]}
+					>
+						{#if step.done}
+							<Check class="size-3.5" />
+						{/if}
+					</span>
+					<span class="grid min-w-0 flex-1 leading-tight">
+						<span
+							class={['text-sm font-medium', step.done && 'text-muted-foreground line-through']}
+						>
+							{step.title}
+						</span>
+						{#if !step.done}
+							<span class="truncate text-xs text-muted-foreground">{step.text}</span>
+						{/if}
+					</span>
+					{#if step.href && !step.done}
+						<ArrowRight
+							class="size-4 -translate-x-1 text-muted-foreground opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-100"
+						/>
+					{/if}
+				</svelte:element>
+			{/each}
 		</Card.Content>
 	</Card.Root>
-</div>
+{/snippet}
+
+{#if !data.stats}
+	<Alert.Root>
+		<TriangleAlert />
+		<Alert.Title>Event data is unavailable</Alert.Title>
+		<Alert.Description
+			>ClickHouse could not be reached. Check that it is running.</Alert.Description
+		>
+	</Alert.Root>
+{/if}
+
+{#if !live}
+	<div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+		<div class="grid content-start gap-6">
+			<Card.Root class="gap-0 overflow-hidden py-0">
+				<div class="flex flex-wrap items-center justify-between gap-4 border-b p-6">
+					<div class="grid gap-1">
+						<h2 class="text-lg font-semibold tracking-tight">Install Tracemark</h2>
+						<p class="text-sm text-muted-foreground">
+							Pick your platform and add the snippet. It only takes a minute.
+						</p>
+					</div>
+					<div
+						class="flex items-center gap-2 rounded-full border bg-muted/50 py-1 pr-3 pl-2 text-xs"
+					>
+						<LiveDot tone="primary" />
+						<span class="font-medium">Listening for events</span>
+					</div>
+				</div>
+				<div class="grid gap-5 p-6">
+					<div class="flex flex-wrap gap-1.5" role="tablist" aria-label="Platform">
+						{#each PLATFORMS as p (p.id)}
+							<button
+								type="button"
+								role="tab"
+								aria-selected={platform === p.id}
+								onclick={() => (platform = p.id)}
+								class={[
+									'rounded-full border px-3 py-1 text-sm transition-all duration-200',
+									platform === p.id
+										? 'border-primary bg-primary text-primary-foreground shadow-sm shadow-primary/25'
+										: 'bg-background text-muted-foreground hover:border-foreground/20 hover:text-foreground'
+								]}
+							>
+								{p.label}
+							</button>
+						{/each}
+					</div>
+					{#key selected.id}
+						<div class="grid gap-4 animate-enter">
+							{#if selected.install}
+								<div class="grid gap-2">
+									<p class="text-sm font-medium">1. Add the package</p>
+									<CodeBlock code={selected.install} />
+								</div>
+							{/if}
+							<div class="grid gap-2">
+								<p class="text-sm font-medium">
+									{selected.install ? '2. ' : ''}{selected.hint}
+								</p>
+								<CodeBlock
+									code={selected.code(data.project.publicKey, data.host)}
+									label={selected.label}
+								/>
+							</div>
+						</div>
+					{/key}
+				</div>
+				<div class="flex flex-wrap items-center gap-3 border-t bg-muted/30 px-6 py-4">
+					<KeyRound class="size-4 text-muted-foreground" />
+					<span class="text-sm text-muted-foreground">Public key</span>
+					<code class="min-w-0 flex-1 truncate font-mono text-sm">{data.project.publicKey}</code>
+					<CopyButton
+						text={data.project.publicKey}
+						label="Copy key"
+						showLabel
+						size="sm"
+						variant="outline"
+					/>
+				</div>
+			</Card.Root>
+
+			<div class="relative overflow-hidden rounded-xl border border-dashed bg-card p-6">
+				<div class="flex items-center gap-5">
+					<div class="relative flex size-14 shrink-0 items-center justify-center">
+						<span class="absolute inset-0 rounded-full bg-primary/20 animate-ping-soft"></span>
+						<span
+							class="absolute inset-2 rounded-full bg-primary/20 animate-ping-soft [animation-delay:0.5s]"
+						></span>
+						<span
+							class="relative flex size-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30"
+						>
+							<Activity class="size-5" />
+						</span>
+					</div>
+					<div class="grid gap-1">
+						<p class="font-medium">Waiting for your first event…</p>
+						<p class="text-sm text-muted-foreground">
+							Open your site or app after installing. This page updates by itself the moment data
+							arrives.
+						</p>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="grid content-start gap-6">
+			{@render checklistCard()}
+			<Card.Root class="gap-3">
+				<Card.Header>
+					<Card.Title class="text-sm">Privacy-friendly by default</Card.Title>
+					<Card.Description>
+						Add <code class="rounded bg-muted px-1 font-mono text-xs">cookieless: true</code> to the
+						browser SDK to store nothing on visitors' devices. They're counted by a hash that
+						changes daily.
+					</Card.Description>
+				</Card.Header>
+			</Card.Root>
+		</div>
+	</div>
+{:else}
+	<div class="grid gap-6">
+		{#if celebrate}
+			<div
+				class="flex items-center gap-4 rounded-xl border border-success/30 bg-success/10 p-4 animate-enter"
+				role="status"
+			>
+				<span class="flex size-10 items-center justify-center rounded-full bg-success text-white">
+					<PartyPopper class="size-5" />
+				</span>
+				<div class="grid flex-1 gap-0.5">
+					<p class="font-medium">You're live!</p>
+					<p class="text-sm text-muted-foreground">
+						Events are flowing in. Here's your project at a glance.
+					</p>
+				</div>
+				<Button variant="ghost" size="sm" onclick={() => (celebrate = false)}>Dismiss</Button>
+			</div>
+		{/if}
+
+		<div class="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4 stagger">
+			<StatCard
+				label="Visitors · 7 days"
+				value={web ? web.overview.visitors.toLocaleString() : '–'}
+				icon={Users}
+				trend={visitorTrend}
+			/>
+			<StatCard
+				label="Page views · 7 days"
+				value={web ? web.overview.pageviews.toLocaleString() : '–'}
+				icon={Eye}
+				trend={pageviewTrend}
+			/>
+			<StatCard
+				label="Events · 24 hours"
+				value={data.stats ? data.stats.last24h.toLocaleString() : '–'}
+				icon={MousePointerClick}
+				hint="{data.stats ? data.stats.people24h.toLocaleString() : '–'} people"
+			/>
+			<StatCard
+				label="Last event"
+				value={data.stats?.lastEventAt ? timeAgo(data.stats.lastEventAt, now) : '–'}
+				icon={Activity}
+			>
+				{#snippet footer()}
+					<span class="flex items-center gap-2 text-xs text-muted-foreground">
+						<LiveDot />
+						Receiving data
+					</span>
+				{/snippet}
+			</StatCard>
+		</div>
+
+		<div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+			<Card.Root class="min-w-0">
+				<Card.Header>
+					<Card.Title>Visitors</Card.Title>
+					<Card.Description>Unique people over the last 7 days</Card.Description>
+					<Card.Action>
+						<Button variant="ghost" size="sm" href="{base}/web">
+							Web analytics
+							<ArrowUpRight />
+						</Button>
+					</Card.Action>
+				</Card.Header>
+				<Card.Content>
+					{#if web}
+						<LineChart
+							lines={[{ key: 'visitors', label: 'Visitors', data: visitorTrend }]}
+							buckets={web.series.map((p) => p.t)}
+							bucket={web.bucket}
+							height={260}
+						/>
+					{/if}
+				</Card.Content>
+			</Card.Root>
+
+			<Card.Root class="min-w-0 gap-3">
+				<Card.Header>
+					<Card.Title class="flex items-center gap-2"><LiveDot /> Live events</Card.Title>
+					<Card.Action>
+						<Button variant="ghost" size="sm" href="{base}/events">
+							All
+							<ArrowUpRight />
+						</Button>
+					</Card.Action>
+				</Card.Header>
+				<Card.Content class="px-3">
+					<ul class="grid">
+						{#each data.recent as event (event.uuid)}
+							<li
+								class="flex items-center gap-3 rounded-lg px-3 py-2 animate-enter hover:bg-muted/50"
+							>
+								<span class="size-1.5 shrink-0 rounded-full bg-primary/60"></span>
+								<span class="grid min-w-0 flex-1 leading-tight">
+									<span class="truncate font-mono text-xs font-medium">{event.event}</span>
+									<span class="truncate text-xs text-muted-foreground">
+										{where(event.properties) || event.person}
+									</span>
+								</span>
+								<span class="shrink-0 text-xs text-muted-foreground tabular-nums">
+									{timeAgo(event.timestamp, now)}
+								</span>
+							</li>
+						{/each}
+					</ul>
+				</Card.Content>
+			</Card.Root>
+		</div>
+
+		<div class="grid gap-6 lg:grid-cols-3">
+			{#each [
+				{ title: 'Top pages', rows: topPages },
+				{ title: 'Top sources', rows: topSources }
+			] as panel (panel.title)}
+				<Card.Root class="min-w-0 gap-3">
+					<Card.Header>
+						<Card.Title>{panel.title}</Card.Title>
+						<Card.Description>Visitors, last 7 days</Card.Description>
+					</Card.Header>
+					<Card.Content class="grid gap-1">
+						{#each panel.rows as row (row.label)}
+							<div
+								class="relative flex items-center justify-between gap-3 overflow-hidden rounded-md px-2 py-1.5 text-sm"
+							>
+								<span
+									class="absolute inset-y-0 left-0 rounded-md bg-primary/10 transition-[width] duration-700 ease-out"
+									style="width: {row.share * 100}%"
+								></span>
+								<span class="relative truncate">{row.label}</span>
+								<span class="relative font-medium tabular-nums"
+									>{row.visitors.toLocaleString()}</span
+								>
+							</div>
+						{:else}
+							<p class="py-6 text-center text-sm text-muted-foreground">No page views yet.</p>
+						{/each}
+					</Card.Content>
+				</Card.Root>
+			{/each}
+			{#if doneCount < steps.length}
+				{@render checklistCard()}
+			{:else}
+				<Card.Root class="gap-3">
+					<Card.Header>
+						<Card.Title>Public key</Card.Title>
+						<Card.Description>For SDK setup in more apps or services.</Card.Description>
+					</Card.Header>
+					<Card.Content class="flex items-center gap-2">
+						<code
+							class="min-w-0 flex-1 truncate rounded-md border bg-muted px-3 py-2 font-mono text-sm"
+						>
+							{data.project.publicKey}
+						</code>
+						<CopyButton
+							text={data.project.publicKey}
+							label="Copy key"
+							variant="outline"
+							size="icon"
+						/>
+					</Card.Content>
+				</Card.Root>
+			{/if}
+		</div>
+	</div>
+{/if}

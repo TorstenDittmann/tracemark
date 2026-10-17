@@ -46,7 +46,7 @@ const rangeLabel = $derived(RANGES[data.range].label.toLowerCase());
 					class={[
 						'rounded-md px-2.5 py-1',
 						data.status === status
-							? 'bg-secondary font-medium text-secondary-foreground'
+							? 'bg-background text-foreground shadow-sm dark:bg-input/40'
 							: 'text-muted-foreground hover:text-foreground'
 					]}
 				>

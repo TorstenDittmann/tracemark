@@ -80,7 +80,7 @@ const tracesHref = (person?: string) => {
 		<Card.Root class="gap-4">
 			<Card.Header class="flex flex-row items-center justify-between gap-2">
 				<Card.Title>{metric === 'cost' ? 'Cost' : 'Calls'}</Card.Title>
-				<fieldset class="inline-flex rounded-md border p-0.5 text-sm">
+				<fieldset class="inline-flex rounded-lg bg-muted p-0.5 text-sm">
 					<legend class="sr-only">Metric</legend>
 					{#each ['cost', 'calls'] as const as option (option)}
 						<button
@@ -88,9 +88,9 @@ const tracesHref = (person?: string) => {
 							aria-pressed={metric === option}
 							onclick={() => (metric = option)}
 							class={[
-								'rounded px-2.5 py-1',
+								'rounded-md px-2.5 py-1 font-medium transition-all duration-200',
 								metric === option
-									? 'bg-secondary font-medium text-secondary-foreground'
+									? 'bg-background text-foreground shadow-sm dark:bg-input/40'
 									: 'text-muted-foreground hover:text-foreground'
 							]}
 						>

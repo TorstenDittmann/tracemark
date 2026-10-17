@@ -111,7 +111,7 @@ const metrics: { key: Metric; label: string }[] = [
 
 <div class="grid gap-6">
 	<div class="flex flex-wrap items-center gap-2">
-		<fieldset class="inline-flex rounded-md border p-0.5 text-sm">
+		<fieldset class="inline-flex rounded-lg bg-muted p-0.5 text-sm">
 			<legend class="sr-only">Date range</legend>
 			{#each ranges as range (range)}
 				<a
@@ -119,9 +119,9 @@ const metrics: { key: Metric; label: string }[] = [
 					title={RANGES[range].label}
 					aria-current={data.range === range ? 'true' : undefined}
 					class={[
-						'rounded px-2.5 py-1',
+						'rounded-md px-2.5 py-1 font-medium transition-all duration-200',
 						data.range === range
-							? 'bg-secondary font-medium text-secondary-foreground'
+							? 'bg-background text-foreground shadow-sm dark:bg-input/40'
 							: 'text-muted-foreground hover:text-foreground'
 					]}
 				>
@@ -172,7 +172,7 @@ const metrics: { key: Metric; label: string }[] = [
 		<Card.Root class="gap-4">
 			<Card.Header class="flex flex-row items-center justify-between gap-2">
 				<Card.Title>{metric === 'visitors' ? 'Visitors' : 'Page views'}</Card.Title>
-				<fieldset class="inline-flex rounded-md border p-0.5 text-sm">
+				<fieldset class="inline-flex rounded-lg bg-muted p-0.5 text-sm">
 					<legend class="sr-only">Metric</legend>
 					{#each metrics as m (m.key)}
 						<button
@@ -180,9 +180,9 @@ const metrics: { key: Metric; label: string }[] = [
 							onclick={() => (metric = m.key)}
 							aria-pressed={metric === m.key}
 							class={[
-								'rounded px-2.5 py-1',
+								'rounded-md px-2.5 py-1 font-medium transition-all duration-200',
 								metric === m.key
-									? 'bg-secondary font-medium text-secondary-foreground'
+									? 'bg-background text-foreground shadow-sm dark:bg-input/40'
 									: 'text-muted-foreground hover:text-foreground'
 							]}
 						>
