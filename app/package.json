@@ -13,6 +13,7 @@
 		"test": "vitest --run",
 		"db:generate": "drizzle-kit generate",
 		"migrate": "bun ./scripts/migrate.ts",
+		"prices:update": "bun ./scripts/update-model-prices.ts",
 		"create-project": "bun ./scripts/create-project.ts",
 		"reset-password": "bun ./scripts/reset-password.ts"
 	},

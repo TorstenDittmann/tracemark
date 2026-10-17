@@ -381,8 +381,8 @@ export const sourcemaps = sqliteTable(
 export type Sourcemap = typeof sourcemaps.$inferSelect;
 
 /**
- * A project's own token prices, in USD per million tokens. They override the built-in list in
- * `$lib/ai-prices.ts` for the same model; ingest uses them to compute `$ai_cost_usd`.
+ * A project's own token prices, in USD per million tokens. They override the built-in prices
+ * (`$lib/server/builtin-prices.ts`) for the same model; ingest uses them to compute `$ai_cost_usd`.
  */
 export const aiModelPrices = sqliteTable(
 	'ai_model_prices',

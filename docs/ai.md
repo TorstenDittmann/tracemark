@@ -136,8 +136,13 @@ and `$ai_embedding` that has a `$ai_model` and token counts:
   (the input price when a model has none);
 - output: output tokens × the output price.
 
-Prices are USD per million tokens. tracemark ships prices for common Anthropic, OpenAI and Google
-models, and each project can add or change prices under Settings → Model prices. A model uses the
+Prices are USD per million tokens. The built-in prices come from [models.dev](https://models.dev):
+the model makers' own prices (Anthropic, OpenAI, Google, Mistral, DeepSeek, xAI and others), plus
+models only gateways sell where two of them agree on a price. Long-context and other tiers are not
+applied; the base price is. The app ships a snapshot and refetches the catalog daily, keeping the
+last prices it has when the fetch fails; set `MODEL_PRICES_URL` to another catalog in the same
+format, or to `off` to keep the snapshot on instances without internet access. Each project can add
+or change prices under Settings → Model prices. A model uses the
 price with its exact name, else the longest name it starts with, ignoring case and any `provider/`
 prefix: `gpt-4o` prices `gpt-4o-2024-08-06` and `openai/gpt-4o`, while `gpt-4o-mini` keeps its own
 price. Events whose model has no price get no cost. A `$ai_cost_usd` the client sent is kept.
