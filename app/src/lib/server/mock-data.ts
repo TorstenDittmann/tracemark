@@ -6,7 +6,6 @@
 import { createHash } from 'node:crypto';
 import { evaluate, type FlagDefinition, parseFlag } from '@tracemark/flags';
 import { and, eq, inArray } from 'drizzle-orm';
-import { DEFAULT_PRICES, normalizeModel } from '../ai-prices';
 import type { ExperimentMetric } from '../experiments';
 import { type ClickHouseConfig, clickhouseQuery } from './clickhouse';
 import type { Db } from './db/client';
@@ -275,13 +274,18 @@ const CHAT_MODELS = [
 	[{ provider: 'openai', model: 'gpt-4o-mini-2024-07-18' }, 20]
 ] as const;
 
-/** USD for a call, priced like ingest does from the built-in list. */
+/** USD per million input and output tokens of the models above, as the providers list them. */
+const PRICES: Record<string, [number, number]> = {
+	'claude-sonnet-4-5-20250929': [3, 15],
+	'claude-haiku-4-5-20251001': [1, 5],
+	'gpt-4o-mini-2024-07-18': [0.15, 0.6],
+	'text-embedding-3-small': [0.02, 0]
+};
+
+/** USD for a call. Mock events skip ingest, so they carry their cost like a client-sent one. */
 function cost(model: string, input: number, output: number): number {
-	const name = normalizeModel(model);
-	const price = DEFAULT_PRICES.filter((p) => name.startsWith(p.model)).sort(
-		(a, b) => b.model.length - a.model.length
-	)[0];
-	return price ? (input * price.input + output * price.output) / 1_000_000 : 0;
+	const [inputPrice, outputPrice] = PRICES[model] ?? [0, 0];
+	return (input * inputPrice + output * outputPrice) / 1_000_000;
 }
 
 export const MOCK_FLAGS: { key: string; description: string; flag: Omit<FlagDefinition, 'key'> }[] =
