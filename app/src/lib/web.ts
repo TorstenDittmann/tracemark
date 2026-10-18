@@ -42,3 +42,52 @@ export function parseFilters(params: URLSearchParams): WebFilters {
 	}
 	return filters;
 }
+
+/**
+ * Web vitals the browser SDK sends in `$web_vitals` events, with Google's thresholds: at or under
+ * `good` is good, over `poor` is poor, anything between needs improvement. Times are in ms.
+ */
+export const VITALS = {
+	LCP: { label: 'Largest Contentful Paint', good: 2500, poor: 4000 },
+	INP: { label: 'Interaction to Next Paint', good: 200, poor: 500 },
+	CLS: { label: 'Cumulative Layout Shift', good: 0.1, poor: 0.25 },
+	FCP: { label: 'First Contentful Paint', good: 1800, poor: 3000 },
+	TTFB: { label: 'Time to First Byte', good: 800, poor: 1800 }
+} as const;
+
+export type Vital = keyof typeof VITALS;
+export type VitalRating = 'good' | 'needs-improvement' | 'poor';
+
+export function rateVital(vital: Vital, value: number): VitalRating {
+	const { good, poor } = VITALS[vital];
+	return value <= good ? 'good' : value <= poor ? 'needs-improvement' : 'poor';
+}
+
+/** A vital for display: seconds from one second up, two decimals for CLS. */
+export function formatVital(vital: Vital, value: number): string {
+	if (vital === 'CLS') return value.toFixed(2);
+	return value >= 1000 ? `${(value / 1000).toFixed(2)} s` : `${Math.round(value)} ms`;
+}
+
+/** The filters web vitals are narrowed by: the ones that are properties of each event. */
+export const VITAL_FILTERS = ['page', 'country', 'device', 'browser', 'os'] as const;
+
+export interface VitalSummary {
+	/** 75th percentile, ms for times, or null without measurements. */
+	p75: number | null;
+	/** How many page views measured it. */
+	samples: number;
+}
+
+export interface WebVitalsPath {
+	path: string;
+	/** `$web_vitals` events for the path. */
+	pageviews: number;
+	vitals: Record<Vital, VitalSummary>;
+}
+
+export interface WebVitals {
+	vitals: Record<Vital, VitalSummary>;
+	/** The paths with the most measured page views, at most 10. */
+	paths: WebVitalsPath[];
+}

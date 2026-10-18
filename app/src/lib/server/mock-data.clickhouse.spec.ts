@@ -17,7 +17,7 @@ import { listIssues } from './issues';
 import { addMockData, MOCK_FLAGS, MOCK_INSIGHTS, removeMockData } from './mock-data';
 import { createProject } from './projects';
 import { createTestDb } from './test-db';
-import { webAnalytics } from './web';
+import { webAnalytics, webVitals } from './web';
 
 const now = new Date(Date.UTC(2026, 9, 16, 12, 0));
 let config: ClickHouseConfig;
@@ -61,6 +61,11 @@ describe.skipIf(!clickhouseTestUrl)('mock data', () => {
 		expect(web.breakdowns.referrer.length).toBeGreaterThan(3);
 		expect(web.breakdowns.country.length).toBeGreaterThan(3);
 
+		const vitals = await webVitals(config, project.id, { range: '30d', now });
+		expect(vitals.vitals.LCP.samples).toBeGreaterThan(100);
+		expect(vitals.vitals.INP.p75).toBeGreaterThan(0);
+		expect(vitals.paths.length).toBeGreaterThan(3);
+
 		const issues = await listIssues(config, project.id, { range: '30d', now });
 		expect(issues.issues.length).toBeGreaterThanOrEqual(5);
 
@@ -97,5 +102,6 @@ describe.skipIf(!clickhouseTestUrl)('mock data', () => {
 		await removeMockData(db, config, project.id);
 		expect(await count(project.id)).toBe(1);
 		expect(await db.select().from(featureFlags)).toHaveLength(0);
+		// A month of mock data goes in twice and out again, which takes a few seconds.
 	}, 30_000);
 });

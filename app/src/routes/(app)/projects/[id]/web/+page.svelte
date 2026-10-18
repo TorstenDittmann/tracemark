@@ -3,6 +3,7 @@ import Filter from '@lucide/svelte/icons/filter';
 import LineChart from '#lib/components/charts/line-chart.svelte';
 import StatCard from '#lib/components/stat-card.svelte';
 import * as Card from '#lib/components/ui/card/index.js';
+import WebVitals from '#lib/components/web-vitals.svelte';
 import { DIMENSIONS, type Dimension, RANGES, type Range } from '#lib/web.js';
 import { page } from '$app/state';
 import type { PageProps } from './$types';
@@ -287,5 +288,9 @@ const metrics: { key: Metric; label: string }[] = [
 				</Card.Root>
 			{/each}
 		</div>
+
+		{#if data.vitals}
+			<WebVitals vitals={data.vitals} filters={data.filters} />
+		{/if}
 	{/if}
 </div>

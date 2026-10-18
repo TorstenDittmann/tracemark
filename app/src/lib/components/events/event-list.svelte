@@ -1,7 +1,7 @@
 <script lang="ts">
 import { Button } from '#lib/components/ui/button/index.js';
 import * as Card from '#lib/components/ui/card/index.js';
-import { type ActivityPage, formatCursor } from '#lib/explore.js';
+import { type ActivityPage, eventSummary, formatCursor } from '#lib/explore.js';
 import { personHref } from '#lib/persons.js';
 import { page } from '$app/state';
 
@@ -62,6 +62,7 @@ const columns = $derived(
 		<ul>
 			{#each activity.events as event (event.uuid)}
 				{@const path = where(event.properties)}
+				{@const summary = eventSummary(event.event, event.properties)}
 				{@const entries = Object.entries(event.properties).sort(([a], [b]) =>
 					a < b ? -1 : a > b ? 1 : 0
 				)}
@@ -71,7 +72,12 @@ const columns = $derived(
 							class="grid cursor-pointer list-none gap-x-4 gap-y-0.5 px-6 py-2.5 text-sm hover:bg-muted/50 [&::-webkit-details-marker]:hidden {columns}"
 						>
 							<span class="min-w-0">
-								<span class="block truncate font-medium">{event.event}</span>
+								<span class="block truncate">
+									<span class="font-medium">{summary}</span>
+									{#if summary !== event.event}
+										<span class="text-xs text-muted-foreground">{event.event}</span>
+									{/if}
+								</span>
 								{#if path}
 									<span class="block truncate text-xs text-muted-foreground">{path}</span>
 								{/if}

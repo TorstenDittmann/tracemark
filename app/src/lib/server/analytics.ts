@@ -41,7 +41,7 @@ export type {
 } from './insights';
 export type { IssueDetail, IssueList, IssueSummary } from './issues';
 export type { PersonDetail } from './persons';
-export type { WebAnalytics } from './web';
+export type { WebAnalytics, WebVitals } from './web';
 
 export type SavedResult =
 	| (Extract<SavedQuery, { kind: 'trends' }> & { result: insights.TrendsResult })
@@ -122,6 +122,9 @@ export const startAlerts = () =>
 
 export const webAnalytics = (projectId: string, options: Parameters<typeof web.webAnalytics>[2]) =>
 	web.webAnalytics(config(), projectId, options);
+
+export const webVitals = (projectId: string, options: Parameters<typeof web.webVitals>[2]) =>
+	web.webVitals(config(), projectId, options);
 
 export const trends = async (projectId: string, query: Parameters<typeof insights.trends>[2]) =>
 	insights.trends(config(), projectId, query, undefined, await cohortFor(projectId, query.cohort));
