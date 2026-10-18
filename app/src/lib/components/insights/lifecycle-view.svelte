@@ -201,7 +201,7 @@ const totals = $derived(
 							<span class="size-2 shrink-0 rounded-sm" style:background={color(status)}></span>
 							<span>{LIFECYCLE_LABELS[status]}</span>
 							<span class="ml-auto pl-3 font-medium tabular-nums">
-								{result.counts[status][hover].toLocaleString()}
+								{Math.abs(result.counts[status][hover]).toLocaleString()}
 							</span>
 						</div>
 					{/each}
@@ -229,7 +229,7 @@ const totals = $derived(
 					<tr>
 						<td>{periodLabel(start)}</td>
 						{#each LIFECYCLE_STATUSES as status (status)}
-							<td>{result.counts[status][i]}</td>
+							<td>{Math.abs(result.counts[status][i])}</td>
 						{/each}
 					</tr>
 				{/each}
