@@ -63,6 +63,21 @@ export interface ActivityEvent {
 	properties: Record<string, unknown>;
 }
 
+/**
+ * A readable name for an event: `clicked 'Sign up'` for a click autocaptured on a button,
+ * otherwise the event's name.
+ */
+export function eventSummary(event: string, properties: Record<string, unknown>): string {
+	if (event === '$autocapture') {
+		const verb = properties.$event_type === 'submit' ? 'submitted' : 'clicked';
+		const text = typeof properties.$el_text === 'string' ? properties.$el_text : '';
+		const tag = typeof properties.$el_tag === 'string' ? properties.$el_tag : '';
+		const what = text ? `'${text}'` : tag === 'a' ? 'a link' : tag === 'form' ? 'a form' : tag;
+		return what ? `${verb} ${what}` : verb;
+	}
+	return event;
+}
+
 export interface ActivityPage {
 	events: ActivityEvent[];
 	/** Where the next, older page starts, or null on the last page. */
