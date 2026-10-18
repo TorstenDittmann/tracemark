@@ -32,6 +32,8 @@ export type { GroupDetail } from './groups';
 export type {
 	EventName,
 	FunnelResult,
+	LifecycleResult,
+	PathsResult,
 	PropertyName,
 	RetentionResult,
 	TrendsResult
@@ -43,7 +45,9 @@ export type { WebAnalytics } from './web';
 export type SavedResult =
 	| (Extract<SavedQuery, { kind: 'trends' }> & { result: insights.TrendsResult })
 	| (Extract<SavedQuery, { kind: 'funnel' }> & { result: insights.FunnelResult })
-	| (Extract<SavedQuery, { kind: 'retention' }> & { result: insights.RetentionResult });
+	| (Extract<SavedQuery, { kind: 'retention' }> & { result: insights.RetentionResult })
+	| (Extract<SavedQuery, { kind: 'paths' }> & { result: insights.PathsResult })
+	| (Extract<SavedQuery, { kind: 'lifecycle' }> & { result: insights.LifecycleResult });
 
 /** The cohort an insight narrows to. A deleted cohort matches nobody rather than everybody. */
 export async function cohortFor(projectId: string, id?: string): Promise<CohortSpec | undefined> {
@@ -111,6 +115,8 @@ export const eventNames = (projectId: string) => insights.eventNames(config(), p
 
 export const propertyNames = (projectId: string) => insights.propertyNames(config(), projectId);
 
+export const pagePaths = (projectId: string) => insights.pagePaths(config(), projectId);
+
 export const funnel = async (projectId: string, query: Parameters<typeof insights.funnel>[2]) =>
 	insights.funnel(config(), projectId, query, undefined, await cohortFor(projectId, query.cohort));
 
@@ -119,6 +125,21 @@ export const retention = async (
 	query: Parameters<typeof insights.retention>[2]
 ) =>
 	insights.retention(
+		config(),
+		projectId,
+		query,
+		undefined,
+		await cohortFor(projectId, query.cohort)
+	);
+
+export const paths = async (projectId: string, query: Parameters<typeof insights.paths>[2]) =>
+	insights.paths(config(), projectId, query, undefined, await cohortFor(projectId, query.cohort));
+
+export const lifecycle = async (
+	projectId: string,
+	query: Parameters<typeof insights.lifecycle>[2]
+) =>
+	insights.lifecycle(
 		config(),
 		projectId,
 		query,
@@ -135,6 +156,10 @@ export async function runSaved(projectId: string, saved: SavedQuery): Promise<Sa
 			return { ...saved, result: await funnel(projectId, saved.query) };
 		case 'retention':
 			return { ...saved, result: await retention(projectId, saved.query) };
+		case 'paths':
+			return { ...saved, result: await paths(projectId, saved.query) };
+		case 'lifecycle':
+			return { ...saved, result: await lifecycle(projectId, saved.query) };
 	}
 }
 

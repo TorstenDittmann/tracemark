@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_FUNNEL, DEFAULT_TRENDS } from '../insights';
+import { DEFAULT_FUNNEL, DEFAULT_LIFECYCLE, DEFAULT_PATHS, DEFAULT_TRENDS } from '../insights';
 import { dashboardInsights, insights, organizations, users } from './db/schema';
 import { createProject, deleteProject } from './projects';
 import {
@@ -38,6 +38,14 @@ describe('saved insights', () => {
 		expect(parseSavedQuery('funnel', '{"steps":["a","b"]}').query).toEqual({
 			...DEFAULT_FUNNEL,
 			steps: ['a', 'b']
+		});
+		expect(parseSavedQuery('paths', '{"start":"/pricing","steps":3}')).toEqual({
+			kind: 'paths',
+			query: { ...DEFAULT_PATHS, start: '/pricing', steps: 3 }
+		});
+		expect(parseSavedQuery('lifecycle', '[]')).toEqual({
+			kind: 'lifecycle',
+			query: DEFAULT_LIFECYCLE
 		});
 	});
 
@@ -78,21 +86,32 @@ describe('saved insights', () => {
 			.values({
 				projectId: project.id,
 				name: 'Bad',
-				kind: 'paths' as 'trends',
+				kind: 'stickiness' as 'trends',
 				query: '{}',
 				createdBy: user.id
 			})
 			.returning();
+		const flows = await createInsight(db, {
+			projectId: project.id,
+			name: 'Flows',
+			saved: parseSavedQuery('paths', '{"start":"/"}'),
+			userId: user.id
+		});
 		await addToDashboard(db, project.id, dashboard.id, good.id);
 		await db.insert(dashboardInsights).values({
 			dashboardId: dashboard.id,
 			insightId: bad.id,
 			position: 1
 		});
-		expect((await listInsights(db, project.id)).map((row) => row.name)).toEqual(['Good']);
+		await addToDashboard(db, project.id, dashboard.id, flows.id);
+		expect((await listInsights(db, project.id)).map((row) => row.name).sort()).toEqual([
+			'Flows',
+			'Good'
+		]);
 		expect(await getInsight(db, project.id, bad.id)).toBeNull();
 		expect((await dashboardItems(db, dashboard.id)).map((row) => row.insight.name)).toEqual([
-			'Good'
+			'Good',
+			'Flows'
 		]);
 	});
 });

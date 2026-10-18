@@ -46,7 +46,7 @@ export const PROJECT_NAV: NavGroup[] = [
 			{
 				path: '/insights',
 				label: 'Insights',
-				description: 'Trends, funnels and retention over your events.',
+				description: 'Trends, funnels, retention, paths and lifecycle over your events.',
 				icon: ChartSpline
 			},
 			{

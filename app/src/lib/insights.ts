@@ -264,6 +264,123 @@ export function parseRetentionParam(value: string | null): RetentionQuery {
 	}
 }
 
+export const PATH_LABELS = {
+	page: 'Page paths',
+	event: 'Event names'
+} as const;
+
+export type PathLabel = keyof typeof PATH_LABELS;
+
+export interface PathsQuery {
+	/** What a step is: a page view, named by its path, or any event, named by the event. */
+	label: PathLabel;
+	/** Where paths begin: a page path or an event name, as `label` says. Absent: the session start. */
+	start?: string;
+	/** Where paths stop, inclusive. With an end and no start, steps count back from the end. */
+	end?: string;
+	/** Steps shown after the start (or before the end). */
+	steps: number;
+	range: Range;
+	filters: PropertyFilter[];
+	/** Only people in this cohort. */
+	cohort?: string;
+}
+
+export const MIN_PATH_STEPS = 1;
+export const MAX_PATH_STEPS = 10;
+/** Nodes per step; the rest are grouped as other. */
+export const MAX_PATH_NODES = 8;
+
+export const DEFAULT_PATHS: PathsQuery = {
+	label: 'page',
+	steps: 5,
+	range: '7d',
+	filters: []
+};
+
+/** Reads a paths query from untrusted JSON. Invalid parts fall back to defaults. */
+export function parsePaths(input: unknown): PathsQuery {
+	if (!isRecord(input)) return DEFAULT_PATHS;
+	const steps = Number(input.steps);
+	const label =
+		typeof input.label === 'string' && Object.hasOwn(PATH_LABELS, input.label)
+			? (input.label as PathLabel)
+			: DEFAULT_PATHS.label;
+	return {
+		label,
+		...(validName(input.start) ? { start: input.start } : {}),
+		...(validName(input.end) ? { end: input.end } : {}),
+		steps:
+			Number.isInteger(steps) && steps >= MIN_PATH_STEPS && steps <= MAX_PATH_STEPS
+				? steps
+				: DEFAULT_PATHS.steps,
+		range: parseRange(typeof input.range === 'string' ? input.range : DEFAULT_PATHS.range),
+		filters: parsePropertyFilters(input.filters),
+		...cohortOf(input)
+	};
+}
+
+export function parsePathsParam(value: string | null): PathsQuery {
+	if (!value) return DEFAULT_PATHS;
+	try {
+		return parsePaths(JSON.parse(value));
+	} catch {
+		return DEFAULT_PATHS;
+	}
+}
+
+export const LIFECYCLE_INTERVALS = {
+	day: 'Day',
+	week: 'Week',
+	month: 'Month'
+} as const;
+
+export type LifecycleInterval = keyof typeof LIFECYCLE_INTERVALS;
+
+export interface LifecycleQuery {
+	/** The event that makes a person active in a period. */
+	event: string;
+	interval: LifecycleInterval;
+	range: Exclude<Range, '24h'>;
+	filters: PropertyFilter[];
+	/** Only people in this cohort. */
+	cohort?: string;
+}
+
+export const LIFECYCLE_RANGES: LifecycleQuery['range'][] = ['7d', '30d', '90d'];
+
+export const DEFAULT_LIFECYCLE: LifecycleQuery = {
+	event: '$pageview',
+	interval: 'day',
+	range: '30d',
+	filters: []
+};
+
+/** Reads a lifecycle query from untrusted JSON. Invalid parts fall back to defaults. */
+export function parseLifecycle(input: unknown): LifecycleQuery {
+	if (!isRecord(input)) return DEFAULT_LIFECYCLE;
+	const range = parseRange(typeof input.range === 'string' ? input.range : DEFAULT_LIFECYCLE.range);
+	return {
+		event: validName(input.event) ? input.event : DEFAULT_LIFECYCLE.event,
+		interval:
+			typeof input.interval === 'string' && Object.hasOwn(LIFECYCLE_INTERVALS, input.interval)
+				? (input.interval as LifecycleInterval)
+				: DEFAULT_LIFECYCLE.interval,
+		range: range === '24h' ? '7d' : range,
+		filters: parsePropertyFilters(input.filters),
+		...cohortOf(input)
+	};
+}
+
+export function parseLifecycleParam(value: string | null): LifecycleQuery {
+	if (!value) return DEFAULT_LIFECYCLE;
+	try {
+		return parseLifecycle(JSON.parse(value));
+	} catch {
+		return DEFAULT_LIFECYCLE;
+	}
+}
+
 // Results, as the server queries return them.
 
 export interface TrendLine {
@@ -310,4 +427,50 @@ export interface RetentionCohort {
 export interface RetentionResult {
 	period: 'day' | 'week';
 	cohorts: RetentionCohort[];
+}
+
+export interface PathNode {
+	/** The page path or event name; null for the steps grouped as other. */
+	label: string | null;
+	/** Sessions at this step. */
+	sessions: number;
+	/** Sessions whose path has no further step: they dropped off here (or, counting back from an end, started here). */
+	ended: number;
+}
+
+export interface PathLink {
+	source: string | null;
+	target: string | null;
+	sessions: number;
+}
+
+export interface PathStep {
+	/** Most sessions first, then other. */
+	nodes: PathNode[];
+	/** Transitions to the next step, most sessions first; empty for the last step. */
+	links: PathLink[];
+}
+
+export interface PathsResult {
+	/** Steps in time order. Counting back from an end, the last step is the end. */
+	steps: PathStep[];
+	/** Sessions with a path. */
+	sessions: number;
+}
+
+/**
+ * Lifecycle states, as PostHog defines them. For a period, an active person is new (their first
+ * time ever), returning (also active the period before) or resurrecting (active before, but not
+ * the period before); a person active the period before but not in this one is dormant.
+ */
+export const LIFECYCLE_STATUSES = ['new', 'returning', 'resurrecting', 'dormant'] as const;
+
+export type LifecycleStatus = (typeof LIFECYCLE_STATUSES)[number];
+
+export interface LifecycleResult {
+	interval: LifecycleInterval;
+	/** Period starts, ISO 8601 in UTC; weeks start on Monday. */
+	periods: string[];
+	/** People per status for each period; dormant counts are negative. */
+	counts: Record<LifecycleStatus, number[]>;
 }

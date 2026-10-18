@@ -168,7 +168,9 @@ export const insights = sqliteTable(
 			.notNull()
 			.references(() => projects.id, { onDelete: 'cascade' }),
 		name: text('name').notNull(),
-		kind: text('kind', { enum: ['trends', 'funnel', 'retention'] }).notNull(),
+		kind: text('kind', {
+			enum: ['trends', 'funnel', 'retention', 'paths', 'lifecycle']
+		}).notNull(),
 		query: text('query').notNull(),
 		createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
 		createdAt: createdAt(),

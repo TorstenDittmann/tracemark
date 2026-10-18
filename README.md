@@ -26,6 +26,7 @@ SDKs ──POST /e──▶ ingest (Rust) ──batched inserts──▶ ClickHo
 | `docs/privacy.md` | Data retention, personal data export and deletion |
 | `docs/kubernetes.md` | Running tracemark on Kubernetes with the Helm chart |
 | `deploy/helm/tracemark/` | The Helm chart |
+| `docs/insights.md` | Insight kinds, with how paths and lifecycle count |
 | `docs/query-api.md` | The read API: queries, saved insights, events and persons |
 
 ## Self-hosting

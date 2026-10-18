@@ -405,6 +405,20 @@ export const MOCK_INSIGHTS: { name: string; saved: SavedQuery }[] = [
 			kind: 'retention',
 			query: { start: 'signed_up', returning: 'insight_viewed', range: '30d', filters: [] }
 		}
+	},
+	{
+		name: 'Paths from the home page',
+		saved: {
+			kind: 'paths',
+			query: { label: 'page', start: '/', steps: 4, range: '30d', filters: [] }
+		}
+	},
+	{
+		name: 'Weekly visitor lifecycle',
+		saved: {
+			kind: 'lifecycle',
+			query: { event: '$pageview', interval: 'week', range: '30d', filters: [] }
+		}
 	}
 ];
 export const MOCK_DASHBOARD = 'Demo overview';
