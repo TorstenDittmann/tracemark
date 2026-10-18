@@ -746,7 +746,10 @@ export function mockEvents(projectId: string, now: Date, flags: FlagDefinition[]
 	return events.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
 }
 
-/** One assistant chat: a retrieval span with an embedding, then a generation. Returns its end. */
+/**
+ * One assistant chat: a retrieval span with an embedding, then a generation, and maybe scores
+ * for it. Returns its end.
+ */
 function aiTrace(
 	r: ReturnType<typeof random>,
 	push: (
@@ -844,7 +847,29 @@ function aiTrace(
 			? { $ai_is_error: true, $ai_error: 'overloaded_error: Overloaded' }
 			: { $ai_output_state: { answered: true } })
 	});
-	return at + Math.round(total * 1000) + r.int(20, 120) * 1000;
+	// An LLM judge grades most answers, smaller models a little lower, and some people click
+	// thumbs up or down on the answer, down more often when it failed.
+	const done = Math.round(total * 1000);
+	if (!failed && r.next() < 0.7) {
+		const base = model.startsWith('claude-sonnet') ? 0.85 : 0.7;
+		event('$ai_score', done + 500, {
+			$ai_span_id: ids.chat,
+			$ai_score_name: 'accuracy',
+			$ai_score_value:
+				Math.round(Math.min(1, Math.max(0, base + (r.next() - 0.5) * 0.4)) * 100) / 100
+		});
+	}
+	if (r.next() < (failed ? 0.6 : 0.3)) {
+		const up = !failed && r.next() < (model.startsWith('claude-sonnet') ? 0.85 : 0.65);
+		event('$ai_score', done + r.int(3, 40) * 1000, {
+			$ai_score_name: 'thumbs',
+			$ai_score_value: up ? 1 : 0,
+			...(!up && r.next() < 0.5
+				? { $ai_score_comment: failed ? 'It just errored out.' : 'The numbers look wrong.' }
+				: {})
+		});
+	}
+	return at + done + r.int(20, 120) * 1000;
 }
 
 const LIKE_MOCK = `startsWith({column}, '${MOCK_PREFIX}')`;

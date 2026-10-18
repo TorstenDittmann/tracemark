@@ -2,8 +2,8 @@
 export interface ChartLine {
 	key: string;
 	label: string;
-	/** One value per bucket. */
-	data: number[];
+	/** One value per bucket; null leaves a gap, for buckets without a value (such as an average of nothing). */
+	data: (number | null)[];
 }
 </script>
 
@@ -57,7 +57,9 @@ function niceMax(max: number): number {
 	return step * 4;
 }
 
-const yMax = $derived(niceMax(Math.max(0, ...lines.flatMap((line) => line.data))));
+const yMax = $derived(
+	niceMax(Math.max(0, ...lines.flatMap((line) => line.data.map((v) => v ?? 0))))
+);
 const plotWidth = $derived(Math.max(0, width - pad.left - pad.right));
 const plotHeight = $derived(height - pad.top - pad.bottom);
 const x = (i: number) =>
@@ -88,12 +90,30 @@ function smooth(points: [number, number][]): string {
 	return d;
 }
 
+/** Each line's runs of buckets with a value, so gaps stay gaps. */
+function runs(data: (number | null)[]): [number, number][][] {
+	const out: [number, number][][] = [];
+	let run: [number, number][] = [];
+	data.forEach((v, i) => {
+		if (v === null) {
+			if (run.length) out.push(run);
+			run = [];
+		} else run.push([x(i), y(v)]);
+	});
+	if (run.length) out.push(run);
+	return out;
+}
+
 const paths = $derived(
-	lines.map((line) => smooth(line.data.map((v, i) => [x(i), y(v)] as [number, number])))
+	lines.map((line) =>
+		runs(line.data)
+			.map((run) => (run.length === 1 ? `M${run[0][0] - 1},${run[0][1]}h2` : smooth(run)))
+			.join('')
+	)
 );
 const gradientId = $props.id();
 const area = $derived(
-	lines.length === 1 && buckets.length
+	lines.length === 1 && buckets.length && !lines[0].data.includes(null)
 		? `${paths[0]}L${x(buckets.length - 1)},${y(0)}L${x(0)},${y(0)}Z`
 		: ''
 );
@@ -112,13 +132,13 @@ function onpointermove(event: PointerEvent) {
 	hover = Math.min(buckets.length - 1, Math.max(0, Math.round(ratio * (buckets.length - 1))));
 }
 
-/** Tooltip rows, largest value first. */
+/** Tooltip rows, largest value first; lines without a value at that bucket last. */
 const hoverRows = $derived(
 	hover === null
 		? []
 		: lines
-				.map((line, i) => ({ line, i, value: line.data[hover ?? 0] ?? 0 }))
-				.sort((a, b) => b.value - a.value)
+				.map((line, i) => ({ line, i, value: line.data[hover ?? 0] ?? null }))
+				.sort((a, b) => (b.value ?? -Infinity) - (a.value ?? -Infinity))
 );
 </script>
 
@@ -206,14 +226,17 @@ const hoverRows = $derived(
 					stroke-dasharray="3 3"
 				/>
 				{#each lines as line, i (line.key)}
-					<circle
-						cx={x(hover)}
-						cy={y(line.data[hover] ?? 0)}
-						r="4.5"
-						style:fill={color(i)}
-						class="dot stroke-card"
-						stroke-width="2"
-					/>
+					{@const value = line.data[hover]}
+					{#if value !== null && value !== undefined}
+						<circle
+							cx={x(hover)}
+							cy={y(value)}
+							r="4.5"
+							style:fill={color(i)}
+							class="dot stroke-card"
+							stroke-width="2"
+						/>
+					{/if}
 				{/each}
 			{/if}
 		</svg>
@@ -228,7 +251,9 @@ const hoverRows = $derived(
 					<div class="mt-1 flex items-center gap-2">
 						<span class="size-2 shrink-0 rounded-full" style:background={color(row.i)}></span>
 						<span class="truncate">{row.line.label}</span>
-						<span class="ml-auto pl-3 font-medium tabular-nums">{format(row.value)}</span>
+						<span class="ml-auto pl-3 font-medium tabular-nums"
+							>{row.value === null ? '–' : format(row.value)}</span
+						>
 					</div>
 				{/each}
 			</div>
@@ -255,7 +280,7 @@ const hoverRows = $derived(
 				<tr>
 					<td>{dateFormat.format(new Date(t))}</td>
 					{#each lines as line (line.key)}
-						<td>{line.data[i]}</td>
+						<td>{line.data[i] ?? '–'}</td>
 					{/each}
 				</tr>
 			{/each}

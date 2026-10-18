@@ -511,3 +511,47 @@ describe('Vercel AI SDK', () => {
 		});
 	});
 });
+
+describe('scores', () => {
+	it('scores the current trace or a given one', async () => {
+		const { client, sent } = tracemark();
+		const ai = createAi(client);
+		const traceId = await ai.trace({ name: 'answer', distinctId: 'ada' }, async () => {
+			ai.score({ name: 'accuracy', value: 0.8 });
+			return ai.currentTraceId();
+		});
+		expect(traceId).toBeTypeOf('string');
+		expect(ai.currentTraceId()).toBeUndefined();
+		ai.score({
+			traceId,
+			spanId: 'g1',
+			name: 'thumbs',
+			value: 0,
+			comment: 'Wrong answer',
+			distinctId: 'ada'
+		});
+		const scores = await sent('$ai_score');
+		expect(scores).toHaveLength(2);
+		expect(scores[0]).toMatchObject({
+			distinct_id: 'ada',
+			properties: { $ai_trace_id: traceId, $ai_score_name: 'accuracy', $ai_score_value: 0.8 }
+		});
+		expect(scores[0]?.properties).not.toHaveProperty('$ai_span_id');
+		expect(scores[1]).toMatchObject({
+			distinct_id: 'ada',
+			properties: {
+				$ai_trace_id: traceId,
+				$ai_span_id: 'g1',
+				$ai_score_name: 'thumbs',
+				$ai_score_value: 0,
+				$ai_score_comment: 'Wrong answer'
+			}
+		});
+	});
+
+	it('needs a trace and a number', () => {
+		const ai = createAi(tracemark().client);
+		expect(() => ai.score({ name: 'thumbs', value: 1 })).toThrow(/traceId/);
+		expect(() => ai.score({ traceId: 't1', name: 'thumbs', value: Number.NaN })).toThrow(/number/);
+	});
+});

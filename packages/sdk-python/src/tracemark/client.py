@@ -6,6 +6,7 @@ import atexit
 import gzip as _gzip
 import json
 import logging
+import math
 import sys
 import threading
 import time
@@ -312,6 +313,32 @@ class Tracemark:
             },
             groups={group_type: group_key},
         )
+
+    def ai_score(
+        self,
+        distinct_id: str,
+        trace_id: str,
+        name: str,
+        value: float,
+        span_id: Optional[str] = None,
+        comment: Optional[str] = None,
+        properties: Optional[Properties] = None,
+    ) -> None:
+        """Records a score or piece of feedback for an AI trace, or one of its steps with
+        ``span_id``, as a ``$ai_score`` event. ``name`` is what is scored, such as ``thumbs``;
+        thumbs up and down are 1 and 0."""
+        if isinstance(value, bool) or not isinstance(cast(Any, value), (int, float)) or not math.isfinite(value):
+            self._error(ValueError(f"invalid score value {value!r}"), logging.WARNING)
+            return
+        props: Dict[str, Any] = dict(properties or {})
+        props["$ai_trace_id"] = trace_id
+        if span_id is not None:
+            props["$ai_span_id"] = span_id
+        props["$ai_score_name"] = name
+        props["$ai_score_value"] = value
+        if comment is not None:
+            props["$ai_score_comment"] = comment
+        self.capture(distinct_id, "$ai_score", properties=props)
 
     def capture_exception(
         self,

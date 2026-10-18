@@ -83,6 +83,15 @@ tracemark.capture_uncaught_exceptions()
 
 `capture_exception(error=None, distinct_id=None, properties=None, groups=None, mechanism="manual", handled=True)` sends a `$exception` event (see [errors.md](errors.md)). Without `error` it captures the exception being handled; without `distinct_id` it is attributed to `$server`. The `$exception_list` holds the exception, then its `__cause__` or `__context__` chain, with frames innermost first. Frames from the standard library and installed packages are not `in_app`.
 
+## AI scores
+
+```python
+tracemark.ai_score("user_123", trace_id, "thumbs", 1)
+tracemark.ai_score("user_123", trace_id, "accuracy", 0.5, span_id=generation_id, comment="Half right")
+```
+
+`ai_score(distinct_id, trace_id, name, value, span_id=None, comment=None, properties=None)` sends a `$ai_score` event for an AI trace, or one of its steps (see [ai.md](ai.md#scores-and-feedback)). A value that isn't a finite number is dropped and reported to `on_error`.
+
 ## Options
 
 | Option | Default | |

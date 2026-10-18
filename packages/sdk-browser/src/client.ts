@@ -52,9 +52,23 @@ export interface Plugin {
 	changed?(reason: 'init' | 'identity' | 'groups'): void;
 }
 
+/** A score or piece of feedback on an AI trace, see docs/ai.md. */
+export interface AiScore {
+	traceId: string;
+	/** A step of the trace, such as one generation's span id. */
+	spanId?: string;
+	/** What is scored, such as `thumbs` or `helpful`. */
+	name: string;
+	/** Thumbs up and down are 1 and 0. */
+	value: number;
+	comment?: string;
+}
+
 export interface TracemarkClient {
 	init(config: Config): TracemarkClient;
 	capture(event: string, properties?: Properties): void;
+	/** Records a `$ai_score` event for an AI trace, as the current person. */
+	aiScore(score: AiScore): void;
 	identify(distinctId: string, person?: PersonProperties): void;
 	group(type: string, key: string, properties?: Properties): void;
 	setPersonProperties(person: PersonProperties): void;
@@ -390,6 +404,16 @@ export function createClient(config?: Config): TracemarkClient {
 
 		capture(event, properties) {
 			emit(event, properties);
+		},
+
+		aiScore(s) {
+			emit('$ai_score', {
+				$ai_trace_id: s.traceId,
+				$ai_span_id: s.spanId,
+				$ai_score_name: s.name,
+				$ai_score_value: s.value,
+				$ai_score_comment: s.comment
+			});
 		},
 
 		identify(distinctId, person) {

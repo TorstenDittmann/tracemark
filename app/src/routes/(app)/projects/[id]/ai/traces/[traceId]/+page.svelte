@@ -1,13 +1,17 @@
 <script lang="ts">
+import MessageSquare from '@lucide/svelte/icons/message-square';
 import {
+	type AiScore,
 	asMessages,
 	buildTree,
 	flatten,
 	formatCost,
 	formatDuration,
+	formatScore,
 	formatTokens,
 	type NodeKind,
 	num,
+	scoresByNode,
 	type TraceNode
 } from '#lib/ai.js';
 import AiNav from '#lib/components/ai/ai-nav.svelte';
@@ -62,6 +66,19 @@ const selected = $derived(
 	rows.find(({ node }) => node.id === selectedId)?.node ?? rows[0]?.node ?? null
 );
 const root = $derived(roots.length === 1 ? roots[0] : null);
+const byNode = $derived(scoresByNode(data.scores, roots));
+const names = $derived(new Map(rows.map(({ node }) => [node.id, node.name])));
+/** Each score name's average over the trace and its steps. */
+const averages = $derived.by(() => {
+	const sums = new Map<string, { total: number; count: number }>();
+	for (const score of data.scores) {
+		const sum = sums.get(score.name) ?? { total: 0, count: 0 };
+		sum.total += score.value;
+		sum.count += 1;
+		sums.set(score.name, sum);
+	}
+	return [...sums].map(([name, { total, count }]) => ({ name, avg: total / count, count }));
+});
 const person = $derived(data.events?.find((e) => e.person)?.person ?? '');
 const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'medium' });
 
@@ -115,6 +132,36 @@ const pretty = (value: unknown) =>
 	typeof value === 'string' ? value : JSON.stringify(value, null, 2);
 </script>
 
+{#snippet scoreItem(
+	score: AiScore,
+	step: boolean
+)}
+	<li class="grid gap-0.5 border-t py-2 first:border-t-0 first:pt-0 last:pb-0">
+		<div class="flex flex-wrap items-baseline gap-x-2 text-sm">
+			<span class="font-medium">{score.name}</span>
+			<span class={['tabular-nums', score.value <= 0 && 'text-destructive']}>
+				{formatScore(score.value)}
+			</span>
+			{#if step && score.spanId && names.has(score.spanId)}
+				<button
+					type="button"
+					class="truncate text-xs text-muted-foreground hover:underline"
+					onclick={() => (selectedId = score.spanId)}
+				>
+					on {names.get(score.spanId)}
+				</button>
+			{/if}
+			<span class="ml-auto text-xs text-muted-foreground">
+				{score.person}
+				· {dateFormat.format(new Date(score.timestamp))}
+			</span>
+		</div>
+		{#if score.comment}
+			<p class="text-sm break-words whitespace-pre-wrap text-muted-foreground">{score.comment}</p>
+		{/if}
+	</li>
+{/snippet}
+
 <svelte:head>
 	<title>{root?.name ?? 'Trace'} · AI · {data.project.name} · Tracemark</title>
 </svelte:head>
@@ -141,6 +188,36 @@ const pretty = (value: unknown) =>
 				<span class="font-mono text-xs leading-5 break-all">{data.traceId}</span>
 			</p>
 		</div>
+
+		{#if data.scores.length}
+			<Card.Root class="gap-3">
+				<Card.Header>
+					<Card.Title>Scores</Card.Title>
+					{#if data.scores.length > averages.length}
+						<Card.Description class="flex flex-wrap gap-x-4 gap-y-1">
+							{#each averages as average (average.name)}
+								<span>
+									{average.name}
+									<span class="font-medium text-foreground tabular-nums"
+										>{formatScore(average.avg)}</span
+									>
+									{#if average.count > 1}
+										<span class="tabular-nums">avg of {average.count}</span>
+									{/if}
+								</span>
+							{/each}
+						</Card.Description>
+					{/if}
+				</Card.Header>
+				<Card.Content>
+					<ul class="grid">
+						{#each data.scores as score (score.uuid)}
+							{@render scoreItem(score, true)}
+						{/each}
+					</ul>
+				</Card.Content>
+			</Card.Root>
+		{/if}
 
 		<div class="grid min-w-0 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
 			<Card.Root class="min-w-0 gap-0 py-2">
@@ -173,6 +250,12 @@ const pretty = (value: unknown) =>
 										{BADGES[node.kind]}
 									</span>
 									<span class="truncate" title={node.name}>{node.name}</span>
+									{#if byNode.get(node.id)?.length}
+										<MessageSquare
+											class="size-3 shrink-0 text-muted-foreground"
+											aria-label="Scored"
+										/>
+									{/if}
 									{#if node.cost && !node.children.length}
 										<span class="ml-auto shrink-0 text-xs text-muted-foreground tabular-nums">
 											{formatCost(node.cost)}
@@ -230,6 +313,18 @@ const pretty = (value: unknown) =>
 									</div>
 								{/each}
 							</dl>
+						{/if}
+
+						{@const nodeScores = byNode.get(selected.id) ?? []}
+						{#if nodeScores.length}
+							<section class="grid gap-2">
+								<h3 class="text-xs font-medium text-muted-foreground">Scores</h3>
+								<ul class="grid">
+									{#each nodeScores as score (score.uuid)}
+										{@render scoreItem(score, false)}
+									{/each}
+								</ul>
+							</section>
 						{/if}
 
 						{#each io(selected) as part (part.label)}

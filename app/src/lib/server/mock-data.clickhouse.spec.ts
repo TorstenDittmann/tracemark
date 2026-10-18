@@ -37,6 +37,7 @@ describe.skipIf(!clickhouseTestUrl)('mock data', () => {
 	});
 	afterAll(() => dropTestDatabase(config));
 
+	// Generating and inserting a month of events twice takes a few seconds.
 	it('fills every area, replaces itself when added again, and removes only itself', async () => {
 		const db = await createTestDb();
 		const [user] = await db
@@ -66,6 +67,8 @@ describe.skipIf(!clickhouseTestUrl)('mock data', () => {
 		const ai = await aiOverview(config, project.id, { range: '30d', now });
 		expect(ai.totals.traces).toBeGreaterThan(20);
 		expect(ai.totals.cost).toBeGreaterThan(0);
+		expect(ai.scores.map((s) => s.name).sort()).toEqual(['accuracy', 'thumbs']);
+		expect(ai.modelScores.length).toBeGreaterThan(2);
 		expect((await listTraces(config, project.id, { range: '30d', now })).length).toBeGreaterThan(0);
 
 		const groups = await listGroups(config, project.id, 'company', { now });
@@ -94,5 +97,5 @@ describe.skipIf(!clickhouseTestUrl)('mock data', () => {
 		await removeMockData(db, config, project.id);
 		expect(await count(project.id)).toBe(1);
 		expect(await db.select().from(featureFlags)).toHaveLength(0);
-	});
+	}, 30_000);
 });
