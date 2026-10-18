@@ -30,7 +30,7 @@ export async function secretKeyProject(request: Request) {
 export class InvalidRequest extends Error {}
 
 /**
- * A query body: `{"kind": "trends" | "funnel" | "retention", "query": {…}}`. The kind must be
+ * A query body: `{"kind": "trends" | "funnel" | "retention" | "paths" | "lifecycle", "query": {…}}`. The kind must be
  * valid; the query is read like the editors read it, so invalid parts fall back to defaults and
  * the response shows the query that ran.
  */
@@ -40,7 +40,9 @@ export function parseQueryBody(input: unknown): SavedQuery {
 	}
 	const { kind, query } = input as Record<string, unknown>;
 	if (!isInsightKind(kind)) {
-		throw new InvalidRequest('kind must be "trends", "funnel" or "retention".');
+		throw new InvalidRequest(
+			'kind must be "trends", "funnel", "retention", "paths" or "lifecycle".'
+		);
 	}
 	if (
 		query !== undefined &&

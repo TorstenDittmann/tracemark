@@ -13,6 +13,7 @@ import {
 import { experiments, featureFlags, insights, organizations, users } from './db/schema';
 import { experimentCounts } from './experiment-results';
 import { listGroups } from './groups';
+import { lifecycle, paths } from './insights';
 import { listIssues } from './issues';
 import { addMockData, MOCK_FLAGS, MOCK_INSIGHTS, removeMockData } from './mock-data';
 import { createProject } from './projects';
@@ -76,6 +77,26 @@ describe.skipIf(!clickhouseTestUrl)('mock data', () => {
 		expect(ai.modelScores.length).toBeGreaterThan(2);
 		expect((await listTraces(config, project.id, { range: '30d', now })).length).toBeGreaterThan(0);
 
+		// The saved paths and lifecycle insights have something to show.
+		const flows = await paths(
+			config,
+			project.id,
+			{ label: 'page', start: '/', steps: 4, range: '30d', filters: [] },
+			now
+		);
+		expect(flows.sessions).toBeGreaterThan(50);
+		expect(flows.steps.length).toBeGreaterThan(2);
+		expect(flows.steps[1].nodes.length).toBeGreaterThan(3);
+		const states = await lifecycle(
+			config,
+			project.id,
+			{ event: '$pageview', interval: 'week', range: '30d', filters: [] },
+			now
+		);
+		for (const status of ['new', 'returning', 'resurrecting', 'dormant'] as const) {
+			expect(states.counts[status].some((v) => v !== 0)).toBe(true);
+		}
+
 		const groups = await listGroups(config, project.id, 'company', { now });
 		expect(groups.groups.length).toBe(10);
 
@@ -102,6 +123,7 @@ describe.skipIf(!clickhouseTestUrl)('mock data', () => {
 		await removeMockData(db, config, project.id);
 		expect(await count(project.id)).toBe(1);
 		expect(await db.select().from(featureFlags)).toHaveLength(0);
-		// A month of mock data goes in twice and out again, which takes a few seconds.
+		// A month of events, written twice, and every area queried: more than the default 5 seconds
+		// on a busy machine.
 	}, 30_000);
 });

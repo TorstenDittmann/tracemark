@@ -10,7 +10,7 @@ import {
 } from '#lib/server/query-api.js';
 import type { RequestHandler } from './$types';
 
-/** Runs a trends, funnel or retention query, see docs/query-api.md. */
+/** Runs an insight query, see docs/query-api.md. */
 export const POST: RequestHandler = async ({ request }) => {
 	const project = await secretKeyProject(request);
 	if (!project) return failure(401, 'invalid_secret_key');

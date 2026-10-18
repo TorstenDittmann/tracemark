@@ -1,4 +1,4 @@
-// Loading and saving for the insight editor pages, shared by trends, funnels and retention.
+// Loading and saving for the insight editor pages, shared by every insight kind.
 import { error, fail, type RequestEvent, redirect } from '@sveltejs/kit';
 import { listCohorts } from './cohorts';
 import { getDb } from './db/index';

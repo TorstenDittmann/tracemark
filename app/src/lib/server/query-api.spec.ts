@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_FUNNEL } from '../insights';
+import { DEFAULT_FUNNEL, DEFAULT_LIFECYCLE, DEFAULT_PATHS } from '../insights';
 import {
 	bearerKey,
 	eventsResponse,
@@ -32,7 +32,14 @@ describe('query API requests', () => {
 			query: { series: [{ event: 'signup', math: 'unique_users' }], range: '30d', filters: [] }
 		});
 		expect(parseQueryBody({ kind: 'funnel' })).toEqual({ kind: 'funnel', query: DEFAULT_FUNNEL });
-		expect(() => parseQueryBody({ kind: 'paths' })).toThrow(InvalidRequest);
+		expect(parseQueryBody({ kind: 'paths' })).toEqual({ kind: 'paths', query: DEFAULT_PATHS });
+		expect(
+			parseQueryBody({ kind: 'lifecycle', query: { event: 'login', interval: 'week' } })
+		).toEqual({
+			kind: 'lifecycle',
+			query: { ...DEFAULT_LIFECYCLE, event: 'login', interval: 'week' }
+		});
+		expect(() => parseQueryBody({ kind: 'stickiness' })).toThrow(InvalidRequest);
 		expect(() => parseQueryBody({ kind: 'trends', query: [] })).toThrow(/query must be an object/);
 		expect(() => parseQueryBody('trends')).toThrow(/JSON object/);
 	});
