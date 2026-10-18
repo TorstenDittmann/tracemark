@@ -13,7 +13,8 @@ import {
 	moveOnDashboard,
 	parseSavedQuery,
 	removeFromDashboard,
-	updateInsight
+	updateInsight,
+	withFilterInternal
 } from './saved';
 import { createTestDb } from './test-db';
 
@@ -30,6 +31,19 @@ async function setup() {
 }
 
 describe('saved insights', () => {
+	it('sets filterInternal without changing the shared defaults', () => {
+		const saved = parseSavedQuery('trends', 'not json');
+		expect(withFilterInternal(saved, true).query).toEqual({
+			...DEFAULT_TRENDS,
+			filterInternal: true
+		});
+		expect(DEFAULT_TRENDS.filterInternal).toBeUndefined();
+		const chosen = parseSavedQuery('trends', '{"filterInternal":false}');
+		expect(chosen.query.filterInternal).toBe(false);
+		expect(withFilterInternal(chosen, true).query.filterInternal).toBe(false);
+		expect(withFilterInternal(chosen, true, true).query.filterInternal).toBe(true);
+	});
+
 	it('parses stored queries for their kind', () => {
 		expect(parseSavedQuery('trends', 'not json')).toEqual({
 			kind: 'trends',

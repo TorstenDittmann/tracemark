@@ -2,7 +2,9 @@
 
 Insights chart a project's events under **Insights**. Each kind can be saved, put on dashboards
 and run through the [query API](query-api.md). People are counted once across their distinct ids,
-times are UTC, and every kind takes property filters and a cohort.
+times are UTC, and every kind takes property filters and a cohort. The **Filter internal users**
+toggle leaves out [internal users](internal-users.md); it starts at the project's setting and is
+saved with the insight.
 
 | Kind | Answers |
 | --- | --- |

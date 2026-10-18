@@ -2,6 +2,7 @@
 import CohortSelect from '#lib/components/insights/cohort-select.svelte';
 import { selectClass, showQuery, withCurrent } from '#lib/components/insights/editor.svelte.js';
 import FiltersEditor from '#lib/components/insights/filters-editor.svelte';
+import InternalUsersToggle from '#lib/components/insights/internal-users-toggle.svelte';
 import LifecycleView from '#lib/components/insights/lifecycle-view.svelte';
 import RangePicker from '#lib/components/insights/range-picker.svelte';
 import SaveInsight from '#lib/components/insights/save-insight.svelte';
@@ -87,6 +88,11 @@ const interval = $derived(data.query.interval);
 						if (cohort) q.cohort = cohort;
 						else delete q.cohort;
 					})}
+			/>
+			<InternalUsersToggle
+				value={data.query.filterInternal}
+				project={data.project}
+				onchange={(filter) => update((q) => (q.filterInternal = filter))}
 			/>
 			<div>
 				<RangePicker

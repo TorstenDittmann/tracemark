@@ -7,6 +7,7 @@ import {
 	PUBLIC_URL
 } from '$app/env/private';
 import type { CohortSpec } from '../cohorts';
+import type { InternalRule } from '../internal-users';
 import * as ai from './ai';
 import * as alertChecks from './alert-checks';
 import { type AlertChecks, startAlertScheduler } from './alert-scheduler';
@@ -26,7 +27,8 @@ import * as issues from './issues';
 import * as mockData from './mock-data';
 import * as persons from './persons';
 import * as privacy from './privacy';
-import type { SavedQuery } from './saved';
+import { internalUsers } from './projects';
+import { type SavedQuery, withFilterInternal } from './saved';
 import * as web from './web';
 
 export type { AiOverview, TraceFilter, TraceSummary } from './ai';
@@ -57,6 +59,18 @@ export async function cohortFor(projectId: string, id?: string): Promise<CohortS
 	if (!id) return undefined;
 	const cohort = await getCohort(getDb(), projectId, id);
 	return cohort ? cohortSpec(cohort) : { kind: 'static', id };
+}
+
+/**
+ * The internal user rules a query leaves out: the project's, when `filter` says so or, without
+ * it, the project's setting does. Undefined when nothing is left out.
+ */
+export async function internalFor(
+	projectId: string,
+	filter?: boolean
+): Promise<InternalRule[] | undefined> {
+	const internal = await internalUsers(getDb(), projectId);
+	return (filter ?? internal.filter) && internal.rules.length ? internal.rules : undefined;
 }
 
 function config(): ClickHouseConfig {
@@ -108,15 +122,24 @@ export function startRetentionSweeps(): () => void {
 	};
 }
 
-/** The alert checks, against the app's ClickHouse. */
+/** The alert checks, against the app's ClickHouse, leaving out internal users as the project says. */
 export function alertChecksFor(): AlertChecks {
 	return {
-		newIssues: (projectId, from, to) => alertChecks.newIssues(config(), projectId, from, to),
-		regressedIssues: (projectId, resolved, from, to) =>
-			alertChecks.regressedIssues(config(), projectId, resolved, from, to),
-		eventCount: (projectId, event, from, to) =>
-			alertChecks.eventCount(config(), projectId, event, from, to),
-		aiCost: (projectId, from, to) => alertChecks.aiCost(config(), projectId, from, to)
+		newIssues: async (projectId, from, to) =>
+			alertChecks.newIssues(config(), projectId, from, to, await internalFor(projectId)),
+		regressedIssues: async (projectId, resolved, from, to) =>
+			alertChecks.regressedIssues(
+				config(),
+				projectId,
+				resolved,
+				from,
+				to,
+				await internalFor(projectId)
+			),
+		eventCount: async (projectId, event, from, to) =>
+			alertChecks.eventCount(config(), projectId, event, from, to, await internalFor(projectId)),
+		aiCost: async (projectId, from, to) =>
+			alertChecks.aiCost(config(), projectId, from, to, await internalFor(projectId))
 	};
 }
 
@@ -124,14 +147,27 @@ export function alertChecksFor(): AlertChecks {
 export const startAlerts = () =>
 	startAlertScheduler(getDb, alertChecksFor(), { baseUrl: PUBLIC_URL });
 
-export const webAnalytics = (projectId: string, options: Parameters<typeof web.webAnalytics>[2]) =>
-	web.webAnalytics(config(), projectId, options);
+// Web analytics, experiments, issues and AI leave out internal users whenever the project does.
 
-export const webVitals = (projectId: string, options: Parameters<typeof web.webVitals>[2]) =>
-	web.webVitals(config(), projectId, options);
+export const webAnalytics = async (
+	projectId: string,
+	options: Parameters<typeof web.webAnalytics>[2]
+) => web.webAnalytics(config(), projectId, { ...options, internal: await internalFor(projectId) });
+
+export const webVitals = async (projectId: string, options: Parameters<typeof web.webVitals>[2]) =>
+	web.webVitals(config(), projectId, { ...options, internal: await internalFor(projectId) });
+
+// Insights follow their own `filterInternal`, else the project's setting.
 
 export const trends = async (projectId: string, query: Parameters<typeof insights.trends>[2]) =>
-	insights.trends(config(), projectId, query, undefined, await cohortFor(projectId, query.cohort));
+	insights.trends(
+		config(),
+		projectId,
+		query,
+		undefined,
+		await cohortFor(projectId, query.cohort),
+		await internalFor(projectId, query.filterInternal)
+	);
 
 export const eventNames = (projectId: string) => insights.eventNames(config(), projectId);
 
@@ -140,7 +176,14 @@ export const propertyNames = (projectId: string) => insights.propertyNames(confi
 export const pagePaths = (projectId: string) => insights.pagePaths(config(), projectId);
 
 export const funnel = async (projectId: string, query: Parameters<typeof insights.funnel>[2]) =>
-	insights.funnel(config(), projectId, query, undefined, await cohortFor(projectId, query.cohort));
+	insights.funnel(
+		config(),
+		projectId,
+		query,
+		undefined,
+		await cohortFor(projectId, query.cohort),
+		await internalFor(projectId, query.filterInternal)
+	);
 
 export const retention = async (
 	projectId: string,
@@ -151,11 +194,19 @@ export const retention = async (
 		projectId,
 		query,
 		undefined,
-		await cohortFor(projectId, query.cohort)
+		await cohortFor(projectId, query.cohort),
+		await internalFor(projectId, query.filterInternal)
 	);
 
 export const paths = async (projectId: string, query: Parameters<typeof insights.paths>[2]) =>
-	insights.paths(config(), projectId, query, undefined, await cohortFor(projectId, query.cohort));
+	insights.paths(
+		config(),
+		projectId,
+		query,
+		undefined,
+		await cohortFor(projectId, query.cohort),
+		await internalFor(projectId, query.filterInternal)
+	);
 
 export const lifecycle = async (
 	projectId: string,
@@ -166,11 +217,19 @@ export const lifecycle = async (
 		projectId,
 		query,
 		undefined,
-		await cohortFor(projectId, query.cohort)
+		await cohortFor(projectId, query.cohort),
+		await internalFor(projectId, query.filterInternal)
 	);
 
-/** Runs a saved insight's query; the result type follows its kind. */
-export async function runSaved(projectId: string, saved: SavedQuery): Promise<SavedResult> {
+/**
+ * Runs a saved insight's query; the result type follows its kind. The query comes back with
+ * `filterInternal` set to what applied.
+ */
+export async function runSaved(projectId: string, query: SavedQuery): Promise<SavedResult> {
+	const saved =
+		query.query.filterInternal === undefined
+			? withFilterInternal(query, (await internalUsers(getDb(), projectId)).filter)
+			: query;
 	switch (saved.kind) {
 		case 'trends':
 			return { ...saved, result: await trends(projectId, saved.query) };
@@ -256,25 +315,35 @@ export async function evaluateProjectFlags(projectId: string, request: flagEvalu
 	}
 }
 
-export const experimentCounts = (
+export const experimentCounts = async (
 	projectId: string,
 	query: Parameters<typeof experimentResults.experimentCounts>[2]
-) => experimentResults.experimentCounts(config(), projectId, query);
+) =>
+	experimentResults.experimentCounts(config(), projectId, {
+		...query,
+		internal: await internalFor(projectId)
+	});
 
-export const listIssues = (projectId: string, options: Parameters<typeof issues.listIssues>[2]) =>
-	issues.listIssues(config(), projectId, options);
+export const listIssues = async (
+	projectId: string,
+	options: Parameters<typeof issues.listIssues>[2]
+) => issues.listIssues(config(), projectId, { ...options, internal: await internalFor(projectId) });
 
-export const issueDetail = (
+export const issueDetail = async (
 	projectId: string,
 	fingerprint: string,
 	options: Parameters<typeof issues.issueDetail>[3]
-) => issues.issueDetail(config(), projectId, fingerprint, options);
+) =>
+	issues.issueDetail(config(), projectId, fingerprint, {
+		...options,
+		internal: await internalFor(projectId)
+	});
 
-export const aiOverview = (projectId: string, options: Parameters<typeof ai.aiOverview>[2]) =>
-	ai.aiOverview(config(), projectId, options);
+export const aiOverview = async (projectId: string, options: Parameters<typeof ai.aiOverview>[2]) =>
+	ai.aiOverview(config(), projectId, { ...options, internal: await internalFor(projectId) });
 
-export const listTraces = (projectId: string, options: Parameters<typeof ai.listTraces>[2]) =>
-	ai.listTraces(config(), projectId, options);
+export const listTraces = async (projectId: string, options: Parameters<typeof ai.listTraces>[2]) =>
+	ai.listTraces(config(), projectId, { ...options, internal: await internalFor(projectId) });
 
 export const traceEvents = (projectId: string, traceId: string) =>
 	ai.traceEvents(config(), projectId, traceId);

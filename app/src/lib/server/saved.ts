@@ -55,6 +55,17 @@ export function parseSavedQuery(kind: InsightKind, json: string): SavedQuery {
 	}
 }
 
+/** The query with `filterInternal` set, keeping its own choice unless `force` is given. */
+export function withFilterInternal<T extends SavedQuery>(
+	saved: T,
+	filter: boolean,
+	force = false
+): T {
+	if (!force && saved.query.filterInternal !== undefined) return saved;
+	// A copy: the parsers can return the shared defaults.
+	return { ...saved, query: { ...saved.query, filterInternal: filter } } as T;
+}
+
 export function validateName(name: string): string | null {
 	if (!name) return 'Enter a name.';
 	if (name.length > 100) return 'Use at most 100 characters.';

@@ -11,7 +11,8 @@ import {
 	listDashboards,
 	parseSavedQuery,
 	updateInsight,
-	validateName
+	validateName,
+	withFilterInternal
 } from './saved';
 
 /** The saved insight named by `?insight=`, if it is this kind and in the project, and the project's dashboards and cohorts. */
@@ -51,7 +52,11 @@ export function insightActions(kind: InsightKind) {
 			const name = String(form.get('name') ?? '').trim();
 			const message = validateName(name);
 			if (message) return fail(400, { action: 'save', message });
-			const saved = parseSavedQuery(kind, String(form.get('query') ?? ''));
+			// Saved insights keep the choice they were saved with, even if the project's setting changes.
+			const saved = withFilterInternal(
+				parseSavedQuery(kind, String(form.get('query') ?? '')),
+				project.filterInternal
+			);
 			const id = String(form.get('insight') ?? '');
 			const db = getDb();
 			if (id && form.get('as_new') === null) {

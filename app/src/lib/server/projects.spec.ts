@@ -6,9 +6,12 @@ import {
 	createProject,
 	deleteProject,
 	getProjectForUser,
+	internalUsers,
 	listOrganizationsForUser,
 	listProjectsForUser,
-	rotatePublicKey
+	rotatePublicKey,
+	setFilterInternal,
+	setInternalRules
 } from './projects';
 import { createTestDb } from './test-db';
 
@@ -33,6 +36,19 @@ async function setup() {
 }
 
 describe('projects', () => {
+	it('store internal user rules and whether to filter them', async () => {
+		const { db, org } = await setup();
+		const project = await createProject(db, org.id, 'Website');
+		expect(await internalUsers(db, project.id)).toEqual({ rules: [], filter: false });
+		await setInternalRules(db, project.id, [{ kind: 'email_domain', value: '@acme.com' }]);
+		await setFilterInternal(db, project.id, true);
+		expect(await internalUsers(db, project.id)).toEqual({
+			rules: [{ kind: 'email_domain', value: '@acme.com' }],
+			filter: true
+		});
+		expect(await internalUsers(db, 'missing')).toEqual({ rules: [], filter: false });
+	});
+
 	it('are visible to members of their organization only', async () => {
 		const { db, owner, org, outsider } = await setup();
 		const project = await createProject(db, org.id, 'Website');

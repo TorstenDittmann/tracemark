@@ -2,8 +2,14 @@
 import { selectClass } from '#lib/components/insights/editor.svelte.js';
 import { Button } from '#lib/components/ui/button/index.js';
 import * as Card from '#lib/components/ui/card/index.js';
+import { Checkbox } from '#lib/components/ui/checkbox/index.js';
 import { Input } from '#lib/components/ui/input/index.js';
 import { Label } from '#lib/components/ui/label/index.js';
+import {
+	describeInternalRule,
+	INTERNAL_RULE_KINDS,
+	type InternalRuleKind
+} from '#lib/internal-users.js';
 import { RETENTION_DAYS, retentionLabel } from '#lib/retention.js';
 import { enhance } from '$app/forms';
 import type { PageProps } from './$types';
@@ -23,6 +29,18 @@ function editPrice(p: PageProps['data']['modelPrices'][number]) {
 		cacheWrite: p.cacheWrite === undefined ? '' : String(p.cacheWrite)
 	};
 }
+let rule = $state<{ kind: InternalRuleKind; property: string; value: string }>({
+	kind: 'email_domain',
+	property: '',
+	value: ''
+});
+const RULE_PLACEHOLDERS: Record<InternalRuleKind, string> = {
+	email: 'you@example.com',
+	email_domain: '@example.com',
+	distinct_id: 'user-123',
+	property: 'localhost'
+};
+
 let priceSearch = $state('');
 const shownPrices = $derived.by(() => {
 	const query = priceSearch.trim().toLowerCase();
@@ -415,6 +433,105 @@ function formatBytes(bytes: number): string {
 
 	<Card.Root>
 		<Card.Header>
+			<Card.Title>Internal users</Card.Title>
+			<Card.Description>
+				Your team's own traffic, left out of insights, dashboards, web analytics, experiments,
+				issues, AI and alerts. Insights can include it again with their own toggle. Events and
+				people pages always show everyone. See docs/internal-users.md.
+			</Card.Description>
+		</Card.Header>
+		<Card.Content class="grid gap-4">
+			<form
+				method="POST"
+				action="?/setFilterInternal"
+				class="flex flex-wrap items-center gap-3"
+				use:enhance={() =>
+					async ({ update }) =>
+						update({ reset: false })}
+			>
+				<Label class="flex items-center gap-2 font-normal">
+					<Checkbox name="filter" checked={data.project.filterInternal} disabled={!canManage} />
+					Filter out internal users by default
+				</Label>
+				<Button type="submit" variant="outline" size="sm" disabled={!canManage}>Save</Button>
+			</form>
+			{#if data.internalRules.length}
+				<ul class="grid max-w-xl gap-1 text-sm">
+					{#each data.internalRules as internal (internal.key)}
+						<li class="flex items-center justify-between gap-2 border-t py-1">
+							<span class="min-w-0 truncate font-mono">{describeInternalRule(internal)}</span>
+							{#if canManage}
+								<form method="POST" action="?/removeInternalRule" use:enhance>
+									<input type="hidden" name="key" value={internal.key}>
+									<Button type="submit" variant="ghost" size="sm">Remove</Button>
+								</form>
+							{/if}
+						</li>
+					{/each}
+				</ul>
+			{:else}
+				<p class="text-sm text-muted-foreground">
+					No rules yet, so nothing is filtered out. Add your company's email domain, a test
+					account's distinct id, or <code class="font-mono">$host</code> equals
+					<code class="font-mono">localhost</code>.
+				</p>
+			{/if}
+			{#if canManage}
+				<form
+					method="POST"
+					action="?/addInternalRule"
+					class="flex flex-wrap items-end gap-2"
+					use:enhance={() =>
+						async ({ result, update }) => {
+							await update({ reset: false });
+							if (result.type === 'success') rule = { ...rule, property: '', value: '' };
+						}}
+				>
+					<div class="grid gap-1.5">
+						<Label for="rule-kind">Match</Label>
+						<select id="rule-kind" name="kind" class={selectClass} bind:value={rule.kind}>
+							{#each Object.entries(INTERNAL_RULE_KINDS) as [value, label] (value)}
+								<option {value}>{label}</option>
+							{/each}
+						</select>
+					</div>
+					{#if rule.kind === 'property'}
+						<div class="grid gap-1.5">
+							<Label for="rule-property">Property</Label>
+							<Input
+								id="rule-property"
+								name="property"
+								required
+								maxlength={200}
+								placeholder="$host"
+								bind:value={rule.property}
+								class="h-8 w-40"
+							/>
+						</div>
+					{/if}
+					<div class="grid gap-1.5">
+						<Label for="rule-value">Value</Label>
+						<Input
+							id="rule-value"
+							name="value"
+							required
+							maxlength={200}
+							placeholder={RULE_PLACEHOLDERS[rule.kind]}
+							bind:value={rule.value}
+							class="h-8 w-56"
+						/>
+					</div>
+					<Button type="submit" variant="outline" size="sm">Add rule</Button>
+				</form>
+			{/if}
+			{#if messageFor('internalUsers')}
+				<p class="text-sm text-muted-foreground" role="status">{messageFor('internalUsers')}</p>
+			{/if}
+		</Card.Content>
+	</Card.Root>
+
+	<Card.Root>
+		<Card.Header>
 			<Card.Title>Data retention</Card.Title>
 			<Card.Description>
 				Events older than this are deleted for good, every few hours. People and their properties
@@ -493,7 +610,8 @@ function formatBytes(bytes: number): string {
 
 	{#if !canManage}
 		<p class="text-sm text-muted-foreground">
-			Only organization owners and admins can rotate keys, change retention or delete projects.
+			Only organization owners and admins can rotate keys, set internal users, change retention or
+			delete projects.
 		</p>
 	{/if}
 </div>

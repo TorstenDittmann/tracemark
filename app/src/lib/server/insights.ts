@@ -26,9 +26,11 @@ import {
 	validName,
 	WINDOWS
 } from '../insights';
+import type { InternalRule } from '../internal-users';
 import { type ClickHouseConfig, clickhouseQuery } from './clickhouse';
 import { cohortPeopleSql } from './cohort-people';
 import { compareSql } from './compare';
+import { internalUsersSql } from './internal-users';
 import { chTime, timeWindow } from './web';
 
 export type { FunnelResult, LifecycleResult, PathsResult, RetentionResult, TrendsResult };
@@ -45,13 +47,15 @@ export function filterSql(filter: PropertyFilter, param: string): string {
 
 /**
  * The FROM, JOIN and WHERE shared by every insight: a project's events in a time window with
- * property filters applied, joined to people. Selects can use `e.*` and `person`.
+ * property filters applied and internal users left out, joined to people. Selects can use `e.*`
+ * and `person`.
  */
 function eventsSource(
 	projectId: string,
 	window: { from: Date; to: Date },
 	filters: PropertyFilter[],
-	cohort?: CohortSpec
+	cohort?: CohortSpec,
+	internal?: InternalRule[]
 ): { sql: string; params: Record<string, string> } {
 	const params: Record<string, string> = {
 		project: projectId,
@@ -63,6 +67,7 @@ function eventsSource(
 		return ` AND ${filterSql(filter, `v${i}`)}`;
 	});
 	if (cohort) conditions.push(` AND ${PERSON} IN (${cohortPeopleSql(cohort, params)})`);
+	conditions.push(internalUsersSql(internal, params));
 	return {
 		sql: `FROM events AS e
 			LEFT JOIN (SELECT alias, person FROM person_distinct_ids WHERE project_id = {project:UUID}) AS a
@@ -102,10 +107,11 @@ export async function trends(
 	projectId: string,
 	query: TrendsQuery,
 	now?: Date,
-	cohort?: CohortSpec
+	cohort?: CohortSpec,
+	internal?: InternalRule[]
 ): Promise<TrendsResult> {
 	const { bucket, bucketFn, from, to, buckets } = timeWindow(query.range, now);
-	const source = eventsSource(projectId, { from, to }, query.filters, cohort);
+	const source = eventsSource(projectId, { from, to }, query.filters, cohort, internal);
 	const perSeries = Math.max(1, Math.floor(MAX_LINES / query.series.length));
 
 	const results = await Promise.all(
@@ -181,10 +187,11 @@ export async function funnel(
 	projectId: string,
 	query: FunnelQuery,
 	now?: Date,
-	cohort?: CohortSpec
+	cohort?: CohortSpec,
+	internal?: InternalRule[]
 ): Promise<FunnelResult> {
 	const { from, to } = timeWindow(query.range, now);
-	const source = eventsSource(projectId, { from, to }, query.filters, cohort);
+	const source = eventsSource(projectId, { from, to }, query.filters, cohort, internal);
 	const params: Record<string, string> = {
 		...source.params,
 		window: String(WINDOWS[query.window].ms)
@@ -248,7 +255,8 @@ export async function retention(
 	projectId: string,
 	query: RetentionQuery,
 	now?: Date,
-	cohort?: CohortSpec
+	cohort?: CohortSpec,
+	internal?: InternalRule[]
 ): Promise<RetentionResult> {
 	const period = retentionPeriod(query.range);
 	const window = timeWindow(query.range, now);
@@ -262,7 +270,7 @@ export async function retention(
 		starts.push(new Date(t).toISOString().replace('.000Z', 'Z'));
 	}
 
-	const source = eventsSource(projectId, window, query.filters, cohort);
+	const source = eventsSource(projectId, window, query.filters, cohort, internal);
 	const trunc = period === 'day' ? 'toStartOfDay(e.timestamp)' : 'toStartOfWeek(e.timestamp, 1)';
 	const body = await clickhouseQuery(
 		config,
@@ -334,10 +342,11 @@ export async function paths(
 	projectId: string,
 	query: PathsQuery,
 	now?: Date,
-	cohort?: CohortSpec
+	cohort?: CohortSpec,
+	internal?: InternalRule[]
 ): Promise<PathsResult> {
 	const { from, to } = timeWindow(query.range, now);
-	const source = eventsSource(projectId, { from, to }, query.filters, cohort);
+	const source = eventsSource(projectId, { from, to }, query.filters, cohort, internal);
 	const page = query.label === 'page';
 	// With only an end, the path is reversed so its first step is the end, then flipped back.
 	const reversed = !query.start && !!query.end;
@@ -488,7 +497,8 @@ export async function lifecycle(
 	projectId: string,
 	query: LifecycleQuery,
 	now?: Date,
-	cohort?: CohortSpec
+	cohort?: CohortSpec,
+	internal?: InternalRule[]
 ): Promise<LifecycleResult> {
 	const { interval } = query;
 	const window = timeWindow(query.range, now);
@@ -504,7 +514,8 @@ export async function lifecycle(
 		projectId,
 		{ from: new Date(0), to: window.to },
 		query.filters,
-		cohort
+		cohort,
+		internal
 	);
 	const { trunc, add } = LIFECYCLE_SQL[interval];
 	const date = (d: Date) => d.toISOString().slice(0, 10);

@@ -33,9 +33,13 @@ that kind ([insights.md](insights.md) explains each). The query
 is the same JSON the editors keep in their URL, so the quickest way to write one is to build it in
 the app and copy the `q` parameter.
 
+Add `"filterInternal": true` or `false` next to `kind` (or inside `query`; the top-level one wins)
+to leave [internal users](internal-users.md) out or keep them in. Without it, the project's
+**Filter out internal users by default** setting decides. Any other value gets a `400`.
+
 The query is read leniently, like the editors read it: unknown fields are ignored, and a field that
 is missing or invalid falls back to its default. The response always carries the `query` that
-actually ran, so compare it with what you sent.
+actually ran, so compare it with what you sent; its `filterInternal` is always set to what applied.
 
 ```json
 {
@@ -43,7 +47,8 @@ actually ran, so compare it with what you sent.
   "query": {
     "series": [{ "event": "$pageview", "math": "unique_users" }],
     "range": "7d",
-    "filters": []
+    "filters": [],
+    "filterInternal": true
   },
   "result": {
     "bucket": "day",
@@ -67,6 +72,7 @@ actually ran, so compare it with what you sent.
 | `range` | `24h`, `7d`, `30d` or `90d` (retention and lifecycle: `7d`, `30d` or `90d`). Buckets are hours for `24h`, days otherwise, in UTC |
 | `filters` | Up to 10 `{"property", "operator", "value"}`. Operators: `eq`, `neq`, `contains`, `not_contains`, `gt`, `lt`, `is_set`, `is_not_set` (the last two take no value). Values are strings |
 | `cohort` | A cohort id; only people in that cohort count |
+| `filterInternal` | `true` leaves out [internal users](internal-users.md), `false` keeps them; absent follows the project's setting |
 
 ### Trends
 
@@ -159,7 +165,7 @@ counting back from an end, started there). `links` hold the transitions to the n
 
 | Status | Body | When |
 | --- | --- | --- |
-| `400` | `{"error": "invalid_request", "message": "…"}` | Bad JSON, or an unknown `kind` |
+| `400` | `{"error": "invalid_request", "message": "…"}` | Bad JSON, an unknown `kind`, or a `filterInternal` that is not a boolean |
 | `401` | `{"error": "invalid_secret_key"}` | Missing or unknown key |
 
 ## `GET /api/v1/insights`: saved insights
@@ -181,11 +187,14 @@ Every saved insight in the project, most recently changed first, without results
 ```
 
 `GET /api/v1/insights/{id}` returns one insight with its `result`, computed when you ask, in the
-same shape as `POST /api/v1/query`. An unknown id gets a `404` with `{"error": "not_found"}`.
+same shape as `POST /api/v1/query`, filtering internal users as the insight was saved with (or, for
+insights saved without a choice, as the project's setting says). An unknown id gets a `404` with
+`{"error": "not_found"}`.
 
 ## `GET /api/v1/events`: recent events
 
-The newest events of the last 30 days, newest first.
+The newest events of the last 30 days, newest first. Like the events page, this always includes
+internal users.
 
 | Parameter | Values |
 | --- | --- |
