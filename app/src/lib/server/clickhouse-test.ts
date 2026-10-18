@@ -38,33 +38,39 @@ export interface TestEvent {
 	set?: object;
 	setOnce?: object;
 	groups?: Record<string, string>;
+	/** When ClickHouse stored the event, as an offset from `now`; the real time when unset. */
+	insertedMinutesAgo?: number;
 }
 
 let seq = 0;
+
+const chDate = (ms: number) => new Date(ms).toISOString().replace('Z', '');
 
 export async function insertEvents(
 	config: ClickHouseConfig,
 	events: TestEvent[],
 	now = Date.now()
 ): Promise<void> {
+	const stored = events.some((e) => e.insertedMinutesAgo !== undefined);
 	const rows = events.map((e) => {
 		seq += 1;
 		return JSON.stringify({
 			uuid: `00000000-0000-4000-8000-${String(seq).padStart(12, '0')}`,
 			project_id: e.projectId,
 			event: e.event,
-			timestamp: new Date(now - e.minutesAgo * 60_000).toISOString().replace('Z', ''),
+			timestamp: chDate(now - e.minutesAgo * 60_000),
 			distinct_id: e.distinctId,
 			session_id: e.sessionId ?? '',
 			properties: e.properties ?? {},
 			person_set: e.set ?? {},
 			person_set_once: e.setOnce ?? {},
-			groups: e.groups ?? {}
+			groups: e.groups ?? {},
+			...(stored ? { inserted_at: chDate(now - (e.insertedMinutesAgo ?? 0) * 60_000) } : {})
 		});
 	});
 	await clickhouseQuery(
 		config,
-		`INSERT INTO events (uuid, project_id, event, timestamp, distinct_id, session_id, properties, person_set, person_set_once, groups)
+		`INSERT INTO events (uuid, project_id, event, timestamp, distinct_id, session_id, properties, person_set, person_set_once, groups${stored ? ', inserted_at' : ''})
 		FORMAT JSONEachRow\n${rows.join('\n')}`
 	);
 }
