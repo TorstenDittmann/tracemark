@@ -1,6 +1,6 @@
 // Runs against a real ClickHouse when CLICKHOUSE_TEST_URL is set (CI's migrations job does), skipped otherwise.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { aiOverview, listTraces, traceEvents } from './ai';
+import { aiOverview, listTraces, scoreNames, traceEvents, traceScores } from './ai';
 import type { ClickHouseConfig } from './clickhouse';
 import {
 	clickhouseTestUrl,
@@ -84,8 +84,41 @@ describe.skipIf(!clickhouseTestUrl)('AI observability', () => {
 					$ai_cost_usd: 1
 				}),
 				ai('$ai_generation', 'bob', 26 * 60, generation('t4', 'g4', undefined, 'gpt-4o', 5)),
+				// Scores: a thumbs down on Ada's gpt-4o call and an accuracy on her whole trace, a
+				// thumbs up on the server call, and ones without a value or trace that don't count.
+				ai('$ai_score', 'ada', 50, {
+					$ai_trace_id: 't1',
+					$ai_span_id: 'g2',
+					$ai_score_name: 'thumbs',
+					$ai_score_value: 0,
+					$ai_score_comment: 'Wrong answer'
+				}),
+				ai('$ai_score', 'ada', 49, {
+					$ai_trace_id: 't1',
+					$ai_score_name: 'accuracy',
+					$ai_score_value: 0.5
+				}),
+				ai('$ai_score', 'ada', 48, {
+					$ai_trace_id: 't1',
+					$ai_score_name: 'accuracy',
+					$ai_score_value: 1
+				}),
+				ai('$ai_score', 'ada', 25, {
+					$ai_trace_id: 't2',
+					$ai_score_name: 'thumbs',
+					$ai_score_value: 1
+				}),
+				ai('$ai_score', 'ada', 24, { $ai_trace_id: 't2', $ai_score_name: 'thumbs' }),
+				ai('$ai_score', 'ada', 24, { $ai_score_name: 'thumbs', $ai_score_value: 1 }),
 				// Another project.
 				ai('$ai_generation', 'ada', 10, generation('t5', 'g5', undefined, 'gpt-4o', 7), other),
+				ai(
+					'$ai_score',
+					'ada',
+					9,
+					{ $ai_trace_id: 't5', $ai_score_name: 'thumbs', $ai_score_value: 0 },
+					other
+				),
 				// Not an AI event.
 				{ projectId: project, distinctId: 'ada', event: '$pageview', minutesAgo: 5 }
 			],
@@ -125,6 +158,59 @@ describe.skipIf(!clickhouseTestUrl)('AI observability', () => {
 		expect(overview.people).toEqual([
 			expect.objectContaining({ person: 'ada', calls: 2, traces: 1 })
 		]);
+	});
+
+	it('averages scores by name over time and by model', async () => {
+		const overview = await aiOverview(config, project, { range: '24h', now });
+		expect(overview.scores.map(({ name, count, avg }) => [name, count, avg])).toEqual([
+			['accuracy', 2, 0.75],
+			['thumbs', 2, 0.5]
+		]);
+		const accuracy = overview.scores[0];
+		expect(accuracy?.series).toHaveLength(overview.buckets.length);
+		expect(accuracy?.series.filter((v) => v !== null)).toEqual([0.75]);
+		// The thumbs down was for gpt-4o only; the trace's accuracy counts for both its models.
+		expect(
+			overview.modelScores.map(({ model, name, count, avg }) => [model, name, count, avg])
+		).toEqual([
+			['claude-sonnet-4-5', 'accuracy', 2, 0.75],
+			['gpt-4o', 'accuracy', 2, 0.75],
+			['gpt-4o', 'thumbs', 2, 0.5]
+		]);
+	});
+
+	it('shows and filters traces by their scores', async () => {
+		const traces = await listTraces(config, project, { range: '24h', now });
+		expect(traces.find((t) => t.traceId === 't1')?.scores).toEqual([
+			{ name: 'accuracy', avg: 0.75, count: 2 },
+			{ name: 'thumbs', avg: 0, count: 1 }
+		]);
+		expect(traces.find((t) => t.traceId === 't3')?.scores).toEqual([]);
+
+		const ids = async (filter: Parameters<typeof listTraces>[2]) =>
+			(await listTraces(config, project, filter)).map((t) => t.traceId);
+		expect(await ids({ range: '24h', now, negative: true })).toEqual(['t1']);
+		expect(await ids({ range: '24h', now, score: 'thumbs' })).toEqual(['t2', 't1']);
+		expect(await ids({ range: '24h', now, score: 'thumbs', min: 1 })).toEqual(['t2']);
+		expect(await ids({ range: '24h', now, score: 'accuracy', max: 0.5 })).toEqual([]);
+		expect(await ids({ range: '24h', now, max: 0.5 })).toEqual(['t1']);
+		expect(await scoreNames(config, project, { range: '24h', now })).toEqual([
+			'accuracy',
+			'thumbs'
+		]);
+	});
+
+	it('loads one trace’s scores', async () => {
+		const scores = await traceScores(config, project, 't1');
+		expect(
+			scores.map(({ spanId, name, value, comment }) => [spanId, name, value, comment])
+		).toEqual([
+			['g2', 'thumbs', 0, 'Wrong answer'],
+			[null, 'accuracy', 0.5, null],
+			[null, 'accuracy', 1, null]
+		]);
+		expect(scores[0]?.person).toBe('ada');
+		expect(await traceScores(config, project, 't5')).toEqual([]);
 	});
 
 	it('lists traces with their name, person and totals', async () => {

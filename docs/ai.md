@@ -5,7 +5,8 @@ grouped into traces. Cost, tokens and latency per model and per person come from
 
 The project's **AI** tab shows them: an overview of cost, calls, tokens, latency and errors over
 time, by model and by person, and a list of traces. Opening a trace shows its steps as a tree with
-a timeline, and each step's inputs, outputs, tokens and cost. Calls without a person (`$server`,
+a timeline, and each step's inputs, outputs, tokens and cost. [Scores](#scores-and-feedback), such
+as a person's thumbs up or an LLM judge's grade, show next to the traces they are for. Calls without a person (`$server`,
 or `otel:<service>` from OpenTelemetry) count in the totals but not in the per-person table.
 
 ## Node SDK
@@ -56,6 +57,39 @@ inside the function join them without passing anything along.
 outputs and trace state: only models, tokens, cost and timing are sent. `properties` and `groups`
 on either are added to every event.
 
+## Scores and feedback
+
+A score is a number for a trace, or one of its steps, under a name: a thumbs up or down (1 or 0)
+from the person who read the answer, a 1–5 rating, or an `accuracy` from an LLM judge or a test.
+Each is a `$ai_score` event, sent from wherever the score is given, often well after the trace:
+
+```ts
+// Browser: the server sent the trace id along with the answer.
+tracemark.aiScore({ traceId, name: 'thumbs', value: 1 });
+
+// Node: inside a trace the current one is scored; outside, pass its id.
+ai.score({ traceId, spanId, name: 'accuracy', value: 0.8, comment: 'Missed one source' });
+```
+
+```python
+tracemark.ai_score("user_123", trace_id, "thumbs", 0, comment="Wrong numbers")
+```
+
+```go
+client.CaptureAIScore(tracemark.AIScore{DistinctID: "user_123", TraceID: traceID, Name: "thumbs", Value: 1})
+```
+
+In Node, `ai.currentTraceId()` inside `ai.trace()` gives the id to send to the browser. Without a
+`spanId` the score is for the whole trace. The browser scores as the current person; the server
+SDKs as the `distinctId` you pass (`$server` by default; in Node, the current trace's person).
+
+The AI overview shows each score name's average over time, and by model: a score on a generation
+counts for its model, a score on the trace or another step for each model the trace used. The
+traces list shows each trace's average per score name and filters by a score's name and range, or
+to traces with negative feedback (any score of 0 or below). A trace's page lists its scores, and
+each step's own under it. Scores without a numeric `$ai_score_value` or a `$ai_trace_id` are
+ignored.
+
 ## Events
 
 | Event | What it is |
@@ -64,13 +98,14 @@ on either are added to every event.
 | `$ai_embedding` | One call to an embedding model. |
 | `$ai_span` | A step of your own inside a trace, such as a retrieval or a tool call. |
 | `$ai_trace` | A whole trace, such as one agent run or one chat turn. Optional: traces are built from the events that share a `$ai_trace_id`. |
+| `$ai_score` | A score or piece of feedback for a trace or one of its steps, sent by whoever gave it. |
 
 Properties, all optional except where noted:
 
 | Property | On | Meaning |
 | :-- | :-- | :-- |
 | `$ai_trace_id` | all | Groups the events of one trace. Required. |
-| `$ai_span_id` | all | This event's id within the trace. |
+| `$ai_span_id` | all | This event's id within the trace; on a score, the step it is for. |
 | `$ai_parent_id` | all | The span id of the event this one ran under; the trace's top level when unset. |
 | `$ai_span_name` | all | A name for the step, such as `retrieve` or `chat`. |
 | `$ai_provider` | generation, embedding | `anthropic`, `openai`, … |
@@ -88,6 +123,9 @@ Properties, all optional except where noted:
 | `$ai_temperature`, `$ai_max_tokens`, `$ai_tools` | generation | Request parameters. |
 | `$ai_input_state`, `$ai_output_state` | span, trace | What the step took and returned, any JSON. |
 | `$ai_cost_usd` | generation, embedding | Added at ingest, see below. |
+| `$ai_score_name` | score | What is scored, such as `thumbs`, `helpful` or `accuracy`. Required. |
+| `$ai_score_value` | score | The score, a number; thumbs up and down are 1 and 0. Required. |
+| `$ai_score_comment` | score | What the person wrote with it. |
 
 ## OpenTelemetry
 

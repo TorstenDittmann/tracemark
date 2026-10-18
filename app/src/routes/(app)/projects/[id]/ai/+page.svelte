@@ -1,5 +1,5 @@
 <script lang="ts">
-import { formatCost, formatDuration, formatTokens } from '#lib/ai.js';
+import { formatCost, formatDuration, formatScore, formatTokens } from '#lib/ai.js';
 import AiNav from '#lib/components/ai/ai-nav.svelte';
 import LineChart from '#lib/components/charts/line-chart.svelte';
 import * as Card from '#lib/components/ui/card/index.js';
@@ -11,6 +11,14 @@ let { data }: PageProps = $props();
 
 type Metric = 'cost' | 'calls';
 let metric = $state<Metric>('cost');
+
+let scoreName = $state<string | null>(null);
+const score = $derived(
+	data.overview?.scores.find((s) => s.name === scoreName) ?? data.overview?.scores[0] ?? null
+);
+const scoreModels = $derived(
+	score ? (data.overview?.modelScores ?? []).filter((m) => m.name === score.name) : []
+);
 
 const rangeLabel = $derived(RANGES[data.range].label.toLowerCase());
 const tiles = $derived(
@@ -29,9 +37,10 @@ const tiles = $derived(
 			]
 		: []
 );
-const tracesHref = (person?: string) => {
+const tracesHref = (person?: string, scored?: string) => {
 	const params = new URLSearchParams({ range: data.range });
 	if (person) params.set('person', person);
+	if (scored) params.set('score', scored);
 	return `/projects/${data.project.id}/ai/traces?${params}`;
 };
 </script>
@@ -114,6 +123,82 @@ const tracesHref = (person?: string) => {
 				/>
 			</Card.Content>
 		</Card.Root>
+
+		{#if score}
+			<Card.Root class={['min-w-0 gap-4', scoreModels.length && 'pb-0']}>
+				<Card.Header class="flex flex-row flex-wrap items-center justify-between gap-2">
+					<div class="grid gap-1">
+						<Card.Title>Scores</Card.Title>
+						<Card.Description>
+							<a class="hover:underline" href={tracesHref(undefined, score.name)}>
+								{score.name}: {formatScore(score.avg)} on average,
+								{score.count.toLocaleString()}
+								{score.count === 1 ? 'score' : 'scores'}
+							</a>
+						</Card.Description>
+					</div>
+					{#if data.overview.scores.length > 1}
+						<fieldset class="inline-flex flex-wrap rounded-lg bg-muted p-0.5 text-sm">
+							<legend class="sr-only">Score</legend>
+							{#each data.overview.scores as option (option.name)}
+								<button
+									type="button"
+									aria-pressed={score.name === option.name}
+									onclick={() => (scoreName = option.name)}
+									class={[
+										'rounded-md px-2.5 py-1 font-medium transition-all duration-200',
+										score.name === option.name
+											? 'bg-background text-foreground shadow-sm dark:bg-input/40'
+											: 'text-muted-foreground hover:text-foreground'
+									]}
+								>
+									{option.name}
+								</button>
+							{/each}
+						</fieldset>
+					{/if}
+				</Card.Header>
+				<Card.Content>
+					<LineChart
+						lines={[{ key: score.name, label: `Average ${score.name}`, data: score.series }]}
+						buckets={data.overview.buckets}
+						bucket={data.overview.bucket}
+						format={formatScore}
+					/>
+				</Card.Content>
+				{#if scoreModels.length}
+					<div class="relative overflow-x-auto">
+						<table class="data-table w-full text-sm">
+							<caption class="sr-only">
+								Average {score.name} by model in the {rangeLabel}
+							</caption>
+							<thead class="text-left text-xs text-muted-foreground">
+								<tr>
+									<th class="px-6 py-2 font-normal">Model</th>
+									<th class="px-4 py-2 text-right font-normal">Scores</th>
+									<th class="px-6 py-2 text-right font-normal">Average {score.name}</th>
+								</tr>
+							</thead>
+							<tbody>
+								{#each scoreModels as model (model.model)}
+									<tr class="border-t">
+										<td class="max-w-[12rem] px-6 py-2 sm:max-w-[24rem]">
+											<span class="block truncate font-medium" title={model.model}
+												>{model.model}</span
+											>
+										</td>
+										<td class="px-4 py-2 text-right tabular-nums">
+											{model.count.toLocaleString()}
+										</td>
+										<td class="px-6 py-2 text-right tabular-nums">{formatScore(model.avg)}</td>
+									</tr>
+								{/each}
+							</tbody>
+						</table>
+					</div>
+				{/if}
+			</Card.Root>
+		{/if}
 
 		<Card.Root class="min-w-0 gap-3 pb-0">
 			<Card.Header>

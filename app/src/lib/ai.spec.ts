@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
 	type AiEvent,
+	type AiScore,
 	asMessages,
 	buildTree,
 	flatten,
 	formatCost,
 	formatDuration,
-	formatTokens
+	formatScore,
+	formatTokens,
+	scoresByNode
 } from './ai';
 
 let n = 0;
@@ -68,6 +71,33 @@ describe('trace trees', () => {
 		expect(flatten(roots).length).toBe(3);
 		expect(buildTree([])).toEqual([]);
 	});
+
+	it('hangs scores on their step, else on the trace', () => {
+		const score = (spanId: string | null, value: number): AiScore => ({
+			uuid: `s${value}`,
+			timestamp: new Date(Date.UTC(2026, 9, 16, 12, 5)).toISOString(),
+			person: 'ada',
+			spanId,
+			name: 'thumbs',
+			value,
+			comment: null
+		});
+		const scores = [score('g1', 1), score(null, 0), score('gone', 2)];
+		const traced = buildTree([
+			event('$ai_trace', 0, { $ai_span_id: 'root' }),
+			event('$ai_generation', 10, { $ai_span_id: 'g1', $ai_parent_id: 'root' })
+		]);
+		const byNode = scoresByNode(scores, traced);
+		expect(byNode.get('g1')?.map((s) => s.value)).toEqual([1]);
+		expect(byNode.get('root')?.map((s) => s.value)).toEqual([0, 2]);
+
+		const loose = buildTree([event('$ai_generation', 0, { $ai_span_id: 'g1' })]);
+		expect(
+			scoresByNode(scores, loose)
+				.get(null)
+				?.map((s) => s.value)
+		).toEqual([0, 2]);
+	});
 });
 
 describe('formatting', () => {
@@ -83,6 +113,8 @@ describe('formatting', () => {
 		expect(formatDuration(185)).toBe('3m 05s');
 		expect(formatDuration(59.96)).toBe('1m 00s');
 		expect(formatDuration(119.6)).toBe('2m 00s');
+		expect(formatScore(1)).toBe('1');
+		expect(formatScore(0.6667)).toBe('0.67');
 	});
 
 	it('reads messages from every provider’s shape', () => {

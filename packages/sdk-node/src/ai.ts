@@ -31,6 +31,21 @@ export interface TraceOptions {
 
 export type SpanOptions = Omit<TraceOptions, 'traceId'>;
 
+export interface ScoreOptions {
+	/** The trace the score is for. Default: the current trace. */
+	traceId?: string;
+	/** A step of the trace the score is for, such as one generation's span id. */
+	spanId?: string;
+	/** What is scored, such as `helpful`, `thumbs` or `accuracy`. */
+	name: string;
+	/** The score; thumbs up and down are 1 and 0. */
+	value: number;
+	comment?: string;
+	/** Who gave the score. Default: the current trace's person. */
+	distinctId?: string;
+	properties?: Properties;
+}
+
 interface Context {
 	traceId: string;
 	/** The span new events run under. */
@@ -192,6 +207,35 @@ export class TracemarkAi {
 	/** Runs `fn` as a step of the current trace (or a new one), recorded as a `$ai_span` event. */
 	span<T>(options: SpanOptions, fn: () => T | Promise<T>): Promise<T> {
 		return this.#run('$ai_span', options, fn);
+	}
+
+	/** The current trace's id, to score it later (for example from the browser). */
+	currentTraceId(): string | undefined {
+		return this.#context()?.traceId;
+	}
+
+	/**
+	 * Records a score or piece of feedback for a trace or one of its steps as a `$ai_score`
+	 * event. Throws when there is no trace to score or the value is not a finite number.
+	 */
+	score(options: ScoreOptions) {
+		const context = this.#context();
+		const traceId = options.traceId ?? context?.traceId;
+		if (!traceId) throw new Error('tracemark: score() needs a traceId outside a trace');
+		if (!Number.isFinite(options.value)) throw new Error('tracemark: score value must be a number');
+		this.#send(
+			'$ai_score',
+			context,
+			{
+				...options.properties,
+				$ai_trace_id: traceId,
+				$ai_span_id: options.spanId,
+				$ai_score_name: options.name,
+				$ai_score_value: options.value,
+				$ai_score_comment: options.comment
+			},
+			options.distinctId
+		);
 	}
 
 	/** An Anthropic client that records its `messages.create` and `messages.stream` calls. */

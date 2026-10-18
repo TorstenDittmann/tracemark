@@ -26,7 +26,7 @@ import * as privacy from './privacy';
 import type { SavedQuery } from './saved';
 import * as web from './web';
 
-export type { AiOverview, TraceSummary } from './ai';
+export type { AiOverview, TraceFilter, TraceSummary } from './ai';
 export type { EventStats } from './events';
 export type { GroupDetail } from './groups';
 export type {
@@ -231,3 +231,9 @@ export const listTraces = (projectId: string, options: Parameters<typeof ai.list
 
 export const traceEvents = (projectId: string, traceId: string) =>
 	ai.traceEvents(config(), projectId, traceId);
+
+export const scoreNames = (projectId: string, options: Parameters<typeof ai.scoreNames>[2]) =>
+	ai.scoreNames(config(), projectId, options);
+
+export const traceScores = (projectId: string, traceId: string) =>
+	ai.traceScores(config(), projectId, traceId);
