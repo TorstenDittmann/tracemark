@@ -46,6 +46,8 @@ export interface TrendsQuery {
 	filters: PropertyFilter[];
 	/** Only people in this cohort. */
 	cohort?: string;
+	/** Leave out internal users; absent follows the project's setting. */
+	filterInternal?: boolean;
 }
 
 export const MAX_SERIES = 5;
@@ -81,6 +83,11 @@ export function parseCohortId(value: unknown): string | undefined {
 function cohortOf(input: Record<string, unknown>): { cohort?: string } {
 	const cohort = parseCohortId(input.cohort);
 	return cohort ? { cohort } : {};
+}
+
+/** `{ filterInternal }` when the input sets it; without it the project's default applies. */
+function filterInternalOf(input: Record<string, unknown>): { filterInternal?: boolean } {
+	return typeof input.filterInternal === 'boolean' ? { filterInternal: input.filterInternal } : {};
 }
 
 export const DEFAULT_TRENDS: TrendsQuery = {
@@ -126,7 +133,8 @@ export function parseTrends(input: unknown): TrendsQuery {
 		range: parseRange(typeof input.range === 'string' ? input.range : null),
 		breakdown: validName(input.breakdown) ? input.breakdown : undefined,
 		filters,
-		...cohortOf(input)
+		...cohortOf(input),
+		...filterInternalOf(input)
 	};
 }
 
@@ -172,6 +180,8 @@ export interface FunnelQuery {
 	filters: PropertyFilter[];
 	/** Only people in this cohort. */
 	cohort?: string;
+	/** Leave out internal users; absent follows the project's setting. */
+	filterInternal?: boolean;
 }
 
 export const MIN_STEPS = 2;
@@ -204,7 +214,8 @@ export function parseFunnel(input: unknown): FunnelQuery {
 		range: parseRange(typeof input.range === 'string' ? input.range : DEFAULT_FUNNEL.range),
 		breakdown: validName(input.breakdown) ? input.breakdown : undefined,
 		filters: parsePropertyFilters(input.filters),
-		...cohortOf(input)
+		...cohortOf(input),
+		...filterInternalOf(input)
 	};
 }
 
@@ -227,6 +238,8 @@ export interface RetentionQuery {
 	filters: PropertyFilter[];
 	/** Only people in this cohort. */
 	cohort?: string;
+	/** Leave out internal users; absent follows the project's setting. */
+	filterInternal?: boolean;
 }
 
 export const RETENTION_RANGES: RetentionQuery['range'][] = ['7d', '30d', '90d'];
@@ -251,7 +264,8 @@ export function parseRetention(input: unknown): RetentionQuery {
 		returning: validName(input.returning) ? input.returning : DEFAULT_RETENTION.returning,
 		range: range === '24h' ? '7d' : range,
 		filters: parsePropertyFilters(input.filters),
-		...cohortOf(input)
+		...cohortOf(input),
+		...filterInternalOf(input)
 	};
 }
 
@@ -284,6 +298,8 @@ export interface PathsQuery {
 	filters: PropertyFilter[];
 	/** Only people in this cohort. */
 	cohort?: string;
+	/** Leave out internal users; absent follows the project's setting. */
+	filterInternal?: boolean;
 }
 
 export const MIN_PATH_STEPS = 1;
@@ -316,7 +332,8 @@ export function parsePaths(input: unknown): PathsQuery {
 				: DEFAULT_PATHS.steps,
 		range: parseRange(typeof input.range === 'string' ? input.range : DEFAULT_PATHS.range),
 		filters: parsePropertyFilters(input.filters),
-		...cohortOf(input)
+		...cohortOf(input),
+		...filterInternalOf(input)
 	};
 }
 
@@ -345,6 +362,8 @@ export interface LifecycleQuery {
 	filters: PropertyFilter[];
 	/** Only people in this cohort. */
 	cohort?: string;
+	/** Leave out internal users; absent follows the project's setting. */
+	filterInternal?: boolean;
 }
 
 export const LIFECYCLE_RANGES: LifecycleQuery['range'][] = ['7d', '30d', '90d'];
@@ -368,7 +387,8 @@ export function parseLifecycle(input: unknown): LifecycleQuery {
 				: DEFAULT_LIFECYCLE.interval,
 		range: range === '24h' ? '7d' : range,
 		filters: parsePropertyFilters(input.filters),
-		...cohortOf(input)
+		...cohortOf(input),
+		...filterInternalOf(input)
 	};
 }
 

@@ -99,6 +99,18 @@ describe('parseFunnel', () => {
 	});
 });
 
+describe('filterInternal', () => {
+	it('is kept when it is a boolean and left out otherwise', () => {
+		expect(parseTrends({ filterInternal: false }).filterInternal).toBe(false);
+		expect(parseFunnel({ filterInternal: true }).filterInternal).toBe(true);
+		expect(parseRetention({ filterInternal: true }).filterInternal).toBe(true);
+		expect(parsePaths({ filterInternal: false }).filterInternal).toBe(false);
+		expect(parseLifecycle({ filterInternal: true }).filterInternal).toBe(true);
+		expect('filterInternal' in parseTrends({ filterInternal: 'true' })).toBe(false);
+		expect('filterInternal' in parseFunnel({})).toBe(false);
+	});
+});
+
 describe('parseRetention', () => {
 	it('keeps a valid query and has no hourly cohorts', () => {
 		const query = { start: 'signed_up', returning: 'purchase', range: '90d', filters: [] };

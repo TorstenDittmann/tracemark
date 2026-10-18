@@ -2,8 +2,11 @@
 //
 // Issue rules look at when exceptions were stored (`inserted_at`), not when they happened, so an
 // event that arrives late is still noticed once and a check never looks at the same rows twice.
+// Every check leaves out the `internal` users it is given, like the pages the alerts link to.
 
+import type { InternalRule } from '../internal-users';
 import { type ClickHouseConfig, clickhouseQuery } from './clickhouse';
+import { internalUsersSql } from './internal-users';
 import { chTime } from './web';
 
 /** Most issues one check reports. */
@@ -54,13 +57,15 @@ export async function newIssues(
 	config: ClickHouseConfig,
 	projectId: string,
 	from: Date,
-	to: Date
+	to: Date,
+	internal?: InternalRule[]
 ): Promise<AlertIssue[]> {
+	const params: Record<string, string> = { project: projectId, from: chTime(from), to: chTime(to) };
 	const body = await clickhouseQuery(
 		config,
 		`SELECT ${ISSUE_COLUMNS}
 		FROM events AS e
-		WHERE ${EXCEPTIONS}
+		WHERE ${EXCEPTIONS}${internalUsersSql(internal, params)}
 			AND e.exception_fingerprint IN (
 				SELECT exception_fingerprint FROM events
 				WHERE project_id = {project:UUID}
@@ -73,7 +78,7 @@ export async function newIssues(
 		ORDER BY min(e.inserted_at), fingerprint
 		LIMIT ${MAX_ALERT_ISSUES}
 		FORMAT JSONEachRow`,
-		{ params: { project: projectId, from: chTime(from), to: chTime(to) } }
+		{ params }
 	);
 	return rows<IssueRow>(body).map(issue);
 }
@@ -87,15 +92,24 @@ export async function regressedIssues(
 	projectId: string,
 	resolved: { fingerprint: string; resolvedAt: Date }[],
 	from: Date,
-	to: Date
+	to: Date,
+	internal?: InternalRule[]
 ): Promise<AlertIssue[]> {
 	if (!resolved.length) return [];
 	const earliest = new Date(Math.min(...resolved.map((r) => r.resolvedAt.getTime())));
+	const params: Record<string, string | string[]> = {
+		project: projectId,
+		from: chTime(from),
+		to: chTime(to),
+		earliest: chTime(earliest),
+		fingerprints: resolved.map((r) => r.fingerprint),
+		resolved: resolved.map((r) => String(r.resolvedAt.getTime()))
+	};
 	const body = await clickhouseQuery(
 		config,
 		`SELECT ${ISSUE_COLUMNS}
 		FROM events AS e
-		WHERE ${EXCEPTIONS}
+		WHERE ${EXCEPTIONS}${internalUsersSql(internal, params)}
 			AND e.exception_fingerprint IN {fingerprints:Array(String)}
 			AND e.timestamp > {earliest:DateTime64(3, 'UTC')}
 			AND e.timestamp > fromUnixTimestamp64Milli(toInt64(arrayElement(
@@ -107,16 +121,7 @@ export async function regressedIssues(
 		ORDER BY min(e.inserted_at), fingerprint
 		LIMIT ${MAX_ALERT_ISSUES}
 		FORMAT JSONEachRow`,
-		{
-			params: {
-				project: projectId,
-				from: chTime(from),
-				to: chTime(to),
-				earliest: chTime(earliest),
-				fingerprints: resolved.map((r) => r.fingerprint),
-				resolved: resolved.map((r) => String(r.resolvedAt.getTime()))
-			}
-		}
+		{ params }
 	);
 	return rows<IssueRow>(body).map(issue);
 }
@@ -127,17 +132,24 @@ export async function eventCount(
 	projectId: string,
 	event: string,
 	from: Date,
-	to: Date
+	to: Date,
+	internal?: InternalRule[]
 ): Promise<number> {
+	const params: Record<string, string> = {
+		project: projectId,
+		event,
+		from: chTime(from),
+		to: chTime(to)
+	};
 	const body = await clickhouseQuery(
 		config,
-		`SELECT count() AS n FROM events
-		WHERE project_id = {project:UUID}
-			${event ? 'AND event = {event:String}' : ''}
-			AND timestamp >= {from:DateTime64(3, 'UTC')}
-			AND timestamp < {to:DateTime64(3, 'UTC')}
+		`SELECT count() AS n FROM events AS e
+		WHERE e.project_id = {project:UUID}
+			${event ? 'AND e.event = {event:String}' : ''}
+			AND e.timestamp >= {from:DateTime64(3, 'UTC')}
+			AND e.timestamp < {to:DateTime64(3, 'UTC')}${internalUsersSql(internal, params)}
 		FORMAT JSONEachRow`,
-		{ params: { project: projectId, event, from: chTime(from), to: chTime(to) } }
+		{ params }
 	);
 	return Number(rows<{ n: string }>(body)[0]?.n ?? 0);
 }
@@ -147,17 +159,19 @@ export async function aiCost(
 	config: ClickHouseConfig,
 	projectId: string,
 	from: Date,
-	to: Date
+	to: Date,
+	internal?: InternalRule[]
 ): Promise<number> {
+	const params: Record<string, string> = { project: projectId, from: chTime(from), to: chTime(to) };
 	const body = await clickhouseQuery(
 		config,
-		`SELECT sum(ai_cost_usd) AS cost FROM events
-		WHERE project_id = {project:UUID}
-			AND event IN ('$ai_generation', '$ai_embedding')
-			AND timestamp >= {from:DateTime64(3, 'UTC')}
-			AND timestamp < {to:DateTime64(3, 'UTC')}
+		`SELECT sum(e.ai_cost_usd) AS cost FROM events AS e
+		WHERE e.project_id = {project:UUID}
+			AND e.event IN ('$ai_generation', '$ai_embedding')
+			AND e.timestamp >= {from:DateTime64(3, 'UTC')}
+			AND e.timestamp < {to:DateTime64(3, 'UTC')}${internalUsersSql(internal, params)}
 		FORMAT JSONEachRow`,
-		{ params: { project: projectId, from: chTime(from), to: chTime(to) } }
+		{ params }
 	);
 	return Number(rows<{ cost: number }>(body)[0]?.cost ?? 0);
 }

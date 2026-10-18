@@ -39,6 +39,20 @@ describe('query API requests', () => {
 			kind: 'lifecycle',
 			query: { ...DEFAULT_LIFECYCLE, event: 'login', interval: 'week' }
 		});
+		expect(parseQueryBody({ kind: 'paths', filterInternal: false }).query.filterInternal).toBe(
+			false
+		);
+		expect(
+			parseQueryBody({ kind: 'paths', query: { filterInternal: true } }).query.filterInternal
+		).toBe(true);
+		expect(
+			parseQueryBody({ kind: 'paths', query: { filterInternal: true }, filterInternal: false })
+				.query.filterInternal
+		).toBe(false);
+		expect(DEFAULT_PATHS.filterInternal).toBeUndefined();
+		expect(() => parseQueryBody({ kind: 'trends', filterInternal: 'yes' })).toThrow(
+			/filterInternal must be true or false/
+		);
 		expect(() => parseQueryBody({ kind: 'stickiness' })).toThrow(InvalidRequest);
 		expect(() => parseQueryBody({ kind: 'trends', query: [] })).toThrow(/query must be an object/);
 		expect(() => parseQueryBody('trends')).toThrow(/JSON object/);

@@ -1,9 +1,11 @@
 // AI observability from ClickHouse: `$ai_*` events, priced at ingest (see docs/ai.md).
 
 import type { AiEvent, AiScore } from '../ai';
+import type { InternalRule } from '../internal-users';
 import type { Range } from '../web';
 import { type ClickHouseConfig, clickhouseQuery } from './clickhouse';
 import { PERSON } from './insights';
+import { internalUsersSql } from './internal-users';
 import { chTime, timeWindow } from './web';
 
 /** Most traces the list shows, newest first. */
@@ -115,14 +117,20 @@ const TOTALS = `
 	ifNotFinite(avg(${NUM('$ai_latency')}), 0) AS avg_latency,
 	countIf(${IS_ERROR}) AS errors`;
 
-/** Cost, calls and tokens over the last `range`, by model and by person. */
+/** Cost, calls and tokens over the last `range`, by model and by person, without `internal` users. */
 export async function aiOverview(
 	config: ClickHouseConfig,
 	projectId: string,
-	options: { range: Range; now?: Date }
+	options: { range: Range; now?: Date; internal?: InternalRule[] }
 ): Promise<AiOverview> {
 	const { bucket, bucketFn, from, to, buckets } = timeWindow(options.range, options.now);
-	const params = { project: projectId, from: chTime(from), to: chTime(to) };
+	const params: Record<string, string> = {
+		project: projectId,
+		from: chTime(from),
+		to: chTime(to)
+	};
+	const internal = internalUsersSql(options.internal, params);
+	const window = `${WINDOW}${internal}`;
 	const run = <T>(query: string) =>
 		clickhouseQuery(config, `${query} FORMAT JSONEachRow`, { params }).then((body) =>
 			rows<T>(body)
@@ -140,12 +148,12 @@ export async function aiOverview(
 	>;
 	const [[totals], series, models, people, scoreNames, scoreSeries, modelScores] =
 		await Promise.all([
-			run<Totals>(`SELECT ${TOTALS} FROM events AS e ${ALIASES} WHERE ${WINDOW} AND ${CALLS}`),
+			run<Totals>(`SELECT ${TOTALS} FROM events AS e ${ALIASES} WHERE ${window} AND ${CALLS}`),
 			run<{ t: string; cost: number; calls: string }>(
 				`SELECT formatDateTime(${bucketFn}(e.timestamp), '%Y-%m-%dT%H:%i:%SZ', 'UTC') AS t,
 				sum(e.ai_cost_usd) AS cost, count() AS calls
 			FROM events AS e
-			WHERE ${WINDOW} AND ${CALLS}
+			WHERE ${window} AND ${CALLS}
 			GROUP BY t`
 			),
 			run<
@@ -160,7 +168,7 @@ export async function aiOverview(
 				ifNotFinite(avg(${NUM('$ai_latency')}), 0) AS avg_latency,
 				countIf(${IS_ERROR}) AS errors
 			FROM events AS e
-			WHERE ${WINDOW} AND ${CALLS}
+			WHERE ${window} AND ${CALLS}
 			GROUP BY model
 			ORDER BY cost DESC, calls DESC, model
 			LIMIT ${MODELS}`
@@ -172,7 +180,7 @@ export async function aiOverview(
 				sum(e.ai_cost_usd) AS cost,
 				toUnixTimestamp64Milli(max(e.timestamp)) AS last_seen
 			FROM events AS e ${ALIASES}
-			WHERE ${WINDOW} AND ${CALLS} AND NOT ${ANONYMOUS}
+			WHERE ${window} AND ${CALLS} AND NOT ${ANONYMOUS}
 			GROUP BY person
 			ORDER BY cost DESC, calls DESC, person
 			LIMIT ${PEOPLE}`
@@ -180,7 +188,7 @@ export async function aiOverview(
 			run<{ name: string; count: string; avg: number }>(
 				`SELECT ${SCORE_NAME} AS name, count() AS count, avg(${SCORE_VALUE}) AS avg
 			FROM events AS e
-			WHERE ${WINDOW} AND ${SCORES}
+			WHERE ${window} AND ${SCORES}
 			GROUP BY name
 			ORDER BY count DESC, name
 			LIMIT ${SCORE_NAMES}`
@@ -190,7 +198,7 @@ export async function aiOverview(
 				formatDateTime(${bucketFn}(e.timestamp), '%Y-%m-%dT%H:%i:%SZ', 'UTC') AS t,
 				avg(${SCORE_VALUE}) AS avg
 			FROM events AS e
-			WHERE ${WINDOW} AND ${SCORES}
+			WHERE ${window} AND ${SCORES}
 			GROUP BY name, t`
 			),
 			run<{ model: string; name: string; count: string; avg: number }>(
@@ -199,7 +207,7 @@ export async function aiOverview(
 				SELECT e.ai_trace_id AS trace, ${STR('$ai_span_id')} AS span,
 					${SCORE_NAME} AS name, ${SCORE_VALUE} AS value
 				FROM events AS e
-				WHERE ${WINDOW} AND ${SCORES}
+				WHERE ${window} AND ${SCORES}
 			) AS s
 			INNER JOIN (
 				SELECT e.ai_trace_id AS trace,
@@ -210,7 +218,7 @@ export async function aiOverview(
 				WHERE e.project_id = {project:UUID}
 					AND e.timestamp >= {from:DateTime64(3, 'UTC')} - INTERVAL 1 DAY
 					AND e.timestamp < {to:DateTime64(3, 'UTC')}
-					AND ${CALLS} AND e.ai_trace_id != ''
+					AND ${CALLS} AND e.ai_trace_id != ''${internal}
 				GROUP BY trace
 			) AS g ON g.trace = s.trace
 			ARRAY JOIN if(s.span != '' AND has(g.spans, s.span),
@@ -306,11 +314,11 @@ export interface TraceFilter {
 	negative?: boolean;
 }
 
-/** Traces that started in the last `range`, newest first, narrowed by `filter`. */
+/** Traces that started in the last `range`, newest first, narrowed by `filter` and without `internal` users. */
 export async function listTraces(
 	config: ClickHouseConfig,
 	projectId: string,
-	options: TraceFilter & { range: Range; now?: Date; limit?: number }
+	options: TraceFilter & { range: Range; now?: Date; limit?: number; internal?: InternalRule[] }
 ): Promise<TraceSummary[]> {
 	const { from, to } = timeWindow(options.range, options.now);
 	const params: Record<string, string> = {
@@ -320,6 +328,7 @@ export async function listTraces(
 		limit: String(options.limit ?? MAX_TRACES)
 	};
 	if (options.person) params.person = options.person;
+	const internal = internalUsersSql(options.internal, params);
 	const match: string[] = [];
 	if (options.score) {
 		params.score = options.score;
@@ -361,7 +370,7 @@ export async function listTraces(
 				sumIf(${NUM('$ai_output_tokens')}, ${CALLS}) AS output_tokens,
 				countIf(${IS_ERROR}) AS errors
 			FROM events AS e ${ALIASES}
-			WHERE ${WINDOW} AND e.event IN ${AI_EVENTS} AND e.ai_trace_id != ''
+			WHERE ${WINDOW}${internal} AND e.event IN ${AI_EVENTS} AND e.ai_trace_id != ''
 			GROUP BY trace_id
 			${options.person ? 'HAVING person = {person:String}' : ''}
 		) AS t
@@ -373,7 +382,7 @@ export async function listTraces(
 				FROM events AS e
 				WHERE e.project_id = {project:UUID}
 					AND e.timestamp >= {from:DateTime64(3, 'UTC')}
-					AND ${SCORES}
+					AND ${SCORES}${internal}
 				GROUP BY trace, name
 			)
 			GROUP BY trace

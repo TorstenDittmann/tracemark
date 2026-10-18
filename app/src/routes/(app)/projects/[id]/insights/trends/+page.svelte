@@ -7,6 +7,7 @@ import {
 	withCurrent
 } from '#lib/components/insights/editor.svelte.js';
 import FiltersEditor from '#lib/components/insights/filters-editor.svelte';
+import InternalUsersToggle from '#lib/components/insights/internal-users-toggle.svelte';
 import RangePicker from '#lib/components/insights/range-picker.svelte';
 import SaveInsight from '#lib/components/insights/save-insight.svelte';
 import TrendsView from '#lib/components/insights/trends-view.svelte';
@@ -143,6 +144,11 @@ const numericProperties = $derived(data.properties.filter((p) => p.numeric).map(
 						if (cohort) q.cohort = cohort;
 						else delete q.cohort;
 					})}
+			/>
+			<InternalUsersToggle
+				value={data.query.filterInternal}
+				project={data.project}
+				onchange={(filter) => update((q) => (q.filterInternal = filter))}
 			/>
 
 			<div class="flex flex-wrap items-center gap-4">

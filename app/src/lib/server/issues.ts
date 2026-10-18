@@ -1,10 +1,12 @@
 // Error issues from ClickHouse: `$exception` events grouped by `exception_fingerprint`.
 
+import type { InternalRule } from '../internal-users';
 import type { ExceptionEntry } from '../issues';
 import { parseExceptionList } from '../issues';
 import type { Range } from '../web';
 import { type ClickHouseConfig, clickhouseQuery } from './clickhouse';
 import { PERSON } from './insights';
+import { internalUsersSql } from './internal-users';
 import { chTime, timeWindow } from './web';
 
 /** Most issues the list shows, by most recently seen. */
@@ -106,7 +108,8 @@ async function seriesFor(
 	config: ClickHouseConfig,
 	params: Record<string, string | string[]>,
 	bucketFn: string,
-	fingerprints: string[]
+	fingerprints: string[],
+	internal: string
 ): Promise<Map<string, Map<string, number>>> {
 	const body = await clickhouseQuery(
 		config,
@@ -116,7 +119,7 @@ async function seriesFor(
 		FROM events AS e
 		WHERE ${EXCEPTIONS}
 			AND e.timestamp >= {from:DateTime64(3, 'UTC')}
-			AND e.exception_fingerprint IN {fingerprints:Array(String)}
+			AND e.exception_fingerprint IN {fingerprints:Array(String)}${internal}
 		GROUP BY fingerprint, t
 		FORMAT JSONEachRow`,
 		{ params: { ...params, fingerprints } }
@@ -143,19 +146,25 @@ function summary(row: SummaryRow, buckets: string[], counts?: Map<string, number
 	};
 }
 
-/** Issues that happened in the last `range`, most recently seen first. */
+/** Issues that happened in the last `range`, most recently seen first, without `internal` users. */
 export async function listIssues(
 	config: ClickHouseConfig,
 	projectId: string,
-	options: { range: Range; now?: Date; limit?: number }
+	options: { range: Range; now?: Date; limit?: number; internal?: InternalRule[] }
 ): Promise<IssueList> {
 	const { bucket, bucketFn, from, to, buckets } = timeWindow(options.range, options.now);
-	const params = { project: projectId, from: chTime(from), to: chTime(to), server: SERVER };
+	const params: Record<string, string> = {
+		project: projectId,
+		from: chTime(from),
+		to: chTime(to),
+		server: SERVER
+	};
+	const internal = internalUsersSql(options.internal, params);
 	const body = await clickhouseQuery(
 		config,
 		`SELECT e.exception_fingerprint AS fingerprint, ${SUMMARY}
 		FROM events AS e ${ALIASES}
-		WHERE ${EXCEPTIONS} AND e.exception_fingerprint != ''
+		WHERE ${EXCEPTIONS} AND e.exception_fingerprint != ''${internal}
 		GROUP BY fingerprint
 		HAVING occurrences > 0
 		ORDER BY last_seen DESC, fingerprint
@@ -169,7 +178,8 @@ export async function listIssues(
 				config,
 				params,
 				bucketFn,
-				found.map((row) => row.fingerprint)
+				found.map((row) => row.fingerprint),
+				internal
 			)
 		: new Map();
 	return {
@@ -179,15 +189,18 @@ export async function listIssues(
 	};
 }
 
-/** One issue over the last `range`, with its latest stack; null if it never happened. */
+/**
+ * One issue over the last `range`, with its latest stack, without `internal` users; null if it
+ * never happened (to anyone else).
+ */
 export async function issueDetail(
 	config: ClickHouseConfig,
 	projectId: string,
 	fingerprint: string,
-	options: { range: Range; now?: Date }
+	options: { range: Range; now?: Date; internal?: InternalRule[] }
 ): Promise<IssueDetail | null> {
 	const { bucket, bucketFn, from, to, buckets } = timeWindow(options.range, options.now);
-	const params = {
+	const params: Record<string, string> = {
 		project: projectId,
 		fingerprint,
 		from: chTime(from),
@@ -196,7 +209,8 @@ export async function issueDetail(
 	};
 	const run = (query: string) =>
 		clickhouseQuery(config, `${query} FORMAT JSONEachRow`, { params }).then(rows);
-	const issue = `${EXCEPTIONS} AND e.exception_fingerprint = {fingerprint:String}`;
+	const internal = internalUsersSql(options.internal, params);
+	const issue = `${EXCEPTIONS} AND e.exception_fingerprint = {fingerprint:String}${internal}`;
 	const [[row], [latest], recent, people, series] = await Promise.all([
 		run(`SELECT {fingerprint:String} AS fingerprint, ${SUMMARY}
 			FROM events AS e ${ALIASES}
@@ -225,7 +239,7 @@ export async function issueDetail(
 			GROUP BY person
 			ORDER BY occurrences DESC, person
 			LIMIT ${TOP_PEOPLE}`) as Promise<{ person: string; occurrences: string }[]>,
-		seriesFor(config, params, bucketFn, [fingerprint])
+		seriesFor(config, params, bucketFn, [fingerprint], internal)
 	]);
 	if (!row) return null;
 	let exceptions: ExceptionEntry[] = [];

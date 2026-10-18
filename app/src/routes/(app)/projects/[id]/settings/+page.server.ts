@@ -1,4 +1,10 @@
 import { error, fail, redirect } from '@sveltejs/kit';
+import {
+	internalRuleKey,
+	MAX_INTERNAL_RULES,
+	parseInternalRule,
+	parseInternalRulesJson
+} from '#lib/internal-users.js';
 import { parseRetention, retentionLabel } from '#lib/retention.js';
 import {
 	deleteModelPrice,
@@ -16,6 +22,8 @@ import {
 	renameProject,
 	rotatePublicKey,
 	rotateSecretKey,
+	setFilterInternal,
+	setInternalRules,
 	validateProjectName
 } from '#lib/server/projects.js';
 import {
@@ -33,7 +41,11 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 	return {
 		secretKey: canManage(row.role) ? row.project.secretKey : null,
 		sourcemaps: await sourcemapReleases(getDb(), row.project.id),
-		modelPrices: await modelPrices(getDb(), row.project.id)
+		modelPrices: await modelPrices(getDb(), row.project.id),
+		internalRules: parseInternalRulesJson(row.project.internalUsers).map((rule) => ({
+			...rule,
+			key: internalRuleKey(rule)
+		}))
 	};
 };
 
@@ -84,6 +96,53 @@ export const actions: Actions = {
 				days === null
 					? 'Events are kept forever.'
 					: `Events older than ${retentionLabel(days).toLowerCase()} are deleted within a few hours.`
+		};
+	},
+
+	addInternalRule: async (event) => {
+		const project = await access(event, true);
+		const form = await event.request.formData();
+		const rule = parseInternalRule({
+			kind: form.get('kind'),
+			property: form.get('property'),
+			value: form.get('value')
+		});
+		if (typeof rule === 'string') return fail(400, { action: 'internalUsers', message: rule });
+		const rules = parseInternalRulesJson(project.internalUsers);
+		if (rules.some((r) => internalRuleKey(r) === internalRuleKey(rule))) {
+			return fail(400, { action: 'internalUsers', message: 'That rule is already there.' });
+		}
+		if (rules.length >= MAX_INTERNAL_RULES) {
+			return fail(400, {
+				action: 'internalUsers',
+				message: `Use at most ${MAX_INTERNAL_RULES} rules.`
+			});
+		}
+		await setInternalRules(getDb(), project.id, [...rules, rule]);
+		return { action: 'internalUsers', message: 'Added the rule.' };
+	},
+
+	removeInternalRule: async (event) => {
+		const project = await access(event, true);
+		const key = String((await event.request.formData()).get('key') ?? '');
+		const rules = parseInternalRulesJson(project.internalUsers);
+		await setInternalRules(
+			getDb(),
+			project.id,
+			rules.filter((rule) => internalRuleKey(rule) !== key)
+		);
+		return { action: 'internalUsers', message: 'Removed the rule.' };
+	},
+
+	setFilterInternal: async (event) => {
+		const project = await access(event, true);
+		const filter = (await event.request.formData()).get('filter') !== null;
+		await setFilterInternal(getDb(), project.id, filter);
+		return {
+			action: 'internalUsers',
+			message: filter
+				? 'Internal users are left out of analytics.'
+				: 'Internal users are included in analytics.'
 		};
 	},
 

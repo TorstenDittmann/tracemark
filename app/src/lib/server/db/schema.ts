@@ -156,6 +156,10 @@ export const projects = sqliteTable('projects', {
 	secretKey: text('secret_key').unique(),
 	/** Days of events to keep; null keeps everything. */
 	retentionDays: integer('retention_days'),
+	/** Rules for internal users as JSON, see `InternalRule` in lib/internal-users.ts. */
+	internalUsers: text('internal_users').notNull().default('[]'),
+	/** Leave internal users out of analytics; insights can choose otherwise. */
+	filterInternal: integer('filter_internal', { mode: 'boolean' }).notNull().default(false),
 	createdAt: createdAt()
 });
 
