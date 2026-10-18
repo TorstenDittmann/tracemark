@@ -27,6 +27,7 @@ SDKs ──POST /e──▶ ingest (Rust) ──batched inserts──▶ ClickHo
 | `docs/kubernetes.md` | Running tracemark on Kubernetes with the Helm chart |
 | `deploy/helm/tracemark/` | The Helm chart |
 | `docs/query-api.md` | The read API: queries, saved insights, events and persons |
+| `docs/alerts.md` | Alerts: webhooks to Slack, Discord or your own endpoint for issues, event counts and AI cost |
 
 ## Self-hosting
 

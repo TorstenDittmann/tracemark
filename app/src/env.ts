@@ -31,6 +31,11 @@ export const variables = defineEnvVars({
 			'Catalog the built-in model prices are refreshed from daily, in models.dev api.json format. off keeps the prices shipped with the app',
 		schema: optional('https://models.dev/api.json')
 	},
+	ALERTS: {
+		description:
+			'off stops this replica from checking alert rules. Replicas share the work through a lease in libSQL either way',
+		schema: optional('on')
+	},
 	INTERNAL_TOKEN: {
 		description: 'Shared secret the ingest service sends in x-internal-token',
 		schema: optional('')

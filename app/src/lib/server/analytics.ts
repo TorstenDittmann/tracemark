@@ -3,10 +3,13 @@ import {
 	CLICKHOUSE_DATABASE,
 	CLICKHOUSE_PASSWORD,
 	CLICKHOUSE_URL,
-	CLICKHOUSE_USER
+	CLICKHOUSE_USER,
+	PUBLIC_URL
 } from '$app/env/private';
 import type { CohortSpec } from '../cohorts';
 import * as ai from './ai';
+import * as alertChecks from './alert-checks';
+import { type AlertChecks, startAlertScheduler } from './alert-scheduler';
 import type { ClickHouseConfig } from './clickhouse';
 import * as cohortPeople from './cohort-people';
 import { cohortSpec, getCohort, listCohorts } from './cohorts';
@@ -100,6 +103,22 @@ export function startRetentionSweeps(): () => void {
 		clearInterval(timer);
 	};
 }
+
+/** The alert checks, against the app's ClickHouse. */
+export function alertChecksFor(): AlertChecks {
+	return {
+		newIssues: (projectId, from, to) => alertChecks.newIssues(config(), projectId, from, to),
+		regressedIssues: (projectId, resolved, from, to) =>
+			alertChecks.regressedIssues(config(), projectId, resolved, from, to),
+		eventCount: (projectId, event, from, to) =>
+			alertChecks.eventCount(config(), projectId, event, from, to),
+		aiCost: (projectId, from, to) => alertChecks.aiCost(config(), projectId, from, to)
+	};
+}
+
+/** Checks alert rules every minute (see docs/alerts.md). Returns a stop function. */
+export const startAlerts = () =>
+	startAlertScheduler(getDb, alertChecksFor(), { baseUrl: PUBLIC_URL });
 
 export const webAnalytics = (projectId: string, options: Parameters<typeof web.webAnalytics>[2]) =>
 	web.webAnalytics(config(), projectId, options);
