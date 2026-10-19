@@ -1,0 +1,18 @@
+# Behind Dokploy's Traefik, which terminates TLS for the domain set in Dokploy's Domains tab.
+# Same routing as the root Caddyfile, on plain HTTP, trusting the forwarded headers Traefik sets.
+{
+	servers {
+		trusted_proxies static private_ranges
+	}
+}
+
+:80 {
+	# /v1/traces takes OpenTelemetry (OTLP/HTTP) spans from LLM instrumentation.
+	@ingest path /e /e/* /v1/traces
+	handle @ingest {
+		reverse_proxy ingest:8081
+	}
+	handle {
+		reverse_proxy app:3000
+	}
+}
