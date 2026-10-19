@@ -28,13 +28,18 @@ curl https://tracemark.example.com/api/v1/query \
   -d '{"kind": "trends", "query": {"series": [{"event": "$pageview", "math": "unique_users"}], "range": "7d"}}'
 ```
 
-The body has a `kind` (`trends`, `funnel` or `retention`) and a `query` of that kind. The query
+The body has a `kind` (`trends`, `funnel`, `retention`, `paths` or `lifecycle`) and a `query` of
+that kind ([insights.md](insights.md) explains each). The query
 is the same JSON the editors keep in their URL, so the quickest way to write one is to build it in
 the app and copy the `q` parameter.
 
+Add `"filterInternal": true` or `false` next to `kind` (or inside `query`; the top-level one wins)
+to leave [internal users](internal-users.md) out or keep them in. Without it, the project's
+**Filter out internal users by default** setting decides. Any other value gets a `400`.
+
 The query is read leniently, like the editors read it: unknown fields are ignored, and a field that
 is missing or invalid falls back to its default. The response always carries the `query` that
-actually ran, so compare it with what you sent.
+actually ran, so compare it with what you sent; its `filterInternal` is always set to what applied.
 
 ```json
 {
@@ -42,7 +47,8 @@ actually ran, so compare it with what you sent.
   "query": {
     "series": [{ "event": "$pageview", "math": "unique_users" }],
     "range": "7d",
-    "filters": []
+    "filters": [],
+    "filterInternal": true
   },
   "result": {
     "bucket": "day",
@@ -63,9 +69,10 @@ actually ran, so compare it with what you sent.
 
 | Field | Values |
 | --- | --- |
-| `range` | `24h`, `7d`, `30d` or `90d` (retention: `7d`, `30d` or `90d`). Buckets are hours for `24h`, days otherwise, in UTC |
+| `range` | `24h`, `7d`, `30d` or `90d` (retention and lifecycle: `7d`, `30d` or `90d`). Buckets are hours for `24h`, days otherwise, in UTC |
 | `filters` | Up to 10 `{"property", "operator", "value"}`. Operators: `eq`, `neq`, `contains`, `not_contains`, `gt`, `lt`, `is_set`, `is_not_set` (the last two take no value). Values are strings |
 | `cohort` | A cohort id; only people in that cohort count |
+| `filterInternal` | `true` leaves out [internal users](internal-users.md), `false` keeps them; absent follows the project's setting |
 
 ### Trends
 
@@ -104,11 +111,61 @@ Cohorts are daily for `7d` and `30d` and weekly (from Monday) for `90d`. Each co
 `start`, its `size`, and `returned`: the people who came back one period later, two periods later,
 and so on, for each period that has begun.
 
+### Paths
+
+| Field | Values |
+| --- | --- |
+| `label` | `page` (steps are page views, named by `$pathname`) or `event` (steps are events, named by event, without `$pageleave`) |
+| `start` | Optional page path or event name the paths begin at |
+| `end` | Optional page path or event name the paths stop at. With an end and no start, steps count back from the end |
+| `steps` | Steps after the start (or before the end), 1 to 10; 5 by default |
+
+Paths are per session. `result.steps` lists the steps in time order. Each has up to 8 `nodes` and
+an other node whose `label` is `null`, with the `sessions` there and how many `ended` (dropped off;
+counting back from an end, started there). `links` hold the transitions to the next step.
+`result.sessions` counts the sessions with a path.
+
+```json
+{
+  "steps": [
+    {
+      "nodes": [{ "label": "/", "sessions": 412, "ended": 160 }],
+      "links": [{ "source": "/", "target": "/pricing", "sessions": 97 }, "…"]
+    },
+    "…"
+  ],
+  "sessions": 412
+}
+```
+
+### Lifecycle
+
+| Field | Values |
+| --- | --- |
+| `event` | The event that makes a person active |
+| `interval` | `day`, `week` (from Monday) or `month` |
+
+`result.periods` holds each period's start and `result.counts` the people who were `new`,
+`returning`, `resurrecting` and `dormant` in each. Dormant counts are negative.
+
+```json
+{
+  "interval": "week",
+  "periods": ["2026-09-14T00:00:00Z", "…", "2026-10-12T00:00:00Z"],
+  "counts": {
+    "new": [40, 52, 47, 51, 30],
+    "returning": [0, 18, 25, 27, 22],
+    "resurrecting": [0, 0, 6, 9, 8],
+    "dormant": [0, -22, -45, -51, -55]
+  }
+}
+```
+
 ### Errors
 
 | Status | Body | When |
 | --- | --- | --- |
-| `400` | `{"error": "invalid_request", "message": "…"}` | Bad JSON, or an unknown `kind` |
+| `400` | `{"error": "invalid_request", "message": "…"}` | Bad JSON, an unknown `kind`, or a `filterInternal` that is not a boolean |
 | `401` | `{"error": "invalid_secret_key"}` | Missing or unknown key |
 
 ## `GET /api/v1/insights`: saved insights
@@ -130,11 +187,14 @@ Every saved insight in the project, most recently changed first, without results
 ```
 
 `GET /api/v1/insights/{id}` returns one insight with its `result`, computed when you ask, in the
-same shape as `POST /api/v1/query`. An unknown id gets a `404` with `{"error": "not_found"}`.
+same shape as `POST /api/v1/query`, filtering internal users as the insight was saved with (or, for
+insights saved without a choice, as the project's setting says). An unknown id gets a `404` with
+`{"error": "not_found"}`.
 
 ## `GET /api/v1/events`: recent events
 
-The newest events of the last 30 days, newest first.
+The newest events of the last 30 days, newest first. Like the events page, this always includes
+internal users.
 
 | Parameter | Values |
 | --- | --- |

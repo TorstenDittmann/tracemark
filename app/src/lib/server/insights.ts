@@ -2,8 +2,18 @@ import type { CohortSpec } from '../cohorts';
 import {
 	type FunnelQuery,
 	type FunnelResult,
+	LIFECYCLE_STATUSES,
+	type LifecycleQuery,
+	type LifecycleResult,
+	type LifecycleStatus,
 	MAX_LINES,
+	MAX_PATH_NODES,
 	needsProperty,
+	type PathLink,
+	type PathNode,
+	type PathStep,
+	type PathsQuery,
+	type PathsResult,
 	type PropertyFilter,
 	type RetentionQuery,
 	type RetentionResult,
@@ -16,12 +26,14 @@ import {
 	validName,
 	WINDOWS
 } from '../insights';
+import type { InternalRule } from '../internal-users';
 import { type ClickHouseConfig, clickhouseQuery } from './clickhouse';
 import { cohortPeopleSql } from './cohort-people';
 import { compareSql } from './compare';
+import { internalUsersSql } from './internal-users';
 import { chTime, timeWindow } from './web';
 
-export type { FunnelResult, RetentionResult, TrendsResult };
+export type { FunnelResult, LifecycleResult, PathsResult, RetentionResult, TrendsResult };
 
 /** An event property as a ClickHouse expression. Names are validated, so quoting is enough. */
 function property(name: string): string {
@@ -35,13 +47,15 @@ export function filterSql(filter: PropertyFilter, param: string): string {
 
 /**
  * The FROM, JOIN and WHERE shared by every insight: a project's events in a time window with
- * property filters applied, joined to people. Selects can use `e.*` and `person`.
+ * property filters applied and internal users left out, joined to people. Selects can use `e.*`
+ * and `person`.
  */
 function eventsSource(
 	projectId: string,
 	window: { from: Date; to: Date },
 	filters: PropertyFilter[],
-	cohort?: CohortSpec
+	cohort?: CohortSpec,
+	internal?: InternalRule[]
 ): { sql: string; params: Record<string, string> } {
 	const params: Record<string, string> = {
 		project: projectId,
@@ -53,6 +67,7 @@ function eventsSource(
 		return ` AND ${filterSql(filter, `v${i}`)}`;
 	});
 	if (cohort) conditions.push(` AND ${PERSON} IN (${cohortPeopleSql(cohort, params)})`);
+	conditions.push(internalUsersSql(internal, params));
 	return {
 		sql: `FROM events AS e
 			LEFT JOIN (SELECT alias, person FROM person_distinct_ids WHERE project_id = {project:UUID}) AS a
@@ -92,10 +107,11 @@ export async function trends(
 	projectId: string,
 	query: TrendsQuery,
 	now?: Date,
-	cohort?: CohortSpec
+	cohort?: CohortSpec,
+	internal?: InternalRule[]
 ): Promise<TrendsResult> {
 	const { bucket, bucketFn, from, to, buckets } = timeWindow(query.range, now);
-	const source = eventsSource(projectId, { from, to }, query.filters, cohort);
+	const source = eventsSource(projectId, { from, to }, query.filters, cohort, internal);
 	const perSeries = Math.max(1, Math.floor(MAX_LINES / query.series.length));
 
 	const results = await Promise.all(
@@ -171,10 +187,11 @@ export async function funnel(
 	projectId: string,
 	query: FunnelQuery,
 	now?: Date,
-	cohort?: CohortSpec
+	cohort?: CohortSpec,
+	internal?: InternalRule[]
 ): Promise<FunnelResult> {
 	const { from, to } = timeWindow(query.range, now);
-	const source = eventsSource(projectId, { from, to }, query.filters, cohort);
+	const source = eventsSource(projectId, { from, to }, query.filters, cohort, internal);
 	const params: Record<string, string> = {
 		...source.params,
 		window: String(WINDOWS[query.window].ms)
@@ -238,7 +255,8 @@ export async function retention(
 	projectId: string,
 	query: RetentionQuery,
 	now?: Date,
-	cohort?: CohortSpec
+	cohort?: CohortSpec,
+	internal?: InternalRule[]
 ): Promise<RetentionResult> {
 	const period = retentionPeriod(query.range);
 	const window = timeWindow(query.range, now);
@@ -252,7 +270,7 @@ export async function retention(
 		starts.push(new Date(t).toISOString().replace('.000Z', 'Z'));
 	}
 
-	const source = eventsSource(projectId, window, query.filters, cohort);
+	const source = eventsSource(projectId, window, query.filters, cohort, internal);
 	const trunc = period === 'day' ? 'toStartOfDay(e.timestamp)' : 'toStartOfWeek(e.timestamp, 1)';
 	const body = await clickhouseQuery(
 		config,
@@ -296,6 +314,260 @@ export async function retention(
 	return { period, cohorts };
 }
 
+/** Labels in the order SQL ranks ties, with the other group (null) last. */
+function compareLabels(a: string | null, b: string | null): number {
+	if (a === b) return 0;
+	if (a === null || b === null) return a === null ? 1 : -1;
+	return a < b ? -1 : 1;
+}
+
+/** Most sessions first, with the other group last. */
+const byNode = (a: PathNode, b: PathNode) =>
+	(a.label === null ? 1 : 0) - (b.label === null ? 1 : 0) ||
+	b.sessions - a.sessions ||
+	compareLabels(a.label, b.label);
+
+const byLink = (a: PathLink, b: PathLink) =>
+	b.sessions - a.sessions || compareLabels(a.source, b.source) || compareLabels(a.target, b.target);
+
+/**
+ * The most common paths through sessions. A session's steps are its page views (named by path)
+ * or its events (named by event, without $pageleave), in time order with repeats in a row
+ * collapsed. A path begins at the first start and stops at the first end after it; sessions
+ * without them are left out. Each step keeps its MAX_PATH_NODES busiest labels and groups the
+ * rest as other. Events without a session id form one session per person.
+ */
+export async function paths(
+	config: ClickHouseConfig,
+	projectId: string,
+	query: PathsQuery,
+	now?: Date,
+	cohort?: CohortSpec,
+	internal?: InternalRule[]
+): Promise<PathsResult> {
+	const { from, to } = timeWindow(query.range, now);
+	const source = eventsSource(projectId, { from, to }, query.filters, cohort, internal);
+	const page = query.label === 'page';
+	// With only an end, the path is reversed so its first step is the end, then flipped back.
+	const reversed = !query.start && !!query.end;
+	const depth = query.steps + 1;
+	const body = await clickhouseQuery(
+		config,
+		`WITH
+			collapsed AS (
+				SELECT arrayFilter((x, i) -> i = 1 OR x != raw[i - 1], raw, arrayEnumerate(raw)) AS steps
+				FROM (
+					SELECT arrayMap(x -> x.2, arraySort(x -> x.1, groupArray((ts, label)))) AS raw
+					FROM (
+						SELECT
+							if(e.session_id = '', concat('person:', ${PERSON}), e.session_id) AS session,
+							e.timestamp AS ts,
+							${page ? `toString(${property('$pathname')})` : 'toString(e.event)'} AS label
+						${source.sql}
+							AND ${page ? `e.event = '$pageview'` : `e.event != '$pageleave'`}
+					)
+					GROUP BY session
+				)
+			),
+			started AS (
+				SELECT if({start:String} = '', steps, arraySlice(steps, indexOf(steps, {start:String}))) AS steps
+				FROM collapsed
+				WHERE {start:String} = '' OR has(steps, {start:String})
+			),
+			ended AS (
+				SELECT if({end:String} = '', steps, arraySlice(steps, 1, indexOf(steps, {end:String}))) AS steps
+				FROM started
+				WHERE {end:String} = '' OR has(steps, {end:String})
+			),
+			-- One step more than shown, so a path that goes on past the last step does not count as ending there.
+			cut AS (
+				SELECT arraySlice(${reversed ? 'arrayReverse(steps)' : 'steps'}, 1, ${depth + 1}) AS path
+				FROM ended
+				WHERE length(steps) > 0
+			),
+			transitions AS (
+				SELECT
+					n,
+					path[n] AS label,
+					if(n < length(path), toNullable(path[n + 1]), NULL) AS next,
+					count() AS sessions
+				FROM cut ARRAY JOIN arrayEnumerate(path) AS n
+				WHERE n <= ${depth}
+				GROUP BY n, label, next
+			),
+			-- Every path at step n + 1 came from step n, so ranking a step's targets by the sessions
+			-- going into them ranks the next step's labels.
+			ranked AS (
+				SELECT *,
+					dense_rank() OVER (PARTITION BY n ORDER BY label_total DESC, label) AS label_rank,
+					dense_rank() OVER (PARTITION BY n, isNull(next) ORDER BY next_total DESC, next) AS next_rank
+				FROM (
+					SELECT *,
+						sum(sessions) OVER (PARTITION BY n, label) AS label_total,
+						sum(sessions) OVER (PARTITION BY n, next) AS next_total
+					FROM transitions
+				)
+			)
+		SELECT
+			n,
+			if(label_rank <= ${MAX_PATH_NODES}, toNullable(label), NULL) AS source,
+			isNull(next) AS ended,
+			if(isNull(next) OR next_rank > ${MAX_PATH_NODES}, NULL, next) AS target,
+			sum(sessions) AS count
+		FROM ranked
+		GROUP BY n, source, ended, target
+		FORMAT JSONEachRow`,
+		{ params: { ...source.params, start: query.start ?? '', end: query.end ?? '' } }
+	);
+
+	const found: { nodes: Map<string | null, PathNode>; links: PathLink[] }[] = [];
+	for (const line of body.split('\n').filter(Boolean)) {
+		const row = JSON.parse(line) as {
+			n: number;
+			source: string | null;
+			ended: number | boolean;
+			target: string | null;
+			count: string;
+		};
+		while (found.length < row.n) found.push({ nodes: new Map(), links: [] });
+		const step = found[row.n - 1];
+		const sessions = Number(row.count);
+		let node = step.nodes.get(row.source);
+		if (!node) {
+			node = { label: row.source, sessions: 0, ended: 0 };
+			step.nodes.set(row.source, node);
+		}
+		node.sessions += sessions;
+		if (row.ended) node.ended += sessions;
+		// Transitions out of the last step shown only tell whether the path went on.
+		else if (row.n < depth) step.links.push({ source: row.source, target: row.target, sessions });
+	}
+	let steps: PathStep[] = found.map((step) => ({
+		nodes: [...step.nodes.values()].sort(byNode),
+		links: step.links.sort(byLink)
+	}));
+	if (reversed) {
+		// Links from reversed step n run back in time to step n + 1: swap their ends and move
+		// them onto the earlier step.
+		const back = steps;
+		steps = back
+			.map((step, i) => ({
+				nodes: step.nodes,
+				links: (back[i - 1]?.links ?? [])
+					.map((link) => ({ source: link.target, target: link.source, sessions: link.sessions }))
+					.sort(byLink)
+			}))
+			.reverse();
+	}
+	const sessions = steps.at(reversed ? -1 : 0)?.nodes.reduce((sum, n) => sum + n.sessions, 0) ?? 0;
+	return { steps, sessions };
+}
+
+/** A UTC period start as ISO 8601, like the other insights. */
+const isoDay = (date: string) => `${date}T00:00:00Z`;
+
+/** The start of the period holding `time`, in UTC; weeks start on Monday. */
+function periodStart(interval: LifecycleQuery['interval'], time: Date): Date {
+	const day = Date.UTC(time.getUTCFullYear(), time.getUTCMonth(), time.getUTCDate());
+	if (interval === 'day') return new Date(day);
+	if (interval === 'week') return new Date(day - ((new Date(day).getUTCDay() + 6) % 7) * DAY_MS);
+	return new Date(Date.UTC(time.getUTCFullYear(), time.getUTCMonth(), 1));
+}
+
+function nextPeriod(interval: LifecycleQuery['interval'], start: Date): Date {
+	if (interval === 'day') return new Date(start.getTime() + DAY_MS);
+	if (interval === 'week') return new Date(start.getTime() + 7 * DAY_MS);
+	return new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1));
+}
+
+const LIFECYCLE_SQL = {
+	day: { trunc: 'toDate(e.timestamp)', add: 'addDays' },
+	week: { trunc: 'toStartOfWeek(e.timestamp, 1)', add: 'addWeeks' },
+	month: { trunc: 'toStartOfMonth(e.timestamp)', add: 'addMonths' }
+} as const;
+
+/**
+ * People by lifecycle state in each period of the range: new (first did the event ever),
+ * returning, resurrecting and dormant, as PostHog defines them (see LIFECYCLE_STATUSES). The
+ * first period is whole even when the range starts inside it, and "ever" looks back over all
+ * the project's events.
+ */
+export async function lifecycle(
+	config: ClickHouseConfig,
+	projectId: string,
+	query: LifecycleQuery,
+	now?: Date,
+	cohort?: CohortSpec,
+	internal?: InternalRule[]
+): Promise<LifecycleResult> {
+	const { interval } = query;
+	const window = timeWindow(query.range, now);
+	const first = periodStart(interval, window.from);
+	const periods: string[] = [];
+	for (let t = first; t < window.to; t = nextPeriod(interval, t)) {
+		periods.push(t.toISOString().replace('.000Z', 'Z'));
+	}
+	// The period before the first, to tell returning from resurrecting and who went dormant.
+	const previous = periodStart(interval, new Date(first.getTime() - DAY_MS));
+
+	const source = eventsSource(
+		projectId,
+		{ from: new Date(0), to: window.to },
+		query.filters,
+		cohort,
+		internal
+	);
+	const { trunc, add } = LIFECYCLE_SQL[interval];
+	const date = (d: Date) => d.toISOString().slice(0, 10);
+	const body = await clickhouseQuery(
+		config,
+		`WITH people AS (
+			SELECT
+				${PERSON} AS person,
+				min(${trunc}) AS first,
+				groupUniqArrayIf(${trunc}, e.timestamp >= {previous:DateTime64(3, 'UTC')}) AS active
+			${source.sql}
+				AND e.event = {event:String}
+			GROUP BY person
+		)
+		SELECT formatDateTime(period, '%Y-%m-%d') AS period, status, count() AS people FROM (
+			SELECT p AS period, multiIf(p = first, 'new', has(active, ${add}(p, -1)), 'returning', 'resurrecting') AS status
+			FROM people ARRAY JOIN active AS p
+			WHERE p >= {first:Date}
+			UNION ALL
+			SELECT ${add}(p, 1) AS period, 'dormant' AS status
+			FROM people ARRAY JOIN active AS p
+			WHERE NOT has(active, ${add}(p, 1)) AND ${add}(p, 1) BETWEEN {first:Date} AND {last:Date}
+		)
+		GROUP BY period, status
+		FORMAT JSONEachRow`,
+		{
+			params: {
+				...source.params,
+				event: query.event,
+				previous: chTime(previous),
+				first: date(first),
+				last: periods.at(-1)?.slice(0, 10) ?? date(first)
+			}
+		}
+	);
+
+	const counts = Object.fromEntries(
+		LIFECYCLE_STATUSES.map((status) => [status, periods.map(() => 0)])
+	) as LifecycleResult['counts'];
+	for (const line of body.split('\n').filter(Boolean)) {
+		const row = JSON.parse(line) as {
+			period: string;
+			status: LifecycleStatus;
+			people: string;
+		};
+		const i = periods.indexOf(isoDay(row.period));
+		if (i < 0 || !(row.status in counts)) continue;
+		counts[row.status][i] = row.status === 'dormant' ? -Number(row.people) : Number(row.people);
+	}
+	return { interval, periods, counts };
+}
+
 export interface EventName {
 	event: string;
 	count: number;
@@ -321,6 +593,23 @@ export async function eventNames(
 			const row = JSON.parse(line) as { event: string; count: string };
 			return { event: row.event, count: Number(row.count) };
 		});
+}
+
+/** Page paths viewed in the last 30 days, most viewed first. */
+export async function pagePaths(config: ClickHouseConfig, projectId: string): Promise<string[]> {
+	const body = await clickhouseQuery(
+		config,
+		`SELECT toString(properties.\`$pathname\`) AS path FROM events
+		WHERE project_id = {project:UUID} AND event = '$pageview' AND timestamp > now() - INTERVAL 30 DAY
+			AND path != ''
+		GROUP BY path ORDER BY count() DESC, path LIMIT 200
+		FORMAT JSONEachRow`,
+		{ params: { project: projectId } }
+	);
+	return body
+		.split('\n')
+		.filter(Boolean)
+		.map((line) => (JSON.parse(line) as { path: string }).path);
 }
 
 export interface PropertyName {

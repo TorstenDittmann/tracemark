@@ -1,3 +1,4 @@
+import type { InternalRule } from '../internal-users';
 import {
 	DIMENSIONS,
 	type Dimension,
@@ -5,11 +6,17 @@ import {
 	parseRange,
 	RANGES,
 	type Range,
-	type WebFilters
+	VITAL_FILTERS,
+	VITALS,
+	type Vital,
+	type VitalSummary,
+	type WebFilters,
+	type WebVitals
 } from '../web';
 import { type ClickHouseConfig, clickhouseQuery } from './clickhouse';
+import { internalUsersSql } from './internal-users';
 
-export type { Dimension, Range, WebFilters };
+export type { Dimension, Range, WebFilters, WebVitals };
 export { DIMENSIONS, parseFilters, parseRange, RANGES };
 
 const COLUMNS: Record<Exclude<Dimension, 'page'>, string> = {
@@ -67,9 +74,10 @@ const str = (path: string) => `ifNull(e.properties.\`${path}\`.:String, '')`;
  * One row per session in the window, built from `$pageview` and `$pageleave` events. Visitors
  * are people: an anonymous id linked to an identified one by `$identify` counts once. Events
  * without a session id (cookieless SDKs) are split into sessions per person wherever 30 minutes
- * pass without an event. Bot traffic is left out.
+ * pass without an event. Bot traffic is left out, and so are internal users when `internal`
+ * (their condition from internalUsersSql) is given.
  */
-function sessionsQuery(filters: WebFilters): string {
+function sessionsQuery(filters: WebFilters, internal: string): string {
 	const conditions = (Object.keys(filters) as Dimension[]).map((key) =>
 		key === 'page' ? `has(pages, {f_page:String})` : `${COLUMNS[key]} = {f_${key}:String}`
 	);
@@ -121,7 +129,7 @@ function sessionsQuery(filters: WebFilters): string {
 				WHERE e.project_id = {project:UUID}
 					AND e.event IN ('$pageview', '$pageleave')
 					AND e.timestamp >= {from:DateTime64(3, 'UTC')}
-					AND e.timestamp < {to:DateTime64(3, 'UTC')}
+					AND e.timestamp < {to:DateTime64(3, 'UTC')}${internal}
 				)
 				)
 			)
@@ -179,7 +187,7 @@ export const chTime = (date: Date) => date.toISOString().replace('Z', '');
 export async function webAnalytics(
 	config: ClickHouseConfig,
 	projectId: string,
-	options: { range: Range; filters?: WebFilters; now?: Date }
+	options: { range: Range; filters?: WebFilters; now?: Date; internal?: InternalRule[] }
 ): Promise<WebAnalytics> {
 	const { range } = options;
 	const filters = options.filters ?? {};
@@ -190,8 +198,9 @@ export async function webAnalytics(
 		to: chTime(to)
 	};
 	for (const [key, value] of Object.entries(filters)) params[`f_${key}`] = value;
+	const sessions = sessionsQuery(filters, internalUsersSql(options.internal, params));
 	const run = (select: string) =>
-		clickhouseQuery(config, `WITH ${sessionsQuery(filters)} ${select} FORMAT JSONEachRow`, {
+		clickhouseQuery(config, `WITH ${sessions} ${select} FORMAT JSONEachRow`, {
 			params
 		});
 
@@ -257,5 +266,82 @@ export async function webAnalytics(
 		},
 		series,
 		breakdowns
+	};
+}
+
+const VITAL_COLUMNS: Record<(typeof VITAL_FILTERS)[number], string> = {
+	page: '$pathname',
+	country: '$geoip_country_code',
+	device: '$device_type',
+	browser: '$browser',
+	os: '$os'
+};
+
+/**
+ * The 75th percentile of each web vital over the last `range`, overall and for the busiest paths,
+ * from `$web_vitals` events. Only the filters that are properties of each event apply; bot
+ * traffic is left out, and internal users with `internal`.
+ */
+export async function webVitals(
+	config: ClickHouseConfig,
+	projectId: string,
+	options: { range: Range; filters?: WebFilters; now?: Date; internal?: InternalRule[] }
+): Promise<WebVitals> {
+	const { from, to } = timeWindow(options.range, options.now);
+	const params: Record<string, string> = {
+		project: projectId,
+		from: chTime(from),
+		to: chTime(to)
+	};
+	const conditions: string[] = [];
+	for (const key of VITAL_FILTERS) {
+		const value = options.filters?.[key];
+		if (value === undefined) continue;
+		params[`f_${key}`] = value;
+		conditions.push(`${str(VITAL_COLUMNS[key])} = {f_${key}:String}`);
+	}
+	const internal = internalUsersSql(options.internal, params);
+	const names = Object.keys(VITALS) as Vital[];
+	const measured = `SELECT
+			${str('$pathname')} AS path,
+			${names
+				.map(
+					(name) =>
+						`toFloat64OrNull(toString(e.properties.\`$web_vitals_${name}_value\`)) AS ${name}`
+				)
+				.join(',\n\t\t\t')}
+		FROM events AS e
+		WHERE e.project_id = {project:UUID}
+			AND e.event = '$web_vitals'
+			AND e.timestamp >= {from:DateTime64(3, 'UTC')}
+			AND e.timestamp < {to:DateTime64(3, 'UTC')}
+			AND ${str('$device_type')} != 'Bot'${conditions.map((c) => ` AND ${c}`).join('')}${internal}`;
+	// NULLs, metrics an event did not carry, are skipped by both aggregates.
+	const aggregates = names
+		.map((name) => `quantile(0.75)(${name}) AS ${name}_p75, count(${name}) AS ${name}_samples`)
+		.join(', ');
+	const run = (select: string) =>
+		clickhouseQuery(config, `${select} FORMAT JSONEachRow`, { params });
+	const [totalBody, pathsBody] = await Promise.all([
+		run(`SELECT ${aggregates} FROM (${measured})`),
+		run(`SELECT path, count() AS pageviews, ${aggregates} FROM (${measured})
+			GROUP BY path ORDER BY pageviews DESC, path LIMIT 10`)
+	]);
+	type Row = Record<string, string | number | null>;
+	const summarize = (row: Row | undefined) =>
+		Object.fromEntries(
+			names.map((name) => {
+				const samples = num(row?.[`${name}_samples`] ?? 0);
+				const p75 = row?.[`${name}_p75`];
+				return [name, { p75: samples && p75 != null ? num(p75) : null, samples }];
+			})
+		) as Record<Vital, VitalSummary>;
+	return {
+		vitals: summarize(rows<Row>(totalBody)[0]),
+		paths: rows<Row>(pathsBody).map((row) => ({
+			path: String(row.path),
+			pageviews: num(row.pageviews ?? 0),
+			vitals: summarize(row)
+		}))
 	};
 }

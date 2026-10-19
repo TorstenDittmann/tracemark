@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { formatCursor, parseActivityParam, parseCursor, readableType } from './explore';
+import {
+	eventSummary,
+	formatCursor,
+	parseActivityParam,
+	parseCursor,
+	readableType
+} from './explore';
 
 describe('activity queries', () => {
 	it('keeps a valid event and filters', () => {
@@ -47,5 +53,27 @@ describe('readable types', () => {
 		expect(readableType('String')).toBe('string');
 		expect(readableType('Array(Nullable(String))')).toBe('list');
 		expect(readableType('DateTime64(9)')).toBe('date');
+	});
+});
+
+describe('event summaries', () => {
+	it('describes autocaptured clicks and submits', () => {
+		expect(eventSummary('$autocapture', { $event_type: 'click', $el_text: 'Sign up' })).toBe(
+			"clicked 'Sign up'"
+		);
+		expect(eventSummary('$autocapture', { $event_type: 'click', $el_tag: 'a' })).toBe(
+			'clicked a link'
+		);
+		expect(eventSummary('$autocapture', { $event_type: 'submit', $el_tag: 'form' })).toBe(
+			'submitted a form'
+		);
+		expect(eventSummary('$autocapture', { $event_type: 'click', $el_tag: 'div' })).toBe(
+			'clicked div'
+		);
+		expect(eventSummary('$autocapture', {})).toBe('clicked');
+	});
+
+	it('keeps other event names', () => {
+		expect(eventSummary('signed_up', { $el_text: 'x' })).toBe('signed_up');
 	});
 });

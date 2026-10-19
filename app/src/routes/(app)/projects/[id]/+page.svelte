@@ -74,7 +74,7 @@ const steps = $derived([
 	{
 		done: data.checklist.insights > 0,
 		title: 'Save an insight',
-		text: 'Chart a trend, funnel or retention.',
+		text: 'Chart a trend, funnel, retention, paths or lifecycle.',
 		href: `${base}/insights/trends`,
 		icon: ChartSpline
 	},

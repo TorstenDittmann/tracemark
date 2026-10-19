@@ -95,6 +95,8 @@ Event properties that change enrichment, removed before storage unless noted:
 | `$identify` | `distinct_id` is the new id; `properties.$anon_distinct_id` is the previous anonymous id |
 | `$exception` | Error (`$exception_type`, `$exception_message`, `$exception_stack`) |
 | `$feature_flag_called` | Flag exposure (`$feature_flag`, `$feature_flag_response`) |
+| `$ai_generation`, `$ai_embedding`, `$ai_span`, `$ai_trace` | LLM calls and the traces they belong to, see [ai.md](ai.md#events) |
+| `$ai_score` | Score or feedback for an AI trace (`$ai_trace_id`, `$ai_score_name`, `$ai_score_value`, optional `$ai_span_id`, `$ai_score_comment`), see [ai.md](ai.md#scores-and-feedback) |
 
 ## People and identity
 

@@ -1,11 +1,15 @@
 import type { Handle, ServerInit } from '@sveltejs/kit/hooks';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
-import { startRetentionSweeps } from '#lib/server/analytics.js';
+import { startAlerts, startRetentionSweeps } from '#lib/server/analytics.js';
 import { getAuth } from '#lib/server/auth/instance.js';
 import { building } from '$app/env';
+import { ALERTS } from '$app/env/private';
 
 export const init: ServerInit = () => {
-	if (!building) startRetentionSweeps();
+	if (building) return;
+	startRetentionSweeps();
+	// Tests never load these hooks; builds skip them above.
+	if (ALERTS !== 'off') startAlerts();
 };
 
 export const handle: Handle = async ({ event, resolve }) => {

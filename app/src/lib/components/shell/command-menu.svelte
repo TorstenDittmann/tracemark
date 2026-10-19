@@ -1,11 +1,13 @@
 <script lang="ts">
+import ChartNoAxesColumn from '@lucide/svelte/icons/chart-no-axes-column';
 import Plus from '@lucide/svelte/icons/plus';
 import SunMoon from '@lucide/svelte/icons/sun-moon';
 import UsersRound from '@lucide/svelte/icons/users-round';
 import { toggleMode } from 'mode-watcher';
 import ProjectAvatar from '#lib/components/project-avatar.svelte';
 import * as Command from '#lib/components/ui/command/index.js';
-import { PROJECT_NAV, SETTINGS_NAV } from '#lib/nav.js';
+import { INSIGHT_EDITORS } from '#lib/insight-kinds.js';
+import { ALERTS_NAV, PROJECT_NAV, SETTINGS_NAV } from '#lib/nav.js';
 import { goto } from '$app/navigation';
 
 let {
@@ -54,6 +56,18 @@ function onkeydown(event: KeyboardEvent) {
 					{/each}
 				</Command.Group>
 			{/each}
+			<Command.Group heading="Insights">
+				{#each INSIGHT_EDITORS as editor (editor.path)}
+					<Command.Item
+						value="{project.name} insight {editor.label}"
+						keywords={[editor.description]}
+						onSelect={() => run(() => goto(`/projects/${project.id}/insights/${editor.path}`))}
+					>
+						<ChartNoAxesColumn />
+						{editor.label}
+					</Command.Item>
+				{/each}
+			</Command.Group>
 		{/if}
 		<Command.Group heading="Projects">
 			{#each projects as p (p.id)}
@@ -80,6 +94,14 @@ function onkeydown(event: KeyboardEvent) {
 				>
 					<SETTINGS_NAV.icon />
 					Project settings
+				</Command.Item>
+				<Command.Item
+					value="{project.name} {ALERTS_NAV.label} webhooks notifications"
+					keywords={[ALERTS_NAV.description]}
+					onSelect={() => run(() => goto(`/projects/${project.id}${ALERTS_NAV.path}`))}
+				>
+					<ALERTS_NAV.icon />
+					Alerts
 				</Command.Item>
 			{/if}
 			<Command.Item

@@ -187,6 +187,44 @@ const MARKETING_PAGES = [
 	'/changelog',
 	'/about'
 ] as const;
+/** Buttons and links people click on a page, autocaptured as `$autocapture` events. */
+const CLICKS: Record<string, readonly (readonly [string, string, string?])[]> = {
+	'/': [
+		['button', 'Get started'],
+		['a', 'Read the docs', '/docs'],
+		['a', 'Pricing', '/pricing']
+	],
+	'/pricing': [
+		['button', 'Start free trial'],
+		['button', 'Compare plans'],
+		['a', 'Talk to sales', 'mailto:sales@demo.tracemark.dev']
+	],
+	'/docs': [
+		['button', 'Copy code'],
+		['a', 'Getting started', '/docs/getting-started']
+	],
+	'/docs/getting-started': [['button', 'Copy code']],
+	'/app/dashboards': [
+		['button', 'New dashboard'],
+		['button', 'Add insight']
+	],
+	'/app/insights/trends': [
+		['button', 'Add filter'],
+		['button', 'Save insight']
+	],
+	'/app/flags': [['button', 'New flag']],
+	'/app/events': [['button', 'Load older events']]
+};
+
+/** Typical web vitals per page in ms (CLS unitless), before device and noise. */
+function vitalBase(path: string) {
+	if (path === '/app/dashboards') return { LCP: 3400, INP: 240, CLS: 0.04, TTFB: 420 };
+	if (path === '/app/insights/trends') return { LCP: 2900, INP: 380, CLS: 0.06, TTFB: 380 };
+	if (path.startsWith('/app')) return { LCP: 2200, INP: 140, CLS: 0.02, TTFB: 350 };
+	if (path.startsWith('/blog')) return { LCP: 2300, INP: 90, CLS: 0.16, TTFB: 240 };
+	return { LCP: 1500, INP: 80, CLS: 0.03, TTFB: 180 };
+}
+
 const APP_PAGES = [
 	['/app', 20],
 	['/app/dashboards', 14],
@@ -405,6 +443,20 @@ export const MOCK_INSIGHTS: { name: string; saved: SavedQuery }[] = [
 			kind: 'retention',
 			query: { start: 'signed_up', returning: 'insight_viewed', range: '30d', filters: [] }
 		}
+	},
+	{
+		name: 'Paths from the home page',
+		saved: {
+			kind: 'paths',
+			query: { label: 'page', start: '/', steps: 4, range: '30d', filters: [] }
+		}
+	},
+	{
+		name: 'Weekly visitor lifecycle',
+		saved: {
+			kind: 'lifecycle',
+			query: { event: '$pageview', interval: 'week', range: '30d', filters: [] }
+		}
 	}
 ];
 export const MOCK_DASHBOARD = 'Demo overview';
@@ -438,6 +490,10 @@ export function betaTesters(events: MockEvent[]): string[] {
  */
 export function mockEvents(projectId: string, now: Date, flags: FlagDefinition[]): MockEvent[] {
 	const r = random(`mock:${projectId}`);
+	// Clicks and web vitals draw from their own generator, so the rest of the data stays the same.
+	const w = random(`mock-web:${projectId}`);
+	/** Roughly log-normal noise around 1. */
+	const noise = (spread: number) => Math.exp((w.next() + w.next() + w.next() - 1.5) * spread);
 	const end = now.getTime();
 	const start = end - DAYS * DAY_MS;
 	const experimentStart = end - EXPERIMENT_DAYS * DAY_MS;
@@ -450,11 +506,13 @@ export function mockEvents(projectId: string, now: Date, flags: FlagDefinition[]
 			MockEvent,
 			'uuid' | 'project_id' | 'timestamp' | 'person_set' | 'person_set_once' | 'groups'
 		> &
-			Partial<Pick<MockEvent, 'person_set' | 'person_set_once' | 'groups'>> & { at: number }
+			Partial<Pick<MockEvent, 'uuid' | 'person_set' | 'person_set_once' | 'groups'>> & {
+				at: number;
+			}
 	) => {
 		if (e.at > end) return;
 		events.push({
-			uuid: r.uuid(),
+			uuid: e.uuid ?? r.uuid(),
 			project_id: projectId,
 			event: e.event,
 			timestamp: new Date(e.at).toISOString().replace('Z', ''),
@@ -531,6 +589,73 @@ export function mockEvents(projectId: string, now: Date, flags: FlagDefinition[]
 			});
 			const groups = (): Record<string, string> =>
 				identified ? { company: person.company.key } : {};
+			// The app is a single-page app: only its first page in a visit is a full page load.
+			let appLoaded = false;
+			/** Clicks while on `path`, then its web vitals as the page is left `dwell` ms later. */
+			const onPage = (path: string, dwell: number) => {
+				const page = { ...base(), $current_url: `https://${HOST}${path}`, $pathname: path };
+				const extra = { distinct_id: id(), session_id: sessionId, groups: groups() };
+				const clicks = CLICKS[path] ?? [];
+				if (clicks.length && w.next() < 0.45) {
+					const [tag, text, href] = w.pick(clicks);
+					push({
+						...extra,
+						uuid: w.uuid(),
+						event: '$autocapture',
+						at: at + Math.floor(dwell * w.next() * 0.8),
+						properties: {
+							...page,
+							$event_type: 'click',
+							$el_tag: tag,
+							$el_text: text,
+							$el_selector: tag === 'a' ? 'nav > a' : 'main > button.btn',
+							...(href ? { $el_href: href } : {})
+						}
+					});
+				}
+				if (path === '/signup') {
+					push({
+						...extra,
+						uuid: w.uuid(),
+						event: '$autocapture',
+						at: at + Math.floor(dwell * 0.5),
+						properties: {
+							...page,
+							$event_type: 'submit',
+							$el_tag: 'form',
+							$el_text: 'Create account',
+							$el_selector: 'form#signup'
+						}
+					});
+				}
+				const load = !path.startsWith('/app') || !appLoaded;
+				if (path.startsWith('/app')) appLoaded = true;
+				// A third of page views report web vitals, which keeps the demo's event count down.
+				if (w.next() >= 0.35) return;
+				const typical = vitalBase(path);
+				const slow = person.device.device === 'Desktop' ? 1 : 1.5;
+				const safari = person.device.browser.includes('Safari');
+				const vitals: Record<string, number> = {};
+				if (load) {
+					const lcp = Math.round(typical.LCP * slow * noise(0.6));
+					vitals.$web_vitals_LCP_value = lcp;
+					vitals.$web_vitals_FCP_value = Math.round(lcp * (0.45 + 0.3 * w.next()));
+					vitals.$web_vitals_TTFB_value = Math.round(typical.TTFB * noise(0.7));
+				}
+				// Safari and Firefox measure no layout shifts.
+				if (!safari && person.device.browser !== 'Firefox')
+					vitals.$web_vitals_CLS_value =
+						w.next() < 0.4 ? 0 : Math.round(typical.CLS * noise(0.9) * 10_000) / 10_000;
+				if (w.next() < 0.7)
+					vitals.$web_vitals_INP_value = Math.round(typical.INP * slow * noise(0.6));
+				push({
+					...extra,
+					uuid: w.uuid(),
+					event: '$web_vitals',
+					at: at + dwell - 1,
+					properties: { ...page, ...vitals }
+				});
+			};
 			const pageview = (path: string, entry = false) => {
 				push({
 					event: '$pageview',
@@ -558,7 +683,9 @@ export function mockEvents(projectId: string, now: Date, flags: FlagDefinition[]
 							: { $referrer: '$direct', $referring_domain: '$direct' })
 					}
 				});
-				at += r.int(8, 150) * 1000;
+				const dwell = r.int(8, 150) * 1000;
+				onPage(path, dwell);
+				at += dwell;
 			};
 			const track = (event: string, properties: Record<string, unknown> = {}) => {
 				push({
@@ -746,7 +873,10 @@ export function mockEvents(projectId: string, now: Date, flags: FlagDefinition[]
 	return events.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
 }
 
-/** One assistant chat: a retrieval span with an embedding, then a generation. Returns its end. */
+/**
+ * One assistant chat: a retrieval span with an embedding, then a generation, and maybe scores
+ * for it. Returns its end.
+ */
 function aiTrace(
 	r: ReturnType<typeof random>,
 	push: (
@@ -844,7 +974,29 @@ function aiTrace(
 			? { $ai_is_error: true, $ai_error: 'overloaded_error: Overloaded' }
 			: { $ai_output_state: { answered: true } })
 	});
-	return at + Math.round(total * 1000) + r.int(20, 120) * 1000;
+	// An LLM judge grades most answers, smaller models a little lower, and some people click
+	// thumbs up or down on the answer, down more often when it failed.
+	const done = Math.round(total * 1000);
+	if (!failed && r.next() < 0.7) {
+		const base = model.startsWith('claude-sonnet') ? 0.85 : 0.7;
+		event('$ai_score', done + 500, {
+			$ai_span_id: ids.chat,
+			$ai_score_name: 'accuracy',
+			$ai_score_value:
+				Math.round(Math.min(1, Math.max(0, base + (r.next() - 0.5) * 0.4)) * 100) / 100
+		});
+	}
+	if (r.next() < (failed ? 0.6 : 0.3)) {
+		const up = !failed && r.next() < (model.startsWith('claude-sonnet') ? 0.85 : 0.65);
+		event('$ai_score', done + r.int(3, 40) * 1000, {
+			$ai_score_name: 'thumbs',
+			$ai_score_value: up ? 1 : 0,
+			...(!up && r.next() < 0.5
+				? { $ai_score_comment: failed ? 'It just errored out.' : 'The numbers look wrong.' }
+				: {})
+		});
+	}
+	return at + done + r.int(20, 120) * 1000;
 }
 
 const LIKE_MOCK = `startsWith({column}, '${MOCK_PREFIX}')`;

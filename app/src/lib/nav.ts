@@ -1,4 +1,5 @@
 import Activity from '@lucide/svelte/icons/activity';
+import Bell from '@lucide/svelte/icons/bell';
 import Bug from '@lucide/svelte/icons/bug';
 import Building2 from '@lucide/svelte/icons/building-2';
 import ChartSpline from '@lucide/svelte/icons/chart-spline';
@@ -46,7 +47,7 @@ export const PROJECT_NAV: NavGroup[] = [
 			{
 				path: '/insights',
 				label: 'Insights',
-				description: 'Trends, funnels and retention over your events.',
+				description: 'Trends, funnels, retention, paths and lifecycle over your events.',
 				icon: ChartSpline
 			},
 			{
@@ -124,7 +125,17 @@ export const SETTINGS_NAV: NavItem = {
 	icon: Settings
 };
 
-const ALL = [...PROJECT_NAV.flatMap((group) => group.items), SETTINGS_NAV];
+export const ALERTS_NAV: NavItem = {
+	path: '/alerts',
+	label: 'Alerts',
+	description: 'Webhooks for new issues, regressions, event counts and AI cost.',
+	icon: Bell
+};
+
+/** Pinned to the bottom of the sidebar. */
+export const FOOTER_NAV: NavItem[] = [ALERTS_NAV, SETTINGS_NAV];
+
+const ALL = [...PROJECT_NAV.flatMap((group) => group.items), ...FOOTER_NAV];
 
 /** The section a pathname belongs to, inside the given project. */
 export function activeNavItem(projectId: string, pathname: string): NavItem | undefined {

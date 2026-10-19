@@ -1,4 +1,5 @@
 import { and, asc, eq } from 'drizzle-orm';
+import { type InternalRule, parseInternalRulesJson } from '../internal-users';
 import type { Db } from './db/client';
 import { members, organizations, projects } from './db/schema';
 import { generatePublicKey, generateSecretKey } from './keys';
@@ -86,6 +87,32 @@ export async function rotateSecretKey(db: Db, projectId: string): Promise<string
 	const secretKey = generateSecretKey();
 	await db.update(projects).set({ secretKey }).where(eq(projects.id, projectId));
 	return secretKey;
+}
+
+/** A project's internal user rules and whether analytics leave them out by default. */
+export async function internalUsers(
+	db: Db,
+	projectId: string
+): Promise<{ rules: InternalRule[]; filter: boolean }> {
+	const [row] = await db
+		.select({ internalUsers: projects.internalUsers, filterInternal: projects.filterInternal })
+		.from(projects)
+		.where(eq(projects.id, projectId));
+	return {
+		rules: parseInternalRulesJson(row?.internalUsers),
+		filter: row?.filterInternal ?? false
+	};
+}
+
+export async function setInternalRules(db: Db, projectId: string, rules: InternalRule[]) {
+	await db
+		.update(projects)
+		.set({ internalUsers: JSON.stringify(rules) })
+		.where(eq(projects.id, projectId));
+}
+
+export async function setFilterInternal(db: Db, projectId: string, filter: boolean) {
+	await db.update(projects).set({ filterInternal: filter }).where(eq(projects.id, projectId));
 }
 
 /** The project a public key belongs to, or null. */

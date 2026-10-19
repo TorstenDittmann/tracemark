@@ -85,6 +85,21 @@ defer client.CapturePanic("user_123")
 - `CaptureExceptionWith(err, ExceptionOptions{…})` sets the groups, the mechanism (`manual`) and `Unhandled` (level `fatal`).
 - `Release` in the config is sent as `$release`.
 
+## AI scores
+
+```go
+client.CaptureAIScore(tracemark.AIScore{
+	DistinctID: "user_123",
+	TraceID:    traceID,
+	SpanID:     generationID, // optional: score one step
+	Name:       "thumbs",
+	Value:      0,
+	Comment:    "Wrong numbers",
+})
+```
+
+`CaptureAIScore` sends a `$ai_score` event (see [ai.md](ai.md#scores-and-feedback)). It needs a trace id, a name and a finite value; an empty distinct id attributes the score to `$server`.
+
 ## Cookies
 
 `client.DistinctIDFromCookie(r.Header.Get("Cookie"))` reads the distinct id the browser SDK keeps in its cookie (with `persistence: 'cookie'`), so server events join the visitor's person.

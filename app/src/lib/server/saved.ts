@@ -1,7 +1,11 @@
 import { and, asc, desc, eq, max } from 'drizzle-orm';
 import {
 	type FunnelQuery,
+	type LifecycleQuery,
+	type PathsQuery,
 	parseFunnel,
+	parseLifecycle,
+	parsePaths,
 	parseRetention,
 	parseTrends,
 	type RetentionQuery,
@@ -15,10 +19,20 @@ export type InsightKind = Insight['kind'];
 export type SavedQuery =
 	| { kind: 'trends'; query: TrendsQuery }
 	| { kind: 'funnel'; query: FunnelQuery }
-	| { kind: 'retention'; query: RetentionQuery };
+	| { kind: 'retention'; query: RetentionQuery }
+	| { kind: 'paths'; query: PathsQuery }
+	| { kind: 'lifecycle'; query: LifecycleQuery };
+
+export const INSIGHT_KIND_VALUES = [
+	'trends',
+	'funnel',
+	'retention',
+	'paths',
+	'lifecycle'
+] as const satisfies readonly InsightKind[];
 
 export function isInsightKind(value: unknown): value is InsightKind {
-	return value === 'trends' || value === 'funnel' || value === 'retention';
+	return (INSIGHT_KIND_VALUES as readonly unknown[]).includes(value);
 }
 
 /** Parses a stored or submitted query for its kind, dropping anything invalid. */
@@ -34,7 +48,22 @@ export function parseSavedQuery(kind: InsightKind, json: string): SavedQuery {
 			return { kind, query: parseFunnel(raw) };
 		case 'retention':
 			return { kind, query: parseRetention(raw) };
+		case 'paths':
+			return { kind, query: parsePaths(raw) };
+		case 'lifecycle':
+			return { kind, query: parseLifecycle(raw) };
 	}
+}
+
+/** The query with `filterInternal` set, keeping its own choice unless `force` is given. */
+export function withFilterInternal<T extends SavedQuery>(
+	saved: T,
+	filter: boolean,
+	force = false
+): T {
+	if (!force && saved.query.filterInternal !== undefined) return saved;
+	// A copy: the parsers can return the shared defaults.
+	return { ...saved, query: { ...saved.query, filterInternal: filter } } as T;
 }
 
 export function validateName(name: string): string | null {

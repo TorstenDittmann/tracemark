@@ -1,6 +1,8 @@
+import { listen } from './autocapture';
 import { defaultProperties, type Properties } from './properties';
 import { createStore, type Persistence, type Store } from './storage';
 import { uuidv7 } from './uuid';
+import { observeVitals, type Vitals } from './vitals';
 
 export interface Config {
 	/** Public project key (`fp_pub_…`). */
@@ -9,6 +11,15 @@ export interface Config {
 	host: string;
 	/** Capture `$pageview` on load and on SPA navigations, and `$pageleave` on pagehide. Default `true`. */
 	autocapturePageviews?: boolean;
+	/**
+	 * Capture clicks on buttons, links and elements marked `data-tm-capture` as `$autocapture`
+	 * events. Skips anything inside `data-tm-no-capture` and never reads input values. Default `false`.
+	 */
+	autocaptureClicks?: boolean;
+	/** Capture form submits as `$autocapture` events, with the same rules as clicks. Default `false`. */
+	autocaptureForms?: boolean;
+	/** Capture LCP, INP, CLS, FCP and TTFB as one `$web_vitals` event per page view. Default `false`. */
+	autocaptureWebVitals?: boolean;
 	/** Where ids are kept. `'memory'` keeps nothing across reloads. Default `'localStorage'`. */
 	persistence?: Persistence;
 	/**
@@ -52,9 +63,23 @@ export interface Plugin {
 	changed?(reason: 'init' | 'identity' | 'groups'): void;
 }
 
+/** A score or piece of feedback on an AI trace, see docs/ai.md. */
+export interface AiScore {
+	traceId: string;
+	/** A step of the trace, such as one generation's span id. */
+	spanId?: string;
+	/** What is scored, such as `thumbs` or `helpful`. */
+	name: string;
+	/** Thumbs up and down are 1 and 0. */
+	value: number;
+	comment?: string;
+}
+
 export interface TracemarkClient {
 	init(config: Config): TracemarkClient;
 	capture(event: string, properties?: Properties): void;
+	/** Records a `$ai_score` event for an AI trace, as the current person. */
+	aiScore(score: AiScore): void;
 	identify(distinctId: string, person?: PersonProperties): void;
 	group(type: string, key: string, properties?: Properties): void;
 	setPersonProperties(person: PersonProperties): void;
@@ -112,6 +137,10 @@ export function createClient(config?: Config): TracemarkClient {
 	let timer: ReturnType<typeof setTimeout> | undefined;
 	let flushing: Promise<void> = Promise.resolve();
 	let lastPageUrl: string | undefined;
+	let vitals: Vitals | undefined;
+	/** The page web vitals are being measured for, and whether they were sent already. */
+	let vitalsPage: Properties | undefined;
+	let vitalsSent = false;
 	const plugins: Plugin[] = [];
 	const cleanups: (() => void)[] = [];
 
@@ -296,11 +325,27 @@ export function createClient(config?: Config): TracemarkClient {
 		else scheduleFlush();
 	};
 
-	const capturePageview = () => {
-		const href = window.location.href;
-		if (href === lastPageUrl) return;
-		lastPageUrl = href;
-		emit('$pageview');
+	/** Sends the current page's web vitals, once per page view. */
+	const sendVitals = () => {
+		if (!vitals || !vitalsPage) return;
+		const metrics = vitals.take();
+		if (!vitalsSent && Object.keys(metrics).length) {
+			emit('$web_vitals', { ...metrics, ...vitalsPage });
+		}
+		vitalsSent = true;
+	};
+
+	const navigated = () => {
+		const loc = window.location;
+		if (loc.href === lastPageUrl) return;
+		lastPageUrl = loc.href;
+		if (vitals) {
+			sendVitals();
+			// The URL a page was measured on, as location has moved on by the time it is sent.
+			vitalsPage = { $current_url: loc.href, $pathname: loc.pathname };
+			vitalsSent = false;
+		}
+		if (cfg?.autocapturePageviews) emit('$pageview');
 	};
 
 	const installAutocapture = () => {
@@ -309,24 +354,40 @@ export function createClient(config?: Config): TracemarkClient {
 			cleanups.push(() => window.removeEventListener(t, fn));
 		};
 		on('pagehide', () => {
+			sendVitals();
 			if (cfg?.autocapturePageviews) emit('$pageleave');
 			beaconFlush();
 		});
 		const onVis = () => {
-			if (document.visibilityState === 'hidden') beaconFlush();
+			if (document.visibilityState !== 'hidden') return;
+			sendVitals();
+			beaconFlush();
 		};
 		document.addEventListener('visibilitychange', onVis);
 		cleanups.push(() => document.removeEventListener('visibilitychange', onVis));
 
-		if (!cfg?.autocapturePageviews) return;
+		if (cfg?.autocaptureClicks || cfg?.autocaptureForms) {
+			cleanups.push(
+				listen(cfg.autocaptureClicks, cfg.autocaptureForms, (p) => emit('$autocapture', p))
+			);
+		}
+		if (cfg?.autocaptureWebVitals) {
+			vitals = observeVitals();
+			cleanups.push(() => {
+				vitals?.stop();
+				vitals = vitalsPage = undefined;
+			});
+		}
+
+		if (!cfg?.autocapturePageviews && !vitals) return;
 		// Patch history so SPA navigations produce page views. The original method runs first
-		// so location reflects the new URL; same-URL calls are deduped in capturePageview.
+		// so location reflects the new URL; same-URL calls are deduped in navigated.
 		const h = window.history;
 		for (const m of ['pushState', 'replaceState'] as const) {
 			const orig = h[m];
 			const patched = function (this: History, ...args: Parameters<History['pushState']>) {
 				const r = orig.apply(this, args);
-				capturePageview();
+				navigated();
 				return r;
 			};
 			h[m] = patched;
@@ -334,8 +395,8 @@ export function createClient(config?: Config): TracemarkClient {
 				if (h[m] === patched) h[m] = orig;
 			});
 		}
-		on('popstate', capturePageview);
-		capturePageview();
+		on('popstate', navigated);
+		navigated();
 	};
 
 	const freshState = (out?: boolean): State => {
@@ -361,6 +422,9 @@ export function createClient(config?: Config): TracemarkClient {
 			}
 			cfg = {
 				autocapturePageviews: true,
+				autocaptureClicks: false,
+				autocaptureForms: false,
+				autocaptureWebVitals: false,
 				persistence: 'localStorage',
 				flushIntervalMs: 2000,
 				maxBatchSize: 50,
@@ -390,6 +454,16 @@ export function createClient(config?: Config): TracemarkClient {
 
 		capture(event, properties) {
 			emit(event, properties);
+		},
+
+		aiScore(s) {
+			emit('$ai_score', {
+				$ai_trace_id: s.traceId,
+				$ai_span_id: s.spanId,
+				$ai_score_name: s.name,
+				$ai_score_value: s.value,
+				$ai_score_comment: s.comment
+			});
 		},
 
 		identify(distinctId, person) {

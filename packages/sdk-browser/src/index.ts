@@ -1,6 +1,13 @@
 import { createClient } from './client';
 
-export type { Config, PersonProperties, Plugin, TracemarkClient, WireEvent } from './client';
+export type {
+	AiScore,
+	Config,
+	PersonProperties,
+	Plugin,
+	TracemarkClient,
+	WireEvent
+} from './client';
 export type { Properties } from './properties';
 export type { Persistence } from './storage';
 export { uuidv7 } from './uuid';

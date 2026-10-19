@@ -32,3 +32,8 @@ Only owners and admins can delete a person. Events sent later with one of the sa
 person, so stop tracking the person in your app first (for example with the browser SDK's `optOut()`).
 
 Deleting a project removes all of its events, people, groups and cohort members the same way.
+
+## Internal users
+
+To leave your team's own traffic out of analytics instead of deleting it, see
+[internal-users.md](internal-users.md). Exports and person deletion always include it.

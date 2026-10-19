@@ -1,12 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import {
 	DEFAULT_FUNNEL,
+	DEFAULT_LIFECYCLE,
+	DEFAULT_PATHS,
 	DEFAULT_RETENTION,
 	DEFAULT_TRENDS,
 	MAX_SERIES,
 	MAX_STEPS,
 	parseFunnel,
 	parseFunnelParam,
+	parseLifecycle,
+	parseLifecycleParam,
+	parsePaths,
+	parsePathsParam,
 	parseRetention,
 	parseRetentionParam,
 	parseTrends,
@@ -93,6 +99,18 @@ describe('parseFunnel', () => {
 	});
 });
 
+describe('filterInternal', () => {
+	it('is kept when it is a boolean and left out otherwise', () => {
+		expect(parseTrends({ filterInternal: false }).filterInternal).toBe(false);
+		expect(parseFunnel({ filterInternal: true }).filterInternal).toBe(true);
+		expect(parseRetention({ filterInternal: true }).filterInternal).toBe(true);
+		expect(parsePaths({ filterInternal: false }).filterInternal).toBe(false);
+		expect(parseLifecycle({ filterInternal: true }).filterInternal).toBe(true);
+		expect('filterInternal' in parseTrends({ filterInternal: 'true' })).toBe(false);
+		expect('filterInternal' in parseFunnel({})).toBe(false);
+	});
+});
+
 describe('parseRetention', () => {
 	it('keeps a valid query and has no hourly cohorts', () => {
 		const query = { start: 'signed_up', returning: 'purchase', range: '90d', filters: [] };
@@ -100,5 +118,43 @@ describe('parseRetention', () => {
 		expect(parseRetention({ ...query, range: '24h' }).range).toBe('7d');
 		expect(parseRetention({ start: 'a`', returning: 5 })).toEqual(DEFAULT_RETENTION);
 		expect(parseRetentionParam('{')).toEqual(DEFAULT_RETENTION);
+	});
+});
+
+describe('parsePaths', () => {
+	it('keeps a valid query', () => {
+		const query = {
+			label: 'event',
+			start: 'signed_up',
+			end: 'purchase',
+			steps: 3,
+			range: '30d',
+			filters: [{ property: 'plan', operator: 'eq', value: 'pro' }]
+		};
+		expect(parsePaths(query)).toEqual(query);
+		expect(parsePaths({ label: 'page', start: '/pricing' })).toEqual({
+			...DEFAULT_PATHS,
+			start: '/pricing'
+		});
+	});
+
+	it('falls back for unknown labels, bad names and out-of-range steps', () => {
+		expect(parsePaths({ label: 'screen', start: 'a`b', end: '', steps: 11 })).toEqual(
+			DEFAULT_PATHS
+		);
+		expect(parsePaths({ steps: 0 }).steps).toBe(DEFAULT_PATHS.steps);
+		expect(parsePaths({ steps: 2.5 }).steps).toBe(DEFAULT_PATHS.steps);
+		expect(parsePaths({ steps: 10 }).steps).toBe(10);
+		expect(parsePathsParam('nope')).toEqual(DEFAULT_PATHS);
+	});
+});
+
+describe('parseLifecycle', () => {
+	it('keeps a valid query and has no hourly range', () => {
+		const query = { event: 'login', interval: 'week', range: '90d', filters: [] };
+		expect(parseLifecycle(query)).toEqual(query);
+		expect(parseLifecycle({ ...query, range: '24h' }).range).toBe('7d');
+		expect(parseLifecycle({ event: 5, interval: 'year' })).toEqual(DEFAULT_LIFECYCLE);
+		expect(parseLifecycleParam('{')).toEqual(DEFAULT_LIFECYCLE);
 	});
 });

@@ -14,10 +14,10 @@ tracemark.capture('signed_up', { plan: 'pro' });
 tracemark.identify('user_123', { set: { email: 'ada@example.com' } });
 ```
 
-Page views, including SPA navigations, are captured automatically. Feature flags and error tracking are opt-in plugins from `@tracemark/browser/flags` and `@tracemark/browser/errors`.
+Page views, including SPA navigations, are captured automatically. Clicks, form submits and web vitals are opt-in with `autocaptureClicks`, `autocaptureForms` and `autocaptureWebVitals`. `tracemark.aiScore({ traceId, name: 'thumbs', value: 1 })` records feedback on an [AI trace](https://github.com/TorstenDittmann/tracemark/blob/main/docs/ai.md#scores-and-feedback). Feature flags and error tracking are opt-in plugins from `@tracemark/browser/flags` and `@tracemark/browser/errors`.
 
 Requires a running tracemark instance and its project key. ESM and script-tag builds are included.
 
-[Feature flags](https://github.com/TorstenDittmann/tracemark/blob/main/docs/flags-api.md) · [Error tracking](https://github.com/TorstenDittmann/tracemark/blob/main/docs/errors.md) · [Framework integrations](https://github.com/TorstenDittmann/tracemark/blob/main/docs/frameworks.md)
+[Autocapture and web vitals](https://github.com/TorstenDittmann/tracemark/blob/main/docs/autocapture.md) · [Feature flags](https://github.com/TorstenDittmann/tracemark/blob/main/docs/flags-api.md) · [Error tracking](https://github.com/TorstenDittmann/tracemark/blob/main/docs/errors.md) · [Framework integrations](https://github.com/TorstenDittmann/tracemark/blob/main/docs/frameworks.md)
 
 MIT licensed.

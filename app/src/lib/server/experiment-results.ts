@@ -1,7 +1,9 @@
 // Experiment results from ClickHouse: who saw which variant of the flag, and what they did after.
 import type { ExperimentMetric } from '../experiments';
+import type { InternalRule } from '../internal-users';
 import { type ClickHouseConfig, clickhouseQuery } from './clickhouse';
 import { PERSON } from './insights';
+import { internalUsersSql } from './internal-users';
 import { chTime } from './web';
 
 export interface VariantCounts {
@@ -19,6 +21,7 @@ const ALIASES = `LEFT JOIN (SELECT alias, person FROM person_distinct_ids WHERE 
  * Counts per variant. Exposure comes from `$feature_flag_called` events; a person belongs to the
  * variant they were first served, and people first served something else (false, an old variant)
  * are left out. Metric events only count from a person's first exposure to the end of the window.
+ * Internal users are left out with `internal`.
  */
 export async function experimentCounts(
 	config: ClickHouseConfig,
@@ -29,6 +32,7 @@ export async function experimentCounts(
 		metrics: ExperimentMetric[];
 		from: Date;
 		to: Date;
+		internal?: InternalRule[];
 	}
 ): Promise<VariantCounts[]> {
 	const params: Record<string, string | string[]> = {
@@ -41,7 +45,7 @@ export async function experimentCounts(
 	};
 	const window = `e.project_id = {project:UUID}
 		AND e.timestamp >= {from:DateTime64(3, 'UTC')}
-		AND e.timestamp < {to:DateTime64(3, 'UTC')}`;
+		AND e.timestamp < {to:DateTime64(3, 'UTC')}${internalUsersSql(query.internal, params)}`;
 	const values = query.metrics.map((metric, i) => {
 		params[`m${i}`] = metric.event;
 		const after = `m.event = {m${i}:String} AND m.timestamp >= x.first_seen`;

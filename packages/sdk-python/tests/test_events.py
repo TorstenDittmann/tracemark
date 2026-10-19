@@ -156,6 +156,27 @@ class WireFormat(ClientTest):
         self.assertEqual([e["event"] for e in self.server.events()], ["ok"])
         self.assertEqual(len(errors), 6)
 
+    def test_ai_scores(self) -> None:
+        errors: List[BaseException] = []
+        fp = self.client(on_error=errors.append)
+        fp.ai_score("ada", "t1", "thumbs", 1)
+        fp.ai_score("ada", "t1", "accuracy", 0.5, span_id="g1", comment="Half right")
+        with self.assertLogs("tracemark", logging.WARNING):
+            fp.ai_score("ada", "t1", "thumbs", "up")  # type: ignore[arg-type]
+            fp.ai_score("ada", "t1", "thumbs", float("nan"))
+        fp.flush()
+        thumbs, accuracy = self.server.events()
+        self.assertEqual(thumbs["event"], "$ai_score")
+        self.assertEqual(thumbs["distinct_id"], "ada")
+        self.assertEqual(
+            {k: v for k, v in thumbs["properties"].items() if k.startswith("$ai")},
+            {"$ai_trace_id": "t1", "$ai_score_name": "thumbs", "$ai_score_value": 1},
+        )
+        self.assertEqual(accuracy["properties"]["$ai_span_id"], "g1")
+        self.assertEqual(accuracy["properties"]["$ai_score_value"], 0.5)
+        self.assertEqual(accuracy["properties"]["$ai_score_comment"], "Half right")
+        self.assertEqual(len(errors), 2)
+
     def test_uuid_v7_is_ordered(self) -> None:
         ids = [uuidv7(1_700_000_000_000) for _ in range(5000)]
         for value in ids:

@@ -50,4 +50,5 @@ await tracemark.shutdown();
 ## AI
 
 `@tracemark/node/ai` records LLM calls made through the Anthropic and OpenAI SDKs and the Vercel AI
-SDK, and groups them into traces. See [ai.md](ai.md#node-sdk).
+SDK, and groups them into traces. `ai.score({ traceId, name, value, comment })` records a score
+or feedback for a trace. See [ai.md](ai.md#node-sdk).

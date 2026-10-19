@@ -13,11 +13,12 @@ import {
 import { experiments, featureFlags, insights, organizations, users } from './db/schema';
 import { experimentCounts } from './experiment-results';
 import { listGroups } from './groups';
+import { lifecycle, paths } from './insights';
 import { listIssues } from './issues';
 import { addMockData, MOCK_FLAGS, MOCK_INSIGHTS, removeMockData } from './mock-data';
 import { createProject } from './projects';
 import { createTestDb } from './test-db';
-import { webAnalytics } from './web';
+import { webAnalytics, webVitals } from './web';
 
 const now = new Date(Date.UTC(2026, 9, 16, 12, 0));
 let config: ClickHouseConfig;
@@ -37,6 +38,7 @@ describe.skipIf(!clickhouseTestUrl)('mock data', () => {
 	});
 	afterAll(() => dropTestDatabase(config));
 
+	// Generating and inserting a month of events twice takes a few seconds.
 	it('fills every area, replaces itself when added again, and removes only itself', async () => {
 		const db = await createTestDb();
 		const [user] = await db
@@ -60,13 +62,40 @@ describe.skipIf(!clickhouseTestUrl)('mock data', () => {
 		expect(web.breakdowns.referrer.length).toBeGreaterThan(3);
 		expect(web.breakdowns.country.length).toBeGreaterThan(3);
 
+		const vitals = await webVitals(config, project.id, { range: '30d', now });
+		expect(vitals.vitals.LCP.samples).toBeGreaterThan(100);
+		expect(vitals.vitals.INP.p75).toBeGreaterThan(0);
+		expect(vitals.paths.length).toBeGreaterThan(3);
+
 		const issues = await listIssues(config, project.id, { range: '30d', now });
 		expect(issues.issues.length).toBeGreaterThanOrEqual(5);
 
 		const ai = await aiOverview(config, project.id, { range: '30d', now });
 		expect(ai.totals.traces).toBeGreaterThan(20);
 		expect(ai.totals.cost).toBeGreaterThan(0);
+		expect(ai.scores.map((s) => s.name).sort()).toEqual(['accuracy', 'thumbs']);
+		expect(ai.modelScores.length).toBeGreaterThan(2);
 		expect((await listTraces(config, project.id, { range: '30d', now })).length).toBeGreaterThan(0);
+
+		// The saved paths and lifecycle insights have something to show.
+		const flows = await paths(
+			config,
+			project.id,
+			{ label: 'page', start: '/', steps: 4, range: '30d', filters: [] },
+			now
+		);
+		expect(flows.sessions).toBeGreaterThan(50);
+		expect(flows.steps.length).toBeGreaterThan(2);
+		expect(flows.steps[1].nodes.length).toBeGreaterThan(3);
+		const states = await lifecycle(
+			config,
+			project.id,
+			{ event: '$pageview', interval: 'week', range: '30d', filters: [] },
+			now
+		);
+		for (const status of ['new', 'returning', 'resurrecting', 'dormant'] as const) {
+			expect(states.counts[status].some((v) => v !== 0)).toBe(true);
+		}
 
 		const groups = await listGroups(config, project.id, 'company', { now });
 		expect(groups.groups.length).toBe(10);
@@ -94,5 +123,7 @@ describe.skipIf(!clickhouseTestUrl)('mock data', () => {
 		await removeMockData(db, config, project.id);
 		expect(await count(project.id)).toBe(1);
 		expect(await db.select().from(featureFlags)).toHaveLength(0);
-	});
+		// A month of events, written twice, and every area queried: more than the default 5 seconds
+		// on a busy machine.
+	}, 30_000);
 });

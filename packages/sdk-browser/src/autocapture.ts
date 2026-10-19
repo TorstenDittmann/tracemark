@@ -1,0 +1,105 @@
+// Click and form submit autocapture: `$autocapture` events describing the element, never what
+// was typed into it. See docs/autocapture.md for the event's shape.
+import type { Properties } from './properties';
+
+/** Elements whose clicks are captured; a click inside one counts as a click on it. */
+const CLICKABLE = 'a,button,input[type=submit],input[type=button],[role=button],[data-tm-capture]';
+const MAX_TEXT = 100;
+const MAX_ATTR = 100;
+const MAX_ATTRS = 5;
+// Card numbers and US social security numbers are dropped from element text.
+const SENSITIVE_TEXT = /\b(?:\d[ -]?){13,19}\b|\b\d{3}-\d{2}-\d{4}\b/;
+
+const cap = (s: string, n: number) => (s.length > n ? s.slice(0, n) : s);
+
+/** Fields that are never captured, even when clicked or marked with `data-tm-capture`. */
+function sensitive(el: Element): boolean {
+	const type = (el.getAttribute('type') ?? '').toLowerCase();
+	const ac = (el.getAttribute('autocomplete') ?? '').toLowerCase();
+	return (
+		type === 'password' || type === 'hidden' || ac.startsWith('cc-') || ac.includes('password')
+	);
+}
+
+/** Up to three levels of `tag#id` or `tag.class.class`, stopping at the first id. */
+function selector(el: Element): string {
+	const parts: string[] = [];
+	for (let node: Element | null = el; node && parts.length < 3; node = node.parentElement) {
+		const tag = node.tagName.toLowerCase();
+		if (tag === 'html' || tag === 'body') break;
+		if (node.id && /^[\w-]+$/.test(node.id)) {
+			parts.unshift(`${tag}#${node.id}`);
+			break;
+		}
+		const classes = [...node.classList].filter((c) => /^[\w-]+$/.test(c)).slice(0, 2);
+		parts.unshift(tag + classes.map((c) => `.${c}`).join(''));
+	}
+	return parts.join(' > ');
+}
+
+/** Visible text of an element: its label for inputs, never their value. */
+function text(el: Element | null | undefined): string {
+	if (!el) return '';
+	const label = el.getAttribute('aria-label') ?? el.getAttribute('title');
+	const raw = label ?? (el.tagName === 'INPUT' ? '' : (el.textContent ?? ''));
+	const t = raw.replace(/\s+/g, ' ').trim();
+	return SENSITIVE_TEXT.test(t) ? '' : cap(t, MAX_TEXT);
+}
+
+/** The `$autocapture` properties for a click or submit on `el`, or `undefined` to skip it. */
+export function describe(
+	type: 'click' | 'submit',
+	el: Element,
+	submitter?: Element | null
+): Properties | undefined {
+	if (el.closest('[data-tm-no-capture]') || sensitive(el)) return;
+	const p: Properties = {
+		$event_type: type,
+		$el_tag: el.tagName.toLowerCase(),
+		$el_selector: selector(el)
+	};
+	const t = text(type === 'submit' && !el.getAttribute('aria-label') ? submitter : el);
+	if (t) p.$el_text = t;
+	const href = el.getAttribute('href');
+	if (href) p.$el_href = cap(href, 2 * MAX_ATTR);
+	let n = 0;
+	for (const attr of el.attributes) {
+		if (n >= MAX_ATTRS) break;
+		if (attr.name.startsWith('data-') && !attr.name.startsWith('data-tm-')) {
+			p[`$el_attr__${attr.name}`] = cap(attr.value, MAX_ATTR);
+			n++;
+		}
+	}
+	return p;
+}
+
+/** Listens for clicks and submits on `document`; returns a function that stops listening. */
+export function listen(
+	clicks: boolean,
+	forms: boolean,
+	emit: (properties: Properties) => void
+): () => void {
+	const target = (e: Event) => {
+		const t = e.composedPath?.()[0] ?? e.target;
+		return t instanceof Element ? t : null;
+	};
+	const onClick = (e: Event) => {
+		const t = target(e);
+		const el = t?.closest(CLICKABLE);
+		if (!t || !el || sensitive(t)) return;
+		const p = describe('click', el);
+		if (p) emit(p);
+	};
+	const onSubmit = (e: Event) => {
+		const el = target(e);
+		if (!el) return;
+		const p = describe('submit', el, (e as SubmitEvent).submitter);
+		if (p) emit(p);
+	};
+	if (clicks) document.addEventListener('click', onClick, true);
+	if (forms) document.addEventListener('submit', onSubmit, true);
+	return () => {
+		document.removeEventListener('click', onClick, true);
+		document.removeEventListener('submit', onSubmit, true);
+	};
+}

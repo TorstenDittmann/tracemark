@@ -2,7 +2,7 @@
 import FolderKanban from '@lucide/svelte/icons/folder-kanban';
 import UsersRound from '@lucide/svelte/icons/users-round';
 import * as Sidebar from '#lib/components/ui/sidebar/index.js';
-import { activeNavItem, PROJECT_NAV, SETTINGS_NAV } from '#lib/nav.js';
+import { activeNavItem, FOOTER_NAV, PROJECT_NAV } from '#lib/nav.js';
 import { page } from '$app/state';
 import ProjectSwitcher from './project-switcher.svelte';
 import UserMenu from './user-menu.svelte';
@@ -93,20 +93,27 @@ function closeMobile() {
 	</Sidebar.Content>
 	<Sidebar.Footer>
 		{#if projectId}
-			{@const isActive = active === SETTINGS_NAV}
 			<Sidebar.Menu>
-				<Sidebar.MenuItem>
-					<Sidebar.MenuButton {isActive} tooltipContent={SETTINGS_NAV.label}>
-						{#snippet child({
-							props
-						})}
-							<a href="/projects/{projectId}{SETTINGS_NAV.path}" onclick={closeMobile} {...props}>
-								<SETTINGS_NAV.icon class={isActive ? 'text-primary' : 'text-muted-foreground'} />
-								<span>{SETTINGS_NAV.label}</span>
-							</a>
-						{/snippet}
-					</Sidebar.MenuButton>
-				</Sidebar.MenuItem>
+				{#each FOOTER_NAV as item (item.path)}
+					{@const isActive = active === item}
+					<Sidebar.MenuItem>
+						<Sidebar.MenuButton {isActive} tooltipContent={item.label}>
+							{#snippet child({
+								props
+							})}
+								<a
+									href="/projects/{projectId}{item.path}"
+									aria-current={isActive ? 'page' : undefined}
+									onclick={closeMobile}
+									{...props}
+								>
+									<item.icon class={isActive ? 'text-primary' : 'text-muted-foreground'} />
+									<span>{item.label}</span>
+								</a>
+							{/snippet}
+						</Sidebar.MenuButton>
+					</Sidebar.MenuItem>
+				{/each}
 			</Sidebar.Menu>
 		{/if}
 		<UserMenu {user} />

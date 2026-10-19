@@ -156,6 +156,10 @@ export const projects = sqliteTable('projects', {
 	secretKey: text('secret_key').unique(),
 	/** Days of events to keep; null keeps everything. */
 	retentionDays: integer('retention_days'),
+	/** Rules for internal users as JSON, see `InternalRule` in lib/internal-users.ts. */
+	internalUsers: text('internal_users').notNull().default('[]'),
+	/** Leave internal users out of analytics; insights can choose otherwise. */
+	filterInternal: integer('filter_internal', { mode: 'boolean' }).notNull().default(false),
 	createdAt: createdAt()
 });
 
@@ -168,7 +172,9 @@ export const insights = sqliteTable(
 			.notNull()
 			.references(() => projects.id, { onDelete: 'cascade' }),
 		name: text('name').notNull(),
-		kind: text('kind', { enum: ['trends', 'funnel', 'retention'] }).notNull(),
+		kind: text('kind', {
+			enum: ['trends', 'funnel', 'retention', 'paths', 'lifecycle']
+		}).notNull(),
 		query: text('query').notNull(),
 		createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
 		createdAt: createdAt(),
@@ -405,3 +411,120 @@ export const aiModelPrices = sqliteTable(
 );
 
 export type AiModelPrice = typeof aiModelPrices.$inferSelect;
+
+/** Where alerts are sent: a webhook URL, with a generic JSON, Slack or Discord body (docs/alerts.md). */
+export const alertDestinations = sqliteTable(
+	'alert_destinations',
+	{
+		id: id(),
+		projectId: text('project_id')
+			.notNull()
+			.references(() => projects.id, { onDelete: 'cascade' }),
+		name: text('name').notNull(),
+		url: text('url').notNull(),
+		format: text('format', { enum: ['json', 'slack', 'discord'] })
+			.notNull()
+			.default('json'),
+		/** Signs each body with HMAC-SHA256 in `X-Tracemark-Signature` when set. */
+		secret: text('secret'),
+		lastStatus: text('last_status', { enum: ['ok', 'error'] }),
+		lastError: text('last_error'),
+		lastDeliveredAt: timestamp('last_delivered_at'),
+		createdAt: createdAt(),
+		updatedAt: updatedAt()
+	},
+	(table) => [index('alert_destinations_project_id_idx').on(table.projectId)]
+);
+
+/**
+ * A condition the scheduler checks every minute. `config` is the JSON of the kind's settings;
+ * the state columns are what it remembers between checks so a condition fires once.
+ */
+export const alertRules = sqliteTable(
+	'alert_rules',
+	{
+		id: id(),
+		projectId: text('project_id')
+			.notNull()
+			.references(() => projects.id, { onDelete: 'cascade' }),
+		name: text('name').notNull(),
+		kind: text('kind', { enum: ['issue', 'metric', 'ai_cost'] }).notNull(),
+		config: text('config').notNull(),
+		enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
+		/** Also notify when a threshold condition clears. */
+		notifyResolved: integer('notify_resolved', { mode: 'boolean' }).notNull().default(false),
+		/** Least minutes between two notifications of a threshold rule. */
+		cooldownMinutes: integer('cooldown_minutes').notNull().default(60),
+		/** `firing` while a threshold condition holds. */
+		state: text('state', { enum: ['ok', 'firing'] })
+			.notNull()
+			.default('ok'),
+		/** Whether the current firing was notified, so its resolution is too. */
+		stateNotified: integer('state_notified', { mode: 'boolean' }).notNull().default(false),
+		/** The last measured count or cost of a threshold rule. */
+		lastValue: real('last_value'),
+		/** Issue rules look at exceptions stored after this. */
+		checkedUntil: timestamp('checked_until'),
+		lastCheckedAt: timestamp('last_checked_at'),
+		lastFiredAt: timestamp('last_fired_at'),
+		/** Why the last check failed; cleared by the next one that works. */
+		lastError: text('last_error'),
+		createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+		createdAt: createdAt(),
+		updatedAt: updatedAt()
+	},
+	(table) => [index('alert_rules_project_id_idx').on(table.projectId)]
+);
+
+export const alertRuleDestinations = sqliteTable(
+	'alert_rule_destinations',
+	{
+		ruleId: text('rule_id')
+			.notNull()
+			.references(() => alertRules.id, { onDelete: 'cascade' }),
+		destinationId: text('destination_id')
+			.notNull()
+			.references(() => alertDestinations.id, { onDelete: 'cascade' })
+	},
+	(table) => [
+		primaryKey({ columns: [table.ruleId, table.destinationId] }),
+		index('alert_rule_destinations_destination_id_idx').on(table.destinationId)
+	]
+);
+
+/** Recent deliveries per project; older rows are pruned as new ones arrive. */
+export const alertDeliveries = sqliteTable(
+	'alert_deliveries',
+	{
+		id: id(),
+		projectId: text('project_id')
+			.notNull()
+			.references(() => projects.id, { onDelete: 'cascade' }),
+		destinationId: text('destination_id').references(() => alertDestinations.id, {
+			onDelete: 'set null'
+		}),
+		destinationName: text('destination_name').notNull(),
+		ruleId: text('rule_id').references(() => alertRules.id, { onDelete: 'set null' }),
+		title: text('title').notNull(),
+		ok: integer('ok', { mode: 'boolean' }).notNull(),
+		/** HTTP status, when the destination answered. */
+		statusCode: integer('status_code'),
+		error: text('error'),
+		createdAt: createdAt()
+	},
+	(table) => [index('alert_deliveries_project_created_idx').on(table.projectId, table.createdAt)]
+);
+
+/**
+ * Leases for background jobs, so one app replica runs a job at a time. The holder renews its
+ * lease on every run; another replica takes over once it expires.
+ */
+export const jobLeases = sqliteTable('job_leases', {
+	name: text('name').primaryKey(),
+	holder: text('holder').notNull(),
+	expiresAt: timestamp('expires_at').notNull()
+});
+
+export type AlertDestination = typeof alertDestinations.$inferSelect;
+export type AlertRule = typeof alertRules.$inferSelect;
+export type AlertDelivery = typeof alertDeliveries.$inferSelect;

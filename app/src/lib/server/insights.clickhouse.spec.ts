@@ -1,6 +1,12 @@
 // Runs against a real ClickHouse when CLICKHOUSE_TEST_URL is set (CI's migrations job does), skipped otherwise.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { FunnelQuery, RetentionQuery, TrendsQuery } from '../insights';
+import type {
+	FunnelQuery,
+	LifecycleQuery,
+	PathsQuery,
+	RetentionQuery,
+	TrendsQuery
+} from '../insights';
 import type { ClickHouseConfig } from './clickhouse';
 import {
 	clickhouseTestUrl,
@@ -9,12 +15,24 @@ import {
 	insertEvents,
 	type TestEvent
 } from './clickhouse-test';
-import { eventNames, funnel, propertyNames, retention, trends } from './insights';
+import {
+	eventNames,
+	funnel,
+	lifecycle,
+	pagePaths,
+	paths,
+	propertyNames,
+	retention,
+	trends
+} from './insights';
 
 const project = '66666666-6666-4666-8666-666666666666';
 const recent = '77777777-7777-4777-8777-777777777777';
 const funnels = '99999999-9999-4999-8999-999999999999';
 const cohorts = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const pathsProject = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+const manyPaths = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+const lifecycles = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 const DAY = 24 * 60;
 // 12:30 UTC, so the last hourly bucket is 12:00.
 const now = new Date(Date.UTC(2026, 9, 16, 12, 30));
@@ -92,6 +110,63 @@ describe.skipIf(!clickhouseTestUrl)('trends in ClickHouse', () => {
 		await insertEvents(config, [
 			event('anon-f', 'clicked', 5, { button: 'buy', nested: { depth: 1 } }, recent)
 		]);
+		// Paths: one session per list, minutes ago counting down so they are in order.
+		const visit = (sessionId: string, distinctId: string, steps: string[]): TestEvent[] =>
+			steps.map((step, i) => ({
+				...(step.startsWith('/')
+					? event(distinctId, '$pageview', 100 - i, { $pathname: step }, pathsProject)
+					: event(distinctId, step, 100 - i, {}, pathsProject)),
+				sessionId
+			}));
+		await insertEvents(
+			config,
+			[
+				...visit('s1', 'v1', ['/', '/pricing', '/pricing', '/signup', 'signed_up', '$pageleave']),
+				...visit('s2', 'v2', ['/', '/docs']),
+				...visit('s3', 'v3', ['/', '/pricing', '/docs']),
+				...visit('s4', 'v4', ['/docs', '/', '/pricing']),
+				// No session id: the person's events are one path.
+				...visit('', 'v5', ['/about', '/'])
+			],
+			now.getTime()
+		);
+		// Ten pages after the home page: /p0 three times, /p1 twice, the rest once.
+		const pages = [
+			'/p0',
+			'/p0',
+			'/p0',
+			'/p1',
+			'/p1',
+			...[2, 3, 4, 5, 6, 7, 8, 9].map((n) => `/p${n}`)
+		];
+		await insertEvents(
+			config,
+			pages.flatMap((page, i) =>
+				['/', page].map((pathname, j) => ({
+					...event(`m${i}`, '$pageview', 50 - j, { $pathname: pathname }, manyPaths),
+					sessionId: `m${i}`
+				}))
+			),
+			now.getTime()
+		);
+		// Lifecycle, days back from Oct 16 at 12:00.
+		const active = (distinctId: string, days: number[]) =>
+			days.map((d) => event(distinctId, 'login', d * DAY + 30, {}, lifecycles));
+		await insertEvents(
+			config,
+			[
+				// Sep 6, Oct 1, then Oct 9, 10 and 12.
+				...active('l1', [40, 15, 7, 6, 4]),
+				// New Oct 14, back Oct 15.
+				...active('l2', [2, 1]),
+				// Oct 9 only: dormant on the range's first day.
+				...active('l3', [7]),
+				// New today.
+				...active('l4', [0]),
+				event('l5', 'other', 0, {}, lifecycles)
+			],
+			now.getTime()
+		);
 	});
 
 	afterAll(() => dropTestDatabase(config));
@@ -237,6 +312,173 @@ describe.skipIf(!clickhouseTestUrl)('trends in ClickHouse', () => {
 		// Oct 16 2026 is a Friday, so its week starts Monday Oct 12.
 		expect(result.cohorts.at(-1)).toEqual({ start: '2026-10-12T00:00:00Z', size: 3, returned: [] });
 		expect(new Date(result.cohorts[0].start).getUTCDay()).toBe(1);
+	});
+
+	const pathsQuery = (q: Partial<PathsQuery>): PathsQuery => ({
+		label: 'page',
+		steps: 5,
+		range: '24h',
+		filters: [],
+		...q
+	});
+
+	it('lists page paths, most viewed first', async () => {
+		expect(await pagePaths(config, pathsProject)).toEqual([
+			'/',
+			'/pricing',
+			'/docs',
+			'/about',
+			'/signup'
+		]);
+	});
+
+	it('follows page paths from a start, with drop-off', async () => {
+		const result = await paths(config, pathsProject, pathsQuery({ start: '/' }), now);
+		expect(result.sessions).toBe(5);
+		expect(result.steps).toEqual([
+			{
+				nodes: [{ label: '/', sessions: 5, ended: 1 }],
+				links: [
+					{ source: '/', target: '/pricing', sessions: 3 },
+					{ source: '/', target: '/docs', sessions: 1 }
+				]
+			},
+			{
+				nodes: [
+					{ label: '/pricing', sessions: 3, ended: 1 },
+					{ label: '/docs', sessions: 1, ended: 1 }
+				],
+				links: [
+					{ source: '/pricing', target: '/docs', sessions: 1 },
+					{ source: '/pricing', target: '/signup', sessions: 1 }
+				]
+			},
+			{
+				nodes: [
+					{ label: '/docs', sessions: 1, ended: 1 },
+					{ label: '/signup', sessions: 1, ended: 1 }
+				],
+				links: []
+			}
+		]);
+	});
+
+	it('does not count a path that goes on past the last step as ending', async () => {
+		const result = await paths(config, pathsProject, pathsQuery({ start: '/', steps: 1 }), now);
+		expect(result.steps.map((step) => step.nodes)).toEqual([
+			[{ label: '/', sessions: 5, ended: 1 }],
+			[
+				{ label: '/pricing', sessions: 3, ended: 1 },
+				{ label: '/docs', sessions: 1, ended: 1 }
+			]
+		]);
+		expect(result.steps[1].links).toEqual([]);
+	});
+
+	it('counts back from an end', async () => {
+		const result = await paths(config, pathsProject, pathsQuery({ end: '/pricing' }), now);
+		expect(result.sessions).toBe(3);
+		expect(result.steps).toEqual([
+			{
+				nodes: [{ label: '/docs', sessions: 1, ended: 1 }],
+				links: [{ source: '/docs', target: '/', sessions: 1 }]
+			},
+			{
+				nodes: [{ label: '/', sessions: 3, ended: 2 }],
+				links: [{ source: '/', target: '/pricing', sessions: 3 }]
+			},
+			{ nodes: [{ label: '/pricing', sessions: 3, ended: 0 }], links: [] }
+		]);
+		const between = await paths(
+			config,
+			pathsProject,
+			pathsQuery({ start: '/', end: '/docs' }),
+			now
+		);
+		expect(between.steps.map((step) => step.nodes.map((node) => node.label))).toEqual([
+			['/'],
+			['/docs', '/pricing'],
+			['/docs']
+		]);
+	});
+
+	it('follows event names, leaving out page leaves', async () => {
+		const result = await paths(config, pathsProject, pathsQuery({ label: 'event' }), now);
+		expect(result.steps).toEqual([
+			{
+				nodes: [{ label: '$pageview', sessions: 5, ended: 4 }],
+				links: [{ source: '$pageview', target: 'signed_up', sessions: 1 }]
+			},
+			{ nodes: [{ label: 'signed_up', sessions: 1, ended: 1 }], links: [] }
+		]);
+	});
+
+	it('groups all but the busiest steps as other', async () => {
+		const result = await paths(config, manyPaths, pathsQuery({}), now);
+		const [, second] = result.steps;
+		expect(second.nodes.map((node) => [node.label, node.sessions])).toEqual([
+			['/p0', 3],
+			['/p1', 2],
+			...[2, 3, 4, 5, 6, 7].map((n) => [`/p${n}`, 1]),
+			[null, 2]
+		]);
+		expect(result.steps[0].links).toHaveLength(9);
+		expect(result.steps[0].links[2]).toEqual({ source: '/', target: null, sessions: 2 });
+	});
+
+	const lifecycleQuery = (q: Partial<LifecycleQuery>): LifecycleQuery => ({
+		event: 'login',
+		interval: 'day',
+		range: '7d',
+		filters: [],
+		...q
+	});
+
+	it('sorts people into lifecycle states by day', async () => {
+		const result = await lifecycle(config, lifecycles, lifecycleQuery({}), now);
+		expect(result.periods).toHaveLength(7);
+		expect(result.periods[0]).toBe('2026-10-10T00:00:00Z');
+		expect(result.counts).toEqual({
+			new: [0, 0, 0, 0, 1, 0, 1],
+			returning: [1, 0, 0, 0, 0, 1, 0],
+			resurrecting: [0, 0, 1, 0, 0, 0, 0],
+			dormant: [-1, -1, 0, -1, 0, 0, -1]
+		});
+	});
+
+	it('sorts people into lifecycle states by week and month', async () => {
+		const weeks = await lifecycle(
+			config,
+			lifecycles,
+			lifecycleQuery({ interval: 'week', range: '30d' }),
+			now
+		);
+		expect(weeks.periods).toEqual([
+			'2026-09-14T00:00:00Z',
+			'2026-09-21T00:00:00Z',
+			'2026-09-28T00:00:00Z',
+			'2026-10-05T00:00:00Z',
+			'2026-10-12T00:00:00Z'
+		]);
+		expect(weeks.counts).toEqual({
+			new: [0, 0, 0, 1, 2],
+			returning: [0, 0, 0, 1, 1],
+			resurrecting: [0, 0, 1, 0, 0],
+			dormant: [0, 0, 0, 0, -1]
+		});
+		const months = await lifecycle(
+			config,
+			lifecycles,
+			lifecycleQuery({ interval: 'month', range: '30d' }),
+			now
+		);
+		expect(months.periods).toEqual(['2026-09-01T00:00:00Z', '2026-10-01T00:00:00Z']);
+		expect(months.counts).toEqual({
+			new: [1, 3],
+			returning: [0, 1],
+			resurrecting: [0, 0],
+			dormant: [0, 0]
+		});
 	});
 
 	it('lists recent events and property names', async () => {

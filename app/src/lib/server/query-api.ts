@@ -3,7 +3,7 @@ import { json } from '@sveltejs/kit';
 import { ACTIVITY_PAGE_SIZE, type ActivityPage, formatCursor } from '../explore';
 import { getDb } from './db/index';
 import { projectBySecretKey } from './projects';
-import { isInsightKind, parseSavedQuery, type SavedQuery } from './saved';
+import { isInsightKind, parseSavedQuery, type SavedQuery, withFilterInternal } from './saved';
 
 /** Largest request body the API reads. */
 export const MAX_BODY_BYTES = 64 * 1024;
@@ -30,17 +30,20 @@ export async function secretKeyProject(request: Request) {
 export class InvalidRequest extends Error {}
 
 /**
- * A query body: `{"kind": "trends" | "funnel" | "retention", "query": {…}}`. The kind must be
- * valid; the query is read like the editors read it, so invalid parts fall back to defaults and
- * the response shows the query that ran.
+ * A query body: `{"kind": "trends" | "funnel" | "retention" | "paths" | "lifecycle", "query": {…}}`,
+ * with an optional boolean `filterInternal`. The kind must be valid; the query is read like the
+ * editors read it, so invalid parts fall back to defaults and the response shows the query that
+ * ran. Without `filterInternal` (here or in the query) the project's setting applies.
  */
 export function parseQueryBody(input: unknown): SavedQuery {
 	if (typeof input !== 'object' || input === null || Array.isArray(input)) {
 		throw new InvalidRequest('The body must be a JSON object.');
 	}
-	const { kind, query } = input as Record<string, unknown>;
+	const { kind, query, filterInternal } = input as Record<string, unknown>;
 	if (!isInsightKind(kind)) {
-		throw new InvalidRequest('kind must be "trends", "funnel" or "retention".');
+		throw new InvalidRequest(
+			'kind must be "trends", "funnel", "retention", "paths" or "lifecycle".'
+		);
 	}
 	if (
 		query !== undefined &&
@@ -48,7 +51,11 @@ export function parseQueryBody(input: unknown): SavedQuery {
 	) {
 		throw new InvalidRequest('query must be an object.');
 	}
-	return parseSavedQuery(kind, JSON.stringify(query ?? {}));
+	if (filterInternal !== undefined && typeof filterInternal !== 'boolean') {
+		throw new InvalidRequest('filterInternal must be true or false.');
+	}
+	const saved = parseSavedQuery(kind, JSON.stringify(query ?? {}));
+	return filterInternal === undefined ? saved : withFilterInternal(saved, filterInternal, true);
 }
 
 /** Reads a JSON body up to MAX_BODY_BYTES. */

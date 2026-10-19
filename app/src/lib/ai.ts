@@ -8,6 +8,19 @@ export interface AiEvent {
 	properties: Record<string, unknown>;
 }
 
+/** One `$ai_score` event: a score or piece of feedback on a trace or one of its steps. */
+export interface AiScore {
+	uuid: string;
+	timestamp: string;
+	/** Who gave it. */
+	person: string;
+	/** The step it is for; null for the whole trace. */
+	spanId: string | null;
+	name: string;
+	value: number;
+	comment: string | null;
+}
+
 export type NodeKind = 'trace' | 'span' | 'generation' | 'embedding';
 
 export interface TraceNode {
@@ -105,6 +118,26 @@ function isAncestor(node: TraceNode, other: TraceNode): boolean {
 /** Every node, depth first, with its depth. */
 export function flatten(nodes: TraceNode[], depth = 0): { node: TraceNode; depth: number }[] {
 	return nodes.flatMap((node) => [{ node, depth }, ...flatten(node.children, depth + 1)]);
+}
+
+/**
+ * Scores by the node they are for. Scores for the whole trace, or for a step that isn't in it,
+ * go under the `$ai_trace` node when there is one, else under `null`.
+ */
+export function scoresByNode(scores: AiScore[], roots: TraceNode[]): Map<string | null, AiScore[]> {
+	const ids = new Set(flatten(roots).map(({ node }) => node.id));
+	const trace = roots.length === 1 && roots[0].kind === 'trace' ? roots[0].id : null;
+	const out = new Map<string | null, AiScore[]>();
+	for (const score of scores) {
+		const key = score.spanId && ids.has(score.spanId) ? score.spanId : trace;
+		out.set(key, [...(out.get(key) ?? []), score]);
+	}
+	return out;
+}
+
+/** A score or an average of scores, with at most two decimals. */
+export function formatScore(value: number): string {
+	return value.toLocaleString(undefined, { maximumFractionDigits: 2 });
 }
 
 /** Dollars with enough digits for fractions of a cent. */

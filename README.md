@@ -2,7 +2,14 @@
 
 Lightweight, self-hosted product analytics: web and product analytics, error tracking, AI observability, feature flags, experiments, and people/group identification. Nothing else.
 
-> Early development. Ingestion, storage, the browser SDK, sign-in and project management work today; analytics views come next.
+## What's in it
+
+- **Product and web analytics**: trends, funnels, retention, paths and lifecycle insights, dashboards, a web analytics page with web vitals, and opt-in click and form autocapture.
+- **Error tracking**: exceptions grouped into issues, source maps, and status (resolved, ignored, regressed).
+- **AI observability**: LLM calls, traces and spans with cost, tokens and latency, plus scores and user feedback.
+- **Feature flags and experiments**: rollouts, multivariate flags with payloads, local evaluation, and experiment results.
+- **People and groups**: identified persons, groups (companies, teams), cohorts, and personal data export and deletion.
+- **Alerts**: webhooks to Slack, Discord or your own endpoint for new issues, event counts and AI cost.
 
 ## How it fits together
 
@@ -17,16 +24,27 @@ SDKs ──POST /e──▶ ingest (Rust) ──batched inserts──▶ ClickHo
 | --- | --- |
 | `ingest/` | Rust service that validates, batches and writes events to ClickHouse |
 | `app/` | SvelteKit app on Bun: dashboard, flags and query APIs, migrations |
-| `packages/sdk-browser/` | `@tracemark/browser`, the browser SDK (~3 KB gzipped) |
+| `packages/sdk-browser/` | `@tracemark/browser`, the browser SDK (~5 KB gzipped) |
+| `packages/sdk-node/` | `@tracemark/node`, the Node SDK ([docs](docs/sdk-node.md)) |
 | `packages/sdk-python/` | `tracemark-sdk`, the Python server SDK ([docs](docs/sdk-python.md)) |
 | `packages/sdk-go/` | The Go server SDK ([docs](docs/sdk-go.md)) |
 | `packages/schema/fixtures/` | Request bodies every SDK and the ingest service test against |
 | `clickhouse/migrations/` | ClickHouse schema |
 | `docs/ingest-protocol.md` | The wire protocol between SDKs and ingest |
 | `docs/privacy.md` | Data retention, personal data export and deletion |
+| `docs/internal-users.md` | Filtering out your own team's traffic |
 | `docs/kubernetes.md` | Running tracemark on Kubernetes with the Helm chart |
 | `deploy/helm/tracemark/` | The Helm chart |
+| `docs/frameworks.md` | React, Next.js, Svelte, SvelteKit, Vue, Nuxt, Astro and Node server integrations |
+| `docs/autocapture.md` | Click, form and web vitals autocapture in the browser SDK |
+| `docs/errors.md` | Error tracking, issue grouping and source maps |
+| `docs/ai.md` | AI observability: SDK wrappers, OpenTelemetry, cost, scores |
+| `docs/flags-api.md` | Feature flag evaluation API and bucketing |
+| `docs/experiments.md` | Experiments and how results are counted |
+| `docs/insights.md` | Insight kinds, with how paths and lifecycle count |
 | `docs/query-api.md` | The read API: queries, saved insights, events and persons |
+| `docs/alerts.md` | Alerts: webhooks to Slack, Discord or your own endpoint for issues, event counts and AI cost |
+| `CHANGELOG.md` | Release notes |
 
 ## Self-hosting
 
@@ -56,7 +74,7 @@ tracemark.capture('signed_up', { plan: 'pro' });
 tracemark.identify('user_123', { set: { email: 'ada@example.com' } });
 ```
 
-Page views, including SPA navigations, are captured automatically.
+Page views, including SPA navigations, are captured automatically. Clicks, form submits and web vitals (LCP, INP, CLS, FCP, TTFB) can be too, with `autocaptureClicks`, `autocaptureForms` and `autocaptureWebVitals`; the Web page then shows each vital's 75th percentile by path. See [docs/autocapture.md](docs/autocapture.md).
 
 The ingest service adds `$browser`, `$browser_version`, `$os`, `$os_version` and `$device_type` from the request's user agent. Crawlers get `$device_type: "Bot"`. Location properties (`$geoip_country_code`, `$geoip_city_name` and others) need a city database: download [DB-IP City Lite](https://db-ip.com/db/download/ip-to-city-lite) (free, CC BY 4.0) or MaxMind GeoLite2 City in `.mmdb` format into `./geoip/`, set `GEOIP_DB=/geoip/<file>.mmdb` in `.env` and restart ingest. Client IPs are only used for the lookup and are never stored. Server-side SDKs can pass the visitor's `$ip` and `$user_agent` as event properties, or set `$geoip_disable: true`.
 
