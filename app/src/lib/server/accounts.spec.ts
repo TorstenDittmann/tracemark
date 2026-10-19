@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hasUsers, setupFirstUser, slugify } from './accounts';
+import { hasUsers, setupFirstUser, signUpWithOrganization, slugify } from './accounts';
 import { createAuth } from './auth/index';
 import { invitations, organizations } from './db/schema';
 import { listOrganizationsForUser } from './projects';
@@ -68,6 +68,44 @@ describe('sign-up', () => {
 
 		await db.insert(invitations).values({ ...invite, expiresAt: new Date(Date.now() + 60_000) });
 		expect((await auth.api.signUpEmail({ body })).user.email).toBe('eve@example.com');
+	});
+});
+
+describe('signUpWithOrganization', () => {
+	it('gives each new user their own organization when sign-up is open', async () => {
+		const db = await createTestDb();
+		const auth = createAuth(db, {
+			secret: 'test-secret-test-secret-test-secret',
+			allowSignUp: true
+		});
+		const owner = await setupFirstUser(auth, db, input);
+		if (!owner) throw new Error('no owner');
+
+		const eve = await signUpWithOrganization(auth, db, {
+			name: 'Eve',
+			email: 'Eve@Example.com',
+			password: 'another long one',
+			organization: 'Eve Co'
+		});
+		expect(eve.email).toBe('eve@example.com');
+		expect(await listOrganizationsForUser(db, eve.id)).toEqual([
+			{ id: expect.any(String), name: 'Eve Co', role: 'owner' }
+		]);
+		expect((await listOrganizationsForUser(db, owner.id)).map((o) => o.name)).toEqual(['Acme']);
+	});
+
+	it('is refused when sign-up is closed', async () => {
+		const { db, auth } = await setup();
+		await setupFirstUser(auth, db, input);
+		await expect(
+			signUpWithOrganization(auth, db, {
+				name: 'Eve',
+				email: 'eve@example.com',
+				password: 'another long one',
+				organization: 'Eve Co'
+			})
+		).rejects.toThrow(/closed/);
+		expect((await db.select().from(organizations)).map((o) => o.name)).toEqual(['Acme']);
 	});
 });
 

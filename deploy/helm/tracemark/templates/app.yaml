@@ -71,6 +71,8 @@ spec:
                   key: AUTH_SECRET
             - name: PUBLIC_URL
               value: {{ required "publicUrl is required, e.g. https://analytics.example.com" .Values.publicUrl | quote }}
+            - name: ALLOW_SIGNUP
+              value: {{ ternary "on" "off" .Values.app.allowSignup | quote }}
             - name: PROTOCOL_HEADER
               value: x-forwarded-proto
             - name: HOST_HEADER

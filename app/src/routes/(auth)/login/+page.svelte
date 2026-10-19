@@ -6,7 +6,7 @@ import { Spinner } from '#lib/components/ui/spinner/index.js';
 import { enhance } from '$app/forms';
 import type { PageProps } from './$types';
 
-let { form }: PageProps = $props();
+let { data, form }: PageProps = $props();
 let pending = $state(false);
 </script>
 
@@ -71,6 +71,14 @@ let pending = $state(false);
 			Sign in
 		</Button>
 	</form>
+	{#if data.signUpAllowed}
+		<p class="text-center text-sm text-muted-foreground">
+			New here?
+			<a href="/signup" class="font-medium text-foreground underline-offset-4 hover:underline"
+				>Create an account</a
+			>
+		</p>
+	{/if}
 	<p class="text-center text-sm text-muted-foreground">
 		Forgot your password? Run
 		<code class="rounded bg-muted px-1.5 py-0.5 text-xs">bun run reset-password</code>

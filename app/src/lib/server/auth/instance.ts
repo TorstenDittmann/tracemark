@@ -1,8 +1,13 @@
 import { sveltekitCookies } from 'better-auth/svelte-kit';
-import { AUTH_SECRET, PUBLIC_URL } from '$app/env/private';
+import { ALLOW_SIGNUP, AUTH_SECRET, PUBLIC_URL } from '$app/env/private';
 import { getRequestEvent } from '$app/server';
 import { getDb } from '../db/index';
 import { type Auth, createAuth } from './index';
+
+/** ALLOW_SIGNUP=on lets anyone create an account with their own organization. */
+export function signUpAllowed(): boolean {
+	return ALLOW_SIGNUP === 'on';
+}
 
 let instance: Auth | undefined;
 
@@ -11,6 +16,7 @@ export function getAuth(): Auth {
 	instance ??= createAuth(getDb(), {
 		baseURL: PUBLIC_URL,
 		secret: AUTH_SECRET,
+		allowSignUp: signUpAllowed(),
 		plugins: [sveltekitCookies(getRequestEvent)]
 	});
 	return instance;

@@ -25,6 +25,7 @@ services:
       INTERNAL_TOKEN: ${INTERNAL_TOKEN:?set INTERNAL_TOKEN in .env}
       AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET in .env}
       PUBLIC_URL: ${PUBLIC_URL:?set PUBLIC_URL in .env, e.g. https://analytics.example.com}
+      ALLOW_SIGNUP: ${ALLOW_SIGNUP:-off}
       CLICKHOUSE_URL: http://clickhouse:8123
       CLICKHOUSE_USER: tracemark
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:?set CLICKHOUSE_PASSWORD in .env}

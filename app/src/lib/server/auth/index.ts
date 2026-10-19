@@ -15,12 +15,18 @@ export interface AuthConfig {
 	/** Public URL of the instance; decides cookie security and trusted origins. Inferred per request when unset. */
 	baseURL?: string;
 	secret?: string;
+	/** Lets anyone create an account, not only the first user and invited people. */
+	allowSignUp?: boolean;
 	/** Framework glue, such as SvelteKit's cookie plugin. */
 	plugins?: BetterAuthPlugin[];
 }
 
-/** Sign-up is open for the instance's first user and, later, for people with a pending, unexpired invitation. */
-async function canSignUp(db: Db, email: string): Promise<boolean> {
+/**
+ * Sign-up is open for the instance's first user and, later, for people with a pending, unexpired invitation,
+ * or for everyone when the instance allows open sign-up.
+ */
+async function canSignUp(db: Db, email: string, allowSignUp: boolean): Promise<boolean> {
+	if (allowSignUp) return true;
 	const [row] = await db.select({ n: count() }).from(schema.users);
 	if ((row?.n ?? 0) === 0) return true;
 	const [invite] = await db
@@ -53,7 +59,7 @@ export function createAuth(db: Db, config: AuthConfig = {}) {
 			user: {
 				create: {
 					before: async (user) => {
-						if (!(await canSignUp(db, user.email))) {
+						if (!(await canSignUp(db, user.email, config.allowSignUp ?? false))) {
 							throw new APIError('FORBIDDEN', { message: 'Sign-up is closed on this instance.' });
 						}
 					}

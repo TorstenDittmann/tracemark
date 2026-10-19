@@ -24,6 +24,8 @@ app:
   # How the app learns the client's address for sign-in rate limiting, behind your ingress.
   addressHeader: x-forwarded-for
   xffDepth: 1
+  # true lets anyone create an account (and their own organization) at /signup; false keeps sign-up to invitations.
+  allowSignup: false
   # Extra environment variables, e.g. SOURCEMAPS_DIR or SMTP settings.
   env: []
   resources:

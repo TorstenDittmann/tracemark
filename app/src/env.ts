@@ -26,6 +26,11 @@ export const variables = defineEnvVars({
 		description: 'Secret that signs session cookies (openssl rand -hex 32). Required in production',
 		schema: optional('')
 	},
+	ALLOW_SIGNUP: {
+		description:
+			'on lets anyone create an account and their own organization at /signup. off (the default) keeps sign-up to the first user and invited people',
+		schema: optional('off')
+	},
 	MODEL_PRICES_URL: {
 		description:
 			'Catalog the built-in model prices are refreshed from daily, in models.dev api.json format. off keeps the prices shipped with the app',

@@ -53,7 +53,7 @@ cp .env.example .env            # set INTERNAL_TOKEN and AUTH_SECRET (openssl ra
 docker compose up -d
 ```
 
-Open `http://localhost:8080`. The first visit asks you to create the owner account and an organization; after that, create a project to get its public key. Invite teammates from **Team**: tracemark doesn't send email, so you copy each invitation's link and send it yourself. Everything is served on one port (default `8080`): `/e` goes to the ingest service, everything else to the app. Set `TRACEMARK_HOST=analytics.example.com` and `PUBLIC_URL=https://analytics.example.com` to get automatic HTTPS. Sign-in uses [better-auth](https://www.better-auth.com).
+Open `http://localhost:8080`. The first visit asks you to create the owner account and an organization; after that, create a project to get its public key. Invite teammates from **Team**: tracemark doesn't send email, so you copy each invitation's link and send it yourself. To let anyone create an account and their own organization at `/signup`, set `ALLOW_SIGNUP=on`. Everything is served on one port (default `8080`): `/e` goes to the ingest service, everything else to the app. Set `TRACEMARK_HOST=analytics.example.com` and `PUBLIC_URL=https://analytics.example.com` to get automatic HTTPS. Sign-in uses [better-auth](https://www.better-auth.com).
 
 For a production server, `docker-compose.prod.yml` runs the published images from GitHub Container Registry instead of building from source, and serves HTTPS on ports 80 and 443. Copy it, `Caddyfile` and `.env.example` to the server, point your hostname's DNS at it, and in `.env` set `INTERNAL_TOKEN`, `AUTH_SECRET`, `CLICKHOUSE_PASSWORD`, `TRACEMARK_HOST` and `PUBLIC_URL`. Pin a release with `TRACEMARK_VERSION=0.1.0` (default `latest`). Then:
 
