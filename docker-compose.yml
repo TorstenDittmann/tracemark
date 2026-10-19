@@ -20,6 +20,7 @@ services:
       INTERNAL_TOKEN: ${INTERNAL_TOKEN:?set INTERNAL_TOKEN in .env}
       AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET in .env}
       PUBLIC_URL: ${PUBLIC_URL:-http://localhost:${TRACEMARK_PORT:-8080}}
+      ALLOW_SIGNUP: ${ALLOW_SIGNUP:-off}
       CLICKHOUSE_URL: http://clickhouse:8123
       CLICKHOUSE_USER: tracemark
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-tracemark}

@@ -1,7 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { isAPIError } from 'better-auth/api';
 import { hasUsers, normalizeEmail } from '#lib/server/accounts.js';
-import { getAuth } from '#lib/server/auth/instance.js';
+import { getAuth, signUpAllowed } from '#lib/server/auth/instance.js';
 import { RateLimiter } from '#lib/server/auth/rate-limit.js';
 import { getDb } from '#lib/server/db/index.js';
 import { safeRedirectPath } from '#lib/server/redirect.js';
@@ -14,6 +14,7 @@ const byEmail = new RateLimiter(10, FIFTEEN_MINUTES);
 export const load: PageServerLoad = async ({ locals, url }) => {
 	if (locals.user) redirect(303, safeRedirectPath(url.searchParams.get('next')));
 	if (!(await hasUsers(getDb()))) redirect(303, '/setup');
+	return { signUpAllowed: signUpAllowed() };
 };
 
 export const actions: Actions = {
