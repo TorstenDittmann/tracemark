@@ -1,7 +1,9 @@
 # Dokploy
 
-`docker-compose.dokploy.yml` runs the published app and ingest images and ClickHouse behind
-Dokploy's Traefik, which issues the TLS certificate. There is no Caddy in this setup.
+`docker-compose.dokploy.yml` runs the published app and ingest images, ClickHouse, and tracemark's
+own Caddy proxy. Dokploy's Traefik terminates TLS for your domain and forwards everything to Caddy,
+which sends `/e`, `/e/*` and `/v1/traces` to ingest and everything else to the app, exactly like the
+plain compose setup. Nothing binds a host port, so it doesn't clash with Dokploy's own proxy.
 
 ## Deploy
 
@@ -20,21 +22,22 @@ Dokploy's Traefik, which issues the TLS certificate. There is no Caddy in this s
    GEOIP_DB=            # optional, see the README
    ```
 
-5. Click **Deploy**, then open `https://analytics.example.com`. The first visit asks you to create
+5. Under **Domains**, add one domain: host `analytics.example.com` (the same as
+   `TRACEMARK_DOMAIN`), service `proxy`, container port `80`, path `/`, HTTPS on with the
+   Let's Encrypt certificate.
+6. Click **Deploy**, then open `https://analytics.example.com`. The first visit asks you to create
    the owner account and an organization.
 
-Leave the service's **Domains** tab empty. The compose file labels the Traefik routes itself
-because ingest needs exact paths: `/e`, `/e/*` and `/v1/traces` go to ingest, everything else to
-the app, and plain HTTP redirects to HTTPS. A Domains entry with path `/e` would become a prefix
-match and also catch app pages such as `/experiments`.
+Add only the one domain for `proxy`. Path routing happens in `deploy/dokploy/Caddyfile`, so there
+are no Domains entries for the app or ingest.
 
 Keep `AUTH_SECRET` stable: changing it signs everyone out.
 
 ## Upgrade
 
 The app and ingest images are pulled on every deploy, so with `TRACEMARK_VERSION` empty or
-`latest`, redeploying the service picks up the newest release. To
-pin a release, set `TRACEMARK_VERSION` to it and redeploy.
+`latest`, redeploying the service picks up the newest release. To pin a release, set
+`TRACEMARK_VERSION` to it and redeploy.
 
 ## Commands
 
