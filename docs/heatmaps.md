@@ -63,4 +63,4 @@ Content-Security-Policy: frame-ancestors 'self' https://analytics.example.com
 
 and no `X-Frame-Options` header (browsers ignore it when `frame-ancestors` is set, but older ones don't). Add `frame-ancestors` to an existing policy rather than sending a second one. A site served over plain `http` can't be framed by a dashboard served over `https`.
 
-The dashboard checks the headers of pages on origins the project's own events came from; for any other URL it only notices when the frame doesn't load within 10 seconds. If a page shows an error in the frame anyway, turn off **Show page**.
+The dashboard checks the headers of pages on origins the project's own events came from. It only fetches hosts with public addresses and doesn't follow redirects, so a page that redirects, or one on a private network, isn't checked; for those, and for any other URL, it only notices when the frame doesn't load within 10 seconds. If a page shows an error in the frame anyway, turn off **Show page**.
