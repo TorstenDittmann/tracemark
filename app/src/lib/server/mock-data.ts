@@ -457,6 +457,19 @@ export const MOCK_INSIGHTS: { name: string; saved: SavedQuery }[] = [
 			kind: 'lifecycle',
 			query: { event: '$pageview', interval: 'week', range: '30d', filters: [] }
 		}
+	},
+	{
+		name: 'Weekly stickiness',
+		saved: {
+			kind: 'stickiness',
+			query: {
+				events: ['$pageview', 'insight_viewed'],
+				interval: 'week',
+				range: '30d',
+				cumulative: false,
+				filters: []
+			}
+		}
 	}
 ];
 export const MOCK_DASHBOARD = 'Demo overview';

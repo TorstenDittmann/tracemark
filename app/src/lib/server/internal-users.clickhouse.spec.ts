@@ -12,7 +12,7 @@ import {
 	type TestEvent
 } from './clickhouse-test';
 import { experimentCounts } from './experiment-results';
-import { funnel, lifecycle, paths, retention, trends } from './insights';
+import { funnel, lifecycle, paths, retention, stickiness, trends } from './insights';
 import { internalUsersSql } from './internal-users';
 import { issueDetail, listIssues } from './issues';
 import { webAnalytics, webVitals } from './web';
@@ -188,7 +188,7 @@ describe.skipIf(!clickhouseTestUrl)('internal users in ClickHouse', () => {
 		).toHaveLength(7);
 	});
 
-	it('filters trends, funnels, retention, paths and lifecycle', async () => {
+	it('filters trends, funnels, retention, paths, lifecycle and stickiness', async () => {
 		const purchases = (internal?: InternalRule[]) =>
 			trends(
 				config,
@@ -248,6 +248,18 @@ describe.skipIf(!clickhouseTestUrl)('internal users in ClickHouse', () => {
 			).then((result) => result.counts.new.reduce((sum, n) => sum + n, 0));
 		expect(await newPeople()).toBe(4);
 		expect(await newPeople(rules)).toBe(2);
+
+		const stickyPeople = (internal?: InternalRule[]) =>
+			stickiness(
+				config,
+				project,
+				{ events: ['purchase'], interval: 'day', range: '7d', cumulative: false, filters: [] },
+				now,
+				undefined,
+				internal
+			).then((result) => result.lines[0].people);
+		expect(await stickyPeople()).toBe(4);
+		expect(await stickyPeople(rules)).toBe(2);
 	});
 
 	it('filters web analytics and web vitals', async () => {

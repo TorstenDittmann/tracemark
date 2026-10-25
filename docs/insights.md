@@ -13,6 +13,7 @@ saved with the insight.
 | Retention | How many people come back in the days or weeks after they first did something |
 | Paths | What people do in a session after (or before) a page or event |
 | Lifecycle | How many active people are new, returning or resurrecting, and how many went dormant |
+| Stickiness | On how many days or weeks of a range people did an event |
 
 ## Paths
 
@@ -48,3 +49,17 @@ Dormant people are counted as negative, so the chart stacks them below zero. "Ev
 over every event the project keeps (see [privacy.md](privacy.md) for retention), with the
 insight's filters and cohort applied. The first period is counted whole even when the date range
 starts inside it.
+
+## Stickiness
+
+Stickiness counts the people who did an event by how many days, or weeks (from Monday), of the date
+range they did it on, following PostHog's definition: a bar for people active on exactly 1 interval,
+one for exactly 2, and so on up to every interval in the range. A sticky event is one people come
+back to on many intervals. Doing it several times within one day or week still counts once.
+
+- **Events** takes up to 5 events, each drawn as its own bars.
+- **Count active** picks days or weeks; it starts at days, or weeks for the last 90 days.
+- **Cumulative** turns each bar into the people active on at least that many intervals, so the first
+  bar is everyone who did the event.
+
+As in lifecycle, the first week is counted whole even when the date range starts inside it.

@@ -5,6 +5,7 @@ import type {
 	LifecycleQuery,
 	PathsQuery,
 	RetentionQuery,
+	StickinessQuery,
 	TrendsQuery
 } from '../insights';
 import type { ClickHouseConfig } from './clickhouse';
@@ -23,6 +24,7 @@ import {
 	paths,
 	propertyNames,
 	retention,
+	stickiness,
 	trends
 } from './insights';
 
@@ -479,6 +481,49 @@ describe.skipIf(!clickhouseTestUrl)('trends in ClickHouse', () => {
 			resurrecting: [0, 0],
 			dormant: [0, 0]
 		});
+	});
+
+	const stickinessQuery = (q: Partial<StickinessQuery>): StickinessQuery => ({
+		events: ['login'],
+		interval: 'day',
+		range: '7d',
+		cumulative: false,
+		filters: [],
+		...q
+	});
+
+	it('counts people by the days they were active on', async () => {
+		const result = await stickiness(config, lifecycles, stickinessQuery({}), now);
+		// Oct 10 to 16: l1 on two days, l2 on two, l4 on one; l3 was only active before.
+		expect(result).toEqual({
+			interval: 'day',
+			intervals: 7,
+			cumulative: false,
+			lines: [{ series: 0, label: 'login', counts: [1, 2, 0, 0, 0, 0, 0], people: 3 }]
+		});
+		const cumulative = await stickiness(
+			config,
+			lifecycles,
+			stickinessQuery({ cumulative: true }),
+			now
+		);
+		expect(cumulative.lines[0].counts).toEqual([3, 2, 0, 0, 0, 0, 0]);
+		expect(cumulative.lines[0].people).toBe(3);
+	});
+
+	it('counts weeks from Monday and gives each event its own line', async () => {
+		const result = await stickiness(
+			config,
+			lifecycles,
+			stickinessQuery({ events: ['login', 'never'], interval: 'week', range: '30d' }),
+			now
+		);
+		// Weeks of Sep 14 to Oct 12: l1 on three, l2, l3 and l4 on one each.
+		expect(result.intervals).toBe(5);
+		expect(result.lines).toEqual([
+			{ series: 0, label: 'login', counts: [3, 0, 1, 0, 0], people: 4 },
+			{ series: 1, label: 'never', counts: [0, 0, 0, 0, 0], people: 0 }
+		]);
 	});
 
 	it('lists recent events and property names', async () => {

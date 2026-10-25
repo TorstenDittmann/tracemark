@@ -65,7 +65,7 @@ const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', tim
 		<EmptyState
 			icon={Bookmark}
 			title="No saved insights yet"
-			description="Build a trend, funnel, retention, paths or lifecycle view and save it to find it here."
+			description="Build a trend, funnel, retention, paths, lifecycle or stickiness view and save it to find it here."
 		>
 			<Button href="/projects/{data.project.id}/insights/trends" size="sm">New trend</Button>
 		</EmptyState>

@@ -30,8 +30,8 @@ export async function secretKeyProject(request: Request) {
 export class InvalidRequest extends Error {}
 
 /**
- * A query body: `{"kind": "trends" | "funnel" | "retention" | "paths" | "lifecycle", "query": {…}}`,
- * with an optional boolean `filterInternal`. The kind must be valid; the query is read like the
+ * A query body: `{"kind": "trends" | "funnel" | "retention" | "paths" | "lifecycle" | "stickiness",
+ * "query": {…}}`, with an optional boolean `filterInternal`. The kind must be valid; the query is read like the
  * editors read it, so invalid parts fall back to defaults and the response shows the query that
  * ran. Without `filterInternal` (here or in the query) the project's setting applies.
  */
@@ -42,7 +42,7 @@ export function parseQueryBody(input: unknown): SavedQuery {
 	const { kind, query, filterInternal } = input as Record<string, unknown>;
 	if (!isInsightKind(kind)) {
 		throw new InvalidRequest(
-			'kind must be "trends", "funnel", "retention", "paths" or "lifecycle".'
+			'kind must be "trends", "funnel", "retention", "paths", "lifecycle" or "stickiness".'
 		);
 	}
 	if (

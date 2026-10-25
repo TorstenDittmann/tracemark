@@ -401,6 +401,76 @@ export function parseLifecycleParam(value: string | null): LifecycleQuery {
 	}
 }
 
+export interface StickinessQuery {
+	/** One bar series per event, up to MAX_SERIES. */
+	events: string[];
+	/** What a person is counted active on: days, or weeks from Monday. */
+	interval: StickinessInterval;
+	range: Exclude<Range, '24h'>;
+	/** Count people active on at least N intervals instead of exactly N. */
+	cumulative: boolean;
+	filters: PropertyFilter[];
+	/** Only people in this cohort. */
+	cohort?: string;
+	/** Leave out internal users; absent follows the project's setting. */
+	filterInternal?: boolean;
+}
+
+export const STICKINESS_INTERVALS = {
+	day: 'Day',
+	week: 'Week'
+} as const;
+
+export type StickinessInterval = keyof typeof STICKINESS_INTERVALS;
+
+export const STICKINESS_RANGES: StickinessQuery['range'][] = ['7d', '30d', '90d'];
+
+export const DEFAULT_STICKINESS: StickinessQuery = {
+	events: ['$pageview'],
+	interval: 'day',
+	range: '30d',
+	cumulative: false,
+	filters: []
+};
+
+/** The interval a query without one gets: days for 7 and 30 days, weeks for 90. */
+export function stickinessInterval(range: StickinessQuery['range']): StickinessInterval {
+	return range === '90d' ? 'week' : 'day';
+}
+
+/** Reads a stickiness query from untrusted JSON. Invalid parts fall back to defaults. */
+export function parseStickiness(input: unknown): StickinessQuery {
+	if (!isRecord(input)) return DEFAULT_STICKINESS;
+	const events = (Array.isArray(input.events) ? input.events : [])
+		.filter(validName)
+		.slice(0, MAX_SERIES);
+	const parsed = parseRange(
+		typeof input.range === 'string' ? input.range : DEFAULT_STICKINESS.range
+	);
+	const range = parsed === '24h' ? '7d' : parsed;
+	return {
+		events: events.length ? events : DEFAULT_STICKINESS.events,
+		interval:
+			typeof input.interval === 'string' && Object.hasOwn(STICKINESS_INTERVALS, input.interval)
+				? (input.interval as StickinessInterval)
+				: stickinessInterval(range),
+		range,
+		cumulative: input.cumulative === true,
+		filters: parsePropertyFilters(input.filters),
+		...cohortOf(input),
+		...filterInternalOf(input)
+	};
+}
+
+export function parseStickinessParam(value: string | null): StickinessQuery {
+	if (!value) return DEFAULT_STICKINESS;
+	try {
+		return parseStickiness(JSON.parse(value));
+	} catch {
+		return DEFAULT_STICKINESS;
+	}
+}
+
 // Results, as the server queries return them.
 
 export interface TrendLine {
@@ -493,4 +563,25 @@ export interface LifecycleResult {
 	periods: string[];
 	/** People per status for each period; dormant counts are negative. */
 	counts: Record<LifecycleStatus, number[]>;
+}
+
+export interface StickinessLine {
+	/** Index into the query's events. */
+	series: number;
+	label: string;
+	/**
+	 * People by how many intervals they were active on: index 0 is exactly one interval (for a
+	 * cumulative query, one or more), up to every interval in the range.
+	 */
+	counts: number[];
+	/** People who did the event at least once in the range. */
+	people: number;
+}
+
+export interface StickinessResult {
+	interval: StickinessInterval;
+	/** Intervals in the range: the most a person can be active on. */
+	intervals: number;
+	cumulative: boolean;
+	lines: StickinessLine[];
 }

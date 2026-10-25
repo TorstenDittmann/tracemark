@@ -3,6 +3,7 @@ import FunnelView from '#lib/components/insights/funnel-view.svelte';
 import LifecycleView from '#lib/components/insights/lifecycle-view.svelte';
 import PathsView from '#lib/components/insights/paths-view.svelte';
 import RetentionView from '#lib/components/insights/retention-view.svelte';
+import StickinessView from '#lib/components/insights/stickiness-view.svelte';
 import TrendsView from '#lib/components/insights/trends-view.svelte';
 import { Button } from '#lib/components/ui/button/index.js';
 import * as Card from '#lib/components/ui/card/index.js';
@@ -139,6 +140,8 @@ let renaming = $state(false);
 							/>
 						{:else if item.view.kind === 'lifecycle'}
 							<LifecycleView result={item.view.result} event={item.view.query.event} compact />
+						{:else if item.view.kind === 'stickiness'}
+							<StickinessView result={item.view.result} compact />
 						{:else}
 							<RetentionView result={item.view.result} start={item.view.query.start} />
 						{/if}
