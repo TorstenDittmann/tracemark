@@ -1,6 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { lookup } from 'node:dns';
+import { createServer, type Server } from 'node:http';
+import type { AddressInfo } from 'node:net';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { heatmapFrameUrl } from '../heatmaps';
-import { checkFraming, framingBlocked, isPrivateAddress } from './framing';
+import { checkFraming, framingBlocked, isPrivateAddress, requestHeaders } from './framing';
 
 const dashboard = 'https://analytics.example.com';
 const page = 'https://www.example.com/pricing';
@@ -55,8 +58,6 @@ describe('framingBlocked', () => {
 	});
 });
 
-const publicHost = async () => true;
-
 describe('isPrivateAddress', () => {
 	it('flags loopback, private, link-local and mapped addresses', () => {
 		for (const ip of [
@@ -81,49 +82,57 @@ describe('isPrivateAddress', () => {
 });
 
 describe('checkFraming', () => {
+	const respond =
+		(status: number, headers: Record<string, string> = {}) =>
+		async () => ({ status, headers: new Headers(headers) });
+
 	it('checks the headers of the page', async () => {
-		const fetchImpl = (async () =>
-			new Response('<html></html>', {
-				headers: { 'x-frame-options': 'DENY' }
-			})) as unknown as typeof fetch;
-		expect(await checkFraming(page, dashboard, fetchImpl, publicHost)).toEqual({
+		expect(
+			await checkFraming(page, dashboard, respond(200, { 'x-frame-options': 'DENY' }))
+		).toEqual({
 			status: 'blocked',
 			reason: 'x-frame-options'
 		});
+		expect(await checkFraming(page, dashboard, respond(200))).toEqual({ status: 'allowed' });
 	});
 
-	it('is unknown when the page cannot be fetched', async () => {
-		const fetchImpl = (async () => {
+	it('is unknown when the page cannot be fetched or redirects', async () => {
+		const offline = async () => {
 			throw new Error('offline');
-		}) as unknown as typeof fetch;
-		expect(await checkFraming(page, dashboard, fetchImpl, publicHost)).toEqual({
+		};
+		expect(await checkFraming(page, dashboard, offline)).toEqual({ status: 'unknown' });
+		expect(await checkFraming(page, dashboard, respond(302))).toEqual({ status: 'unknown' });
+		expect(await checkFraming('ftp://example.com/', dashboard, respond(200))).toEqual({
 			status: 'unknown'
 		});
 	});
+});
 
-	it('never fetches a host on a private network', async () => {
-		let fetched = false;
-		const fetchImpl = (async () => {
-			fetched = true;
-			return new Response('');
-		}) as unknown as typeof fetch;
-		expect(await checkFraming('http://127.0.0.1:8123/', dashboard, fetchImpl)).toEqual({
-			status: 'unknown'
+describe('requestHeaders', () => {
+	let server: Server;
+	let port: number;
+	beforeAll(async () => {
+		server = createServer((_req, res) => {
+			res.setHeader('x-frame-options', 'DENY');
+			res.end('<html></html>');
 		});
-		expect(await checkFraming(page, dashboard, fetchImpl, async () => false)).toEqual({
-			status: 'unknown'
-		});
-		expect(fetched).toBe(false);
+		await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
+		port = (server.address() as AddressInfo).port;
+	});
+	afterAll(() => server.close());
+
+	it('reads the headers of a page', async () => {
+		const res = await requestHeaders(new URL(`http://localhost:${port}/`), lookup);
+		expect(res.status).toBe(200);
+		expect(res.headers.get('x-frame-options')).toBe('DENY');
 	});
 
-	it('does not follow redirects', async () => {
-		const fetchImpl = (async (_url: URL, init: RequestInit) => {
-			expect(init.redirect).toBe('manual');
-			return new Response(null, { status: 302, headers: { location: 'http://10.0.0.1/' } });
-		}) as unknown as typeof fetch;
-		expect(await checkFraming(page, dashboard, fetchImpl, publicHost)).toEqual({
-			status: 'unknown'
-		});
+	it('never connects to a private address, however it is spelled or resolved', async () => {
+		for (const host of ['127.0.0.1', '[::ffff:7f00:1]', '[::ffff:127.0.0.1]', 'localhost']) {
+			await expect(requestHeaders(new URL(`http://${host}:${port}/`))).rejects.toThrow(
+				/not a public host/
+			);
+		}
 	});
 });
 
