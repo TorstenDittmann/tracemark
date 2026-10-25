@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { make, mockFetch, sentEvents } from './helpers';
 
 const autocaptured = (f: ReturnType<typeof mockFetch>) =>
@@ -110,5 +110,114 @@ describe('click and form autocapture', () => {
 		click('button');
 		await c.flush();
 		expect(autocaptured(f)).toEqual([]);
+	});
+});
+
+describe('click positions and heatmaps', () => {
+	const sent = (f: ReturnType<typeof mockFetch>, event: string) =>
+		sentEvents(f)
+			.filter((e) => e.event === event)
+			.map((e) => e.properties ?? {});
+
+	/** A page 1000 px wide and 4000 px tall. */
+	function layout() {
+		const root = document.documentElement;
+		Object.defineProperty(root, 'scrollWidth', { configurable: true, value: 1000 });
+		Object.defineProperty(root, 'scrollHeight', { configurable: true, value: 4000 });
+	}
+
+	function clickAt(selector: string, x: number, y: number, detail = 1) {
+		const e = new MouseEvent('click', { bubbles: true, detail, clientX: x, clientY: y });
+		Object.defineProperty(e, 'pageX', { value: x });
+		Object.defineProperty(e, 'pageY', { value: y });
+		document.querySelector(selector)?.dispatchEvent(e);
+	}
+
+	afterEach(() => {
+		const root = document.documentElement as unknown as Record<string, unknown>;
+		delete root.scrollWidth;
+		delete root.scrollHeight;
+		vi.useRealTimers();
+	});
+
+	it('adds where an autocaptured click landed, as fractions of the document', async () => {
+		html('<button>Go</button>');
+		layout();
+		const f = mockFetch();
+		const c = make({ autocaptureClicks: true });
+		clickAt('button', 333, 1234);
+		clickAt('button', 0, 0, 0);
+		await c.flush();
+		const [mouse, keyboard] = autocaptured(f);
+		expect(mouse).toMatchObject({ $click_x: 0.333, $click_y: 0.3085, $document_height: 4000 });
+		expect(mouse?.$viewport_width).toBeTypeOf('number');
+		expect(keyboard).not.toHaveProperty('$click_x');
+	});
+
+	it('sends other clicks as lightweight $heatmap_click events with heatmaps', async () => {
+		html(`<main class="hero"><p id="tagline">Hello <b>there</b></p><button>Go</button>
+			<div data-tm-no-capture><span>Private</span></div><input type="password"></main>`);
+		layout();
+		const f = mockFetch();
+		const c = make({ autocaptureClicks: true, heatmaps: true });
+		clickAt('b', 500, 2000);
+		clickAt('button', 10, 10);
+		clickAt('span', 10, 10);
+		clickAt('input', 10, 10);
+		await c.flush();
+		const heat = sent(f, '$heatmap_click');
+		expect(heat).toEqual([
+			{
+				$click_x: 0.5,
+				$click_y: 0.5,
+				$document_height: 4000,
+				$el_selector: 'p#tagline > b',
+				$pathname: '/',
+				$host: expect.any(String),
+				$viewport_width: expect.any(Number),
+				$viewport_height: expect.any(Number),
+				$lib: 'tracemark-browser',
+				$lib_version: expect.any(String)
+			}
+		]);
+		expect(autocaptured(f)).toHaveLength(1);
+	});
+
+	it('records every click as a heatmap click without click autocapture, throttled', async () => {
+		vi.useFakeTimers({ toFake: ['Date'] });
+		html('<button class="cta">Go</button><p>Text</p>');
+		layout();
+		const f = mockFetch();
+		const c = make({ heatmaps: true });
+		clickAt('button', 1, 1);
+		clickAt('p', 1, 1);
+		vi.advanceTimersByTime(150);
+		clickAt('p', 1, 1);
+		for (let i = 0; i < 150; i++) {
+			vi.advanceTimersByTime(150);
+			clickAt('p', 1, 1);
+		}
+		await c.flush();
+		const heat = sent(f, '$heatmap_click');
+		expect(heat[0]?.$el_selector).toBe('button.cta');
+		expect(heat[1]?.$el_selector).toBe('p');
+		expect(heat).toHaveLength(100);
+		expect(autocaptured(f)).toEqual([]);
+	});
+
+	it('sends nothing from the dashboard heatmap frame', async () => {
+		html('<button>Go</button>');
+		layout();
+		window.name = 'tracemark-heatmap';
+		try {
+			const f = mockFetch();
+			const c = make({ autocaptureClicks: true, heatmaps: true });
+			clickAt('button', 1, 1);
+			c.capture('custom');
+			await c.flush();
+			expect(sentEvents(f)).toEqual([]);
+		} finally {
+			window.name = '';
+		}
 	});
 });

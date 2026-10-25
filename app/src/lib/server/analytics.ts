@@ -22,6 +22,7 @@ import * as explore from './explore';
 import * as flagEvaluation from './flag-evaluation';
 import { projectFlags } from './flags';
 import * as groups from './groups';
+import * as heatmaps from './heatmaps';
 import * as insights from './insights';
 import * as issues from './issues';
 import * as mockData from './mock-data';
@@ -34,6 +35,7 @@ import * as web from './web';
 export type { AiOverview, TraceFilter, TraceSummary } from './ai';
 export type { EventStats } from './events';
 export type { GroupDetail } from './groups';
+export type { Heatmap, HeatmapPage } from './heatmaps';
 export type {
 	EventName,
 	FunnelResult,
@@ -156,6 +158,18 @@ export const webAnalytics = async (
 
 export const webVitals = async (projectId: string, options: Parameters<typeof web.webVitals>[2]) =>
 	web.webVitals(config(), projectId, { ...options, internal: await internalFor(projectId) });
+
+export const heatmapPages = async (
+	projectId: string,
+	options: Parameters<typeof heatmaps.heatmapPages>[2]
+) =>
+	heatmaps.heatmapPages(config(), projectId, {
+		...options,
+		internal: await internalFor(projectId)
+	});
+
+export const heatmap = async (projectId: string, options: Parameters<typeof heatmaps.heatmap>[2]) =>
+	heatmaps.heatmap(config(), projectId, { ...options, internal: await internalFor(projectId) });
 
 // Insights follow their own `filterInternal`, else the project's setting.
 

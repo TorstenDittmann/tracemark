@@ -68,7 +68,7 @@ export interface WebAnalytics {
 /** Idle time after which a visitor without a session id starts a new session. */
 const SESSION_GAP_SECONDS = 30 * 60;
 
-const str = (path: string) => `ifNull(e.properties.\`${path}\`.:String, '')`;
+export const str = (path: string) => `ifNull(e.properties.\`${path}\`.:String, '')`;
 
 /**
  * One row per session in the window, built from `$pageview` and `$pageleave` events. Visitors
@@ -139,7 +139,7 @@ function sessionsQuery(filters: WebFilters, internal: string): string {
 	)`;
 }
 
-function rows<T>(body: string): T[] {
+export function rows<T>(body: string): T[] {
 	return body
 		.split('\n')
 		.filter(Boolean)

@@ -13,6 +13,7 @@ import {
 import { experiments, featureFlags, insights, organizations, users } from './db/schema';
 import { experimentCounts } from './experiment-results';
 import { listGroups } from './groups';
+import { heatmap, heatmapPages } from './heatmaps';
 import { lifecycle, paths } from './insights';
 import { listIssues } from './issues';
 import { addMockData, MOCK_FLAGS, MOCK_INSIGHTS, removeMockData } from './mock-data';
@@ -66,6 +67,19 @@ describe.skipIf(!clickhouseTestUrl)('mock data', () => {
 		expect(vitals.vitals.LCP.samples).toBeGreaterThan(100);
 		expect(vitals.vitals.INP.p75).toBeGreaterThan(0);
 		expect(vitals.paths.length).toBeGreaterThan(3);
+
+		const clicked = await heatmapPages(config, project.id, { range: '30d', now });
+		expect(clicked.pages.map((p) => p.path)).toContain('/pricing');
+		expect(clicked.origins).toEqual(['https://demo.tracemark.dev']);
+		const map = await heatmap(config, project.id, {
+			range: '30d',
+			now,
+			path: '/',
+			device: 'mobile'
+		});
+		expect(map.clicks).toBeGreaterThan(20);
+		expect(map.viewportWidth).toBeLessThan(768);
+		expect(map.elements.some((e) => e.other)).toBe(true);
 
 		const issues = await listIssues(config, project.id, { range: '30d', now });
 		expect(issues.issues.length).toBeGreaterThanOrEqual(5);

@@ -35,6 +35,7 @@ With `autocaptureForms`, every form submit is captured too. Both send an `$autoc
 | `$el_href` | A link's `href` attribute, as written |
 | `$el_selector` | A short CSS selector: up to three levels of `tag#id` or `tag.class.class`, such as `nav#top > div.menu > a` |
 | `$el_attr__data-*` | Up to five of the element's `data-*` attributes, except `data-tm-*` |
+| `$click_x`, `$click_y`, `$document_height` | For clicks with the mouse or a touch: where on the page the click landed, for [heatmaps](heatmaps.md) |
 
 What is never captured:
 
@@ -44,6 +45,10 @@ What is never captured:
 - Text that looks like a card number or a US social security number: the event is sent without `$el_text`.
 
 In the dashboard's Events list, `$autocapture` events read as `clicked 'Sign up'` or `submitted a form`. They are ordinary events everywhere else: chart clicks on one button in a trend or funnel step with a filter such as `$el_text = Sign up`, or `$el_selector` for buttons without text.
+
+## Heatmaps
+
+Clicks carry their position on the page, and the Web page draws them as a [click heatmap](heatmaps.md) per path and device size. Add `heatmaps: true` to also record clicks on anything that isn't a button or link, as lightweight `$heatmap_click` events with just the position and a selector. See [docs/heatmaps.md](heatmaps.md), including how to let the dashboard show your site in a frame.
 
 ## Web vitals
 

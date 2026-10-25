@@ -14,7 +14,7 @@ tracemark.capture('signed_up', { plan: 'pro' });
 tracemark.identify('user_123', { set: { email: 'ada@example.com' } });
 ```
 
-Page views, including SPA navigations, are captured automatically. Clicks, form submits and web vitals are opt-in with `autocaptureClicks`, `autocaptureForms` and `autocaptureWebVitals`. `tracemark.aiScore({ traceId, name: 'thumbs', value: 1 })` records feedback on an [AI trace](https://github.com/TorstenDittmann/tracemark/blob/main/docs/ai.md#scores-and-feedback). Feature flags and error tracking are opt-in plugins from `@tracemark/browser/flags` and `@tracemark/browser/errors`.
+Page views, including SPA navigations, are captured automatically. Clicks, form submits and web vitals are opt-in with `autocaptureClicks`, `autocaptureForms` and `autocaptureWebVitals`, and clicks anywhere for heatmaps with `heatmaps`. `tracemark.aiScore({ traceId, name: 'thumbs', value: 1 })` records feedback on an [AI trace](https://github.com/TorstenDittmann/tracemark/blob/main/docs/ai.md#scores-and-feedback). Feature flags and error tracking are opt-in plugins from `@tracemark/browser/flags` and `@tracemark/browser/errors`.
 
 Requires a running tracemark instance and its project key. ESM and script-tag builds are included.
 
