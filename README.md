@@ -34,6 +34,7 @@ SDKs ──POST /e──▶ ingest (Rust) ──batched inserts──▶ ClickHo
 | `docs/privacy.md` | Data retention, personal data export and deletion |
 | `docs/internal-users.md` | Filtering out your own team's traffic |
 | `docs/kubernetes.md` | Running tracemark on Kubernetes with the Helm chart |
+| `docs/orch.md` | Running tracemark on an [orch](https://orch.torsten.work) cluster with `deploy/orch/orch.pkl` |
 | `deploy/helm/tracemark/` | The Helm chart |
 | `docs/frameworks.md` | React, Next.js, Svelte, SvelteKit, Vue, Nuxt, Astro and Node server integrations |
 | `docs/autocapture.md` | Click, form and web vitals autocapture in the browser SDK |
@@ -62,7 +63,7 @@ docker compose -f docker-compose.prod.yml up -d
 docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compose.prod.yml up -d   # upgrade
 ```
 
-On [Dokploy](https://dokploy.com), use `docker-compose.dokploy.yml`; see [docs/dokploy.md](docs/dokploy.md). On Kubernetes, use the Helm chart in `deploy/helm/tracemark`; see [docs/kubernetes.md](docs/kubernetes.md).
+On [Dokploy](https://dokploy.com), use `docker-compose.dokploy.yml`; see [docs/dokploy.md](docs/dokploy.md). On Kubernetes, use the Helm chart in `deploy/helm/tracemark`; see [docs/kubernetes.md](docs/kubernetes.md). On [orch](https://orch.torsten.work), use `deploy/orch/orch.pkl`; see [docs/orch.md](docs/orch.md).
 
 ## Tracking events
 
