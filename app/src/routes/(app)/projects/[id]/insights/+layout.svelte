@@ -15,6 +15,6 @@ const kinds = $derived([
 </script>
 
 <div class="grid gap-4">
-	<div><SubNav links={kinds} label="Insight type" /></div>
+	<div class="min-w-0"><SubNav links={kinds} label="Insight type" /></div>
 	{@render children()}
 </div>
