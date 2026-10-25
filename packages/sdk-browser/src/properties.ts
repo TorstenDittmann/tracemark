@@ -12,6 +12,18 @@ function domainOf(url: string): string {
 	}
 }
 
+/** The few properties of a lightweight event such as `$heatmap_click`: no URL, title or referrer. */
+export function liteProperties(): Properties {
+	return {
+		$pathname: window.location.pathname,
+		$host: window.location.host,
+		$viewport_width: window.innerWidth,
+		$viewport_height: window.innerHeight,
+		$lib: 'tracemark-browser',
+		$lib_version: VERSION
+	};
+}
+
 /** Default properties attached to every event, read at capture time. */
 export function defaultProperties(): Properties {
 	const loc = window.location;

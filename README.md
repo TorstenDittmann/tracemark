@@ -33,6 +33,7 @@ SDKs ──POST /e──▶ ingest (Rust) ──batched inserts──▶ ClickHo
 | `docs/ingest-protocol.md` | The wire protocol between SDKs and ingest |
 | `docs/privacy.md` | Data retention, personal data export and deletion |
 | `docs/internal-users.md` | Filtering out your own team's traffic |
+| `docs/usage.md` | The Usage page: event volume per project and ClickHouse disk use |
 | `docs/kubernetes.md` | Running tracemark on Kubernetes with the Helm chart |
 | `deploy/helm/tracemark/` | The Helm chart |
 | `docs/frameworks.md` | React, Next.js, Svelte, SvelteKit, Vue, Nuxt, Astro and Node server integrations |
@@ -74,7 +75,7 @@ tracemark.capture('signed_up', { plan: 'pro' });
 tracemark.identify('user_123', { set: { email: 'ada@example.com' } });
 ```
 
-Page views, including SPA navigations, are captured automatically. Clicks, form submits and web vitals (LCP, INP, CLS, FCP, TTFB) can be too, with `autocaptureClicks`, `autocaptureForms` and `autocaptureWebVitals`; the Web page then shows each vital's 75th percentile by path. See [docs/autocapture.md](docs/autocapture.md).
+Page views, including SPA navigations, are captured automatically. Clicks, form submits and web vitals (LCP, INP, CLS, FCP, TTFB) can be too, with `autocaptureClicks`, `autocaptureForms` and `autocaptureWebVitals`; the Web page then shows each vital's 75th percentile by path, and [click heatmaps](docs/heatmaps.md) per page (`heatmaps: true` adds clicks outside buttons and links). See [docs/autocapture.md](docs/autocapture.md).
 
 The ingest service adds `$browser`, `$browser_version`, `$os`, `$os_version` and `$device_type` from the request's user agent. Crawlers get `$device_type: "Bot"`. Location properties (`$geoip_country_code`, `$geoip_city_name` and others) need a city database: download [DB-IP City Lite](https://db-ip.com/db/download/ip-to-city-lite) (free, CC BY 4.0) or MaxMind GeoLite2 City in `.mmdb` format into `./geoip/`, set `GEOIP_DB=/geoip/<file>.mmdb` in `.env` and restart ingest. Client IPs are only used for the lookup and are never stored. Server-side SDKs can pass the visitor's `$ip` and `$user_agent` as event properties, or set `$geoip_disable: true`.
 

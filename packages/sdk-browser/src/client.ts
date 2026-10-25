@@ -1,5 +1,5 @@
 import { listen } from './autocapture';
-import { defaultProperties, type Properties } from './properties';
+import { defaultProperties, liteProperties, type Properties } from './properties';
 import { createStore, type Persistence, type Store } from './storage';
 import { uuidv7 } from './uuid';
 import { observeVitals, type Vitals } from './vitals';
@@ -18,6 +18,11 @@ export interface Config {
 	autocaptureClicks?: boolean;
 	/** Capture form submits as `$autocapture` events, with the same rules as clicks. Default `false`. */
 	autocaptureForms?: boolean;
+	/**
+	 * Record where clicks on anything else land, as lightweight `$heatmap_click` events with only
+	 * the position, path and a selector, for click heatmaps. Default `false`.
+	 */
+	heatmaps?: boolean;
 	/** Capture LCP, INP, CLS, FCP and TTFB as one `$web_vitals` event per page view. Default `false`. */
 	autocaptureWebVitals?: boolean;
 	/** Where ids are kept. `'memory'` keeps nothing across reloads. Default `'localStorage'`. */
@@ -122,6 +127,8 @@ export const MAX_QUEUE = 1000;
 export const MAX_RETRIES = 3;
 export const RETRY_BASE_MS = 1000;
 const MAX_GROUPS = 5;
+/** `window.name` of the frame the dashboard's heatmap view loads a page in. */
+export const HEATMAP_FRAME = 'tracemark-heatmap';
 
 const isBrowser = () => typeof window !== 'undefined' && typeof document !== 'undefined';
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
@@ -176,7 +183,8 @@ export function createClient(config?: Config): TracemarkClient {
 		save();
 	};
 
-	const ready = () => !!cfg && isBrowser();
+	// The dashboard's heatmap view shows the site in a frame with this name: nothing is tracked there.
+	const ready = () => !!cfg && isBrowser() && window.name !== HEATMAP_FRAME;
 
 	const optedOut = (): boolean => {
 		if (!cfg) return false;
@@ -294,7 +302,7 @@ export function createClient(config?: Config): TracemarkClient {
 	const emit = (
 		event: string,
 		properties?: Properties,
-		extra?: { person?: PersonProperties; distinctId?: string }
+		extra?: { person?: PersonProperties; distinctId?: string; lite?: boolean }
 	) => {
 		if (!ready() || optedOut()) return;
 		if (typeof event !== 'string' || !event || event.length > 200) {
@@ -308,7 +316,7 @@ export function createClient(config?: Config): TracemarkClient {
 			event,
 			distinct_id: extra?.distinctId ?? state.id,
 			timestamp: new Date(now).toISOString(),
-			properties: { ...defaultProperties(), ...properties }
+			properties: { ...(extra?.lite ? liteProperties() : defaultProperties()), ...properties }
 		};
 		// Cookieless sessions are derived server-side, a per-page-load id would split them.
 		if (!cfg?.cookieless) ev.session_id = state.sid;
@@ -366,9 +374,11 @@ export function createClient(config?: Config): TracemarkClient {
 		document.addEventListener('visibilitychange', onVis);
 		cleanups.push(() => document.removeEventListener('visibilitychange', onVis));
 
-		if (cfg?.autocaptureClicks || cfg?.autocaptureForms) {
+		if (cfg?.autocaptureClicks || cfg?.autocaptureForms || cfg?.heatmaps) {
 			cleanups.push(
-				listen(cfg.autocaptureClicks, cfg.autocaptureForms, (p) => emit('$autocapture', p))
+				listen(cfg.autocaptureClicks, cfg.autocaptureForms, cfg.heatmaps, (event, p, lite) =>
+					emit(event, p, { lite })
+				)
 			);
 		}
 		if (cfg?.autocaptureWebVitals) {
@@ -425,6 +435,7 @@ export function createClient(config?: Config): TracemarkClient {
 				autocaptureClicks: false,
 				autocaptureForms: false,
 				autocaptureWebVitals: false,
+				heatmaps: false,
 				persistence: 'localStorage',
 				flushIntervalMs: 2000,
 				maxBatchSize: 50,

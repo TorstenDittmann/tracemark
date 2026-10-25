@@ -4,7 +4,8 @@ export const INSIGHT_KINDS = {
 	funnel: { path: 'funnels', label: 'Funnel' },
 	retention: { path: 'retention', label: 'Retention' },
 	paths: { path: 'paths', label: 'Paths' },
-	lifecycle: { path: 'lifecycle', label: 'Lifecycle' }
+	lifecycle: { path: 'lifecycle', label: 'Lifecycle' },
+	stickiness: { path: 'stickiness', label: 'Stickiness' }
 } as const;
 
 /** The insight editors, in the order the insights navigation and the command menu list them. */
@@ -21,6 +22,11 @@ export const INSIGHT_EDITORS = [
 		path: 'lifecycle',
 		label: 'Lifecycle',
 		description: 'New, returning, resurrecting and dormant users.'
+	},
+	{
+		path: 'stickiness',
+		label: 'Stickiness',
+		description: 'On how many days or weeks people do something.'
 	}
 ] as const;
 

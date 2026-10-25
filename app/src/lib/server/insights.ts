@@ -19,6 +19,8 @@ import {
 	type RetentionResult,
 	retentionPeriod,
 	type Series,
+	type StickinessQuery,
+	type StickinessResult,
 	seriesLabel,
 	type TrendLine,
 	type TrendsQuery,
@@ -33,7 +35,14 @@ import { compareSql } from './compare';
 import { internalUsersSql } from './internal-users';
 import { chTime, timeWindow } from './web';
 
-export type { FunnelResult, LifecycleResult, PathsResult, RetentionResult, TrendsResult };
+export type {
+	FunnelResult,
+	LifecycleResult,
+	PathsResult,
+	RetentionResult,
+	StickinessResult,
+	TrendsResult
+};
 
 /** An event property as a ClickHouse expression. Names are validated, so quoting is enough. */
 function property(name: string): string {
@@ -566,6 +575,63 @@ export async function lifecycle(
 		counts[row.status][i] = row.status === 'dormant' ? -Number(row.people) : Number(row.people);
 	}
 	return { interval, periods, counts };
+}
+
+/**
+ * People by how many intervals of the range (days, or weeks from Monday) they did each event on,
+ * as PostHog's stickiness counts them. Like lifecycle, a first week is counted whole even when the
+ * range starts inside it.
+ */
+export async function stickiness(
+	config: ClickHouseConfig,
+	projectId: string,
+	query: StickinessQuery,
+	now?: Date,
+	cohort?: CohortSpec,
+	internal?: InternalRule[]
+): Promise<StickinessResult> {
+	const { interval } = query;
+	const window = timeWindow(query.range, now);
+	const first = periodStart(interval, window.from);
+	let intervals = 0;
+	for (let t = first; t < window.to; t = nextPeriod(interval, t)) intervals++;
+
+	const source = eventsSource(
+		projectId,
+		{ from: first, to: window.to },
+		query.filters,
+		cohort,
+		internal
+	);
+	const body = await clickhouseQuery(
+		config,
+		`SELECT name, active, count() AS people FROM (
+			SELECT e.event AS name, ${PERSON} AS person, uniqExact(${LIFECYCLE_SQL[interval].trunc}) AS active
+			${source.sql}
+				AND e.event IN {events:Array(String)}
+			GROUP BY name, person
+		)
+		GROUP BY name, active
+		FORMAT JSONEachRow`,
+		{ params: { ...source.params, events: query.events } }
+	);
+
+	const exact = new Map(query.events.map((event) => [event, new Array<number>(intervals).fill(0)]));
+	for (const line of body.split('\n').filter(Boolean)) {
+		const row = JSON.parse(line) as { name: string; active: string; people: string };
+		const counts = exact.get(row.name);
+		const n = Math.min(Number(row.active), intervals);
+		if (counts && n >= 1) counts[n - 1] += Number(row.people);
+	}
+	const lines = query.events.map((event, series) => {
+		const counts = [...(exact.get(event) ?? [])];
+		const people = counts.reduce((sum, n) => sum + n, 0);
+		if (query.cumulative) {
+			for (let i = counts.length - 2; i >= 0; i--) counts[i] += counts[i + 1];
+		}
+		return { series, label: seriesLabel({ event, math: 'total' }), counts, people };
+	});
+	return { interval, intervals, cumulative: query.cumulative, lines };
 }
 
 export interface EventName {

@@ -1,5 +1,6 @@
 // Click and form submit autocapture: `$autocapture` events describing the element, never what
-// was typed into it. See docs/autocapture.md for the event's shape.
+// was typed into it, and `$heatmap_click` events with just where a click landed. See
+// docs/autocapture.md and docs/heatmaps.md for the events' shape.
 import type { Properties } from './properties';
 
 /** Elements whose clicks are captured; a click inside one counts as a click on it. */
@@ -9,6 +10,10 @@ const MAX_ATTR = 100;
 const MAX_ATTRS = 5;
 // Card numbers and US social security numbers are dropped from element text.
 const SENSITIVE_TEXT = /\b(?:\d[ -]?){13,19}\b|\b\d{3}-\d{2}-\d{4}\b/;
+
+/** Heatmap clicks closer together than this are dropped, and at most this many are sent per page. */
+const HEATMAP_GAP_MS = 100;
+const HEATMAP_MAX = 100;
 
 const cap = (s: string, n: number) => (s.length > n ? s.slice(0, n) : s);
 
@@ -73,30 +78,65 @@ export function describe(
 	return p;
 }
 
-/** Listens for clicks and submits on `document`; returns a function that stops listening. */
+const round = (v: number) => Math.round(Math.min(1, Math.max(0, v)) * 1e4) / 1e4;
+
+/**
+ * Where a click landed, as fractions of the document's width and height, so a heatmap lines up
+ * whatever the page was scrolled to. Keyboard and scripted clicks have no position (`detail` 0).
+ */
+export function position(e: MouseEvent): Properties | undefined {
+	const d = document.documentElement;
+	const w = d.scrollWidth;
+	const h = d.scrollHeight;
+	if (!e.detail || !w || !h) return;
+	return { $click_x: round(e.pageX / w), $click_y: round(e.pageY / h), $document_height: h };
+}
+
+/**
+ * Listens for clicks and submits on `document`; returns a function that stops listening. With
+ * `heatmaps`, clicks that are not autocaptured are sent as `$heatmap_click` with `lite` set.
+ */
 export function listen(
 	clicks: boolean,
 	forms: boolean,
-	emit: (properties: Properties) => void
+	heatmaps: boolean,
+	emit: (event: string, properties: Properties, lite?: boolean) => void
 ): () => void {
 	const target = (e: Event) => {
 		const t = e.composedPath?.()[0] ?? e.target;
 		return t instanceof Element ? t : null;
 	};
+	let last = 0;
+	let sent = 0;
+	let page = '';
 	const onClick = (e: Event) => {
 		const t = target(e);
-		const el = t?.closest(CLICKABLE);
-		if (!t || !el || sensitive(t)) return;
-		const p = describe('click', el);
-		if (p) emit(p);
+		if (!t || sensitive(t) || t.closest('[data-tm-no-capture]')) return;
+		const el = t.closest(CLICKABLE);
+		const pos = position(e as MouseEvent);
+		if (clicks && el) {
+			const p = describe('click', el);
+			if (p) emit('$autocapture', { ...p, ...pos });
+			return;
+		}
+		if (!heatmaps || !pos) return;
+		const now = Date.now();
+		if (page !== location.pathname) {
+			page = location.pathname;
+			sent = 0;
+		}
+		if (now - last < HEATMAP_GAP_MS || sent >= HEATMAP_MAX) return;
+		last = now;
+		sent++;
+		emit('$heatmap_click', { ...pos, $el_selector: selector(el ?? t) }, true);
 	};
 	const onSubmit = (e: Event) => {
 		const el = target(e);
 		if (!el) return;
 		const p = describe('submit', el, (e as SubmitEvent).submitter);
-		if (p) emit(p);
+		if (p) emit('$autocapture', p);
 	};
-	if (clicks) document.addEventListener('click', onClick, true);
+	if (clicks || heatmaps) document.addEventListener('click', onClick, true);
 	if (forms) document.addEventListener('submit', onSubmit, true);
 	return () => {
 		document.removeEventListener('click', onClick, true);

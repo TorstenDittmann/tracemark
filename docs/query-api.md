@@ -28,10 +28,10 @@ curl https://tracemark.example.com/api/v1/query \
   -d '{"kind": "trends", "query": {"series": [{"event": "$pageview", "math": "unique_users"}], "range": "7d"}}'
 ```
 
-The body has a `kind` (`trends`, `funnel`, `retention`, `paths` or `lifecycle`) and a `query` of
-that kind ([insights.md](insights.md) explains each). The query
-is the same JSON the editors keep in their URL, so the quickest way to write one is to build it in
-the app and copy the `q` parameter.
+The body has a `kind` (`trends`, `funnel`, `retention`, `paths`, `lifecycle` or `stickiness`) and a
+`query` of that kind ([insights.md](insights.md) explains each). The query is the same JSON the
+editors keep in their URL, so the quickest way to write one is to build it in the app and copy the
+`q` parameter.
 
 Add `"filterInternal": true` or `false` next to `kind` (or inside `query`; the top-level one wins)
 to leave [internal users](internal-users.md) out or keep them in. Without it, the project's
@@ -69,7 +69,7 @@ actually ran, so compare it with what you sent; its `filterInternal` is always s
 
 | Field | Values |
 | --- | --- |
-| `range` | `24h`, `7d`, `30d` or `90d` (retention and lifecycle: `7d`, `30d` or `90d`). Buckets are hours for `24h`, days otherwise, in UTC |
+| `range` | `24h`, `7d`, `30d` or `90d` (retention, lifecycle and stickiness: `7d`, `30d` or `90d`). Buckets are hours for `24h`, days otherwise, in UTC |
 | `filters` | Up to 10 `{"property", "operator", "value"}`. Operators: `eq`, `neq`, `contains`, `not_contains`, `gt`, `lt`, `is_set`, `is_not_set` (the last two take no value). Values are strings |
 | `cohort` | A cohort id; only people in that cohort count |
 | `filterInternal` | `true` leaves out [internal users](internal-users.md), `false` keeps them; absent follows the project's setting |
@@ -158,6 +158,29 @@ counting back from an end, started there). `links` hold the transitions to the n
     "resurrecting": [0, 0, 6, 9, 8],
     "dormant": [0, -22, -45, -51, -55]
   }
+}
+```
+
+### Stickiness
+
+| Field | Values |
+| --- | --- |
+| `events` | Up to 5 event names; each gets its own line |
+| `interval` | `day` or `week` (from Monday). Without it, `week` for `90d` and `day` otherwise |
+| `cumulative` | `true` counts people active on at least N intervals instead of exactly N; `false` by default |
+
+`result.intervals` is how many intervals the range has. Each of `result.lines` holds `counts`, the
+people active on 1, 2, … up to `intervals` intervals (index 0 is one interval), and `people`, everyone
+who did the event at least once.
+
+```json
+{
+  "interval": "week",
+  "intervals": 5,
+  "cumulative": false,
+  "lines": [
+    { "series": 0, "label": "Page views", "counts": [162, 41, 15, 6, 2], "people": 226 }
+  ]
 }
 ```
 

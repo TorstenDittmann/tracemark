@@ -22,6 +22,7 @@ import * as explore from './explore';
 import * as flagEvaluation from './flag-evaluation';
 import { projectFlags } from './flags';
 import * as groups from './groups';
+import * as heatmaps from './heatmaps';
 import * as insights from './insights';
 import * as issues from './issues';
 import * as mockData from './mock-data';
@@ -29,11 +30,13 @@ import * as persons from './persons';
 import * as privacy from './privacy';
 import { internalUsers } from './projects';
 import { type SavedQuery, withFilterInternal } from './saved';
+import * as usage from './usage';
 import * as web from './web';
 
 export type { AiOverview, TraceFilter, TraceSummary } from './ai';
 export type { EventStats } from './events';
 export type { GroupDetail } from './groups';
+export type { Heatmap, HeatmapPage } from './heatmaps';
 export type {
 	EventName,
 	FunnelResult,
@@ -41,10 +44,12 @@ export type {
 	PathsResult,
 	PropertyName,
 	RetentionResult,
+	StickinessResult,
 	TrendsResult
 } from './insights';
 export type { IssueDetail, IssueList, IssueSummary } from './issues';
 export type { PersonDetail } from './persons';
+export type { StorageUsage, UsageVolume } from './usage';
 export type { WebAnalytics, WebVitals } from './web';
 
 export type SavedResult =
@@ -52,7 +57,8 @@ export type SavedResult =
 	| (Extract<SavedQuery, { kind: 'funnel' }> & { result: insights.FunnelResult })
 	| (Extract<SavedQuery, { kind: 'retention' }> & { result: insights.RetentionResult })
 	| (Extract<SavedQuery, { kind: 'paths' }> & { result: insights.PathsResult })
-	| (Extract<SavedQuery, { kind: 'lifecycle' }> & { result: insights.LifecycleResult });
+	| (Extract<SavedQuery, { kind: 'lifecycle' }> & { result: insights.LifecycleResult })
+	| (Extract<SavedQuery, { kind: 'stickiness' }> & { result: insights.StickinessResult });
 
 /** The cohort an insight narrows to. A deleted cohort matches nobody rather than everybody. */
 export async function cohortFor(projectId: string, id?: string): Promise<CohortSpec | undefined> {
@@ -84,6 +90,15 @@ function config(): ClickHouseConfig {
 
 export const projectEventStats = (projectId: string) =>
 	events.projectEventStats(config(), projectId);
+
+// Usage counts everything stored, internal users included, since it is about volume and disk.
+
+export const usageVolume = (
+	projectIds: string[],
+	options: Parameters<typeof usage.usageVolume>[2]
+) => usage.usageVolume(config(), projectIds, options);
+
+export const storageUsage = (projectIds: string[]) => usage.storageUsage(config(), projectIds);
 
 export const deleteProjectEvents = (projectId: string) =>
 	events.deleteProjectEvents(config(), projectId);
@@ -157,6 +172,18 @@ export const webAnalytics = async (
 export const webVitals = async (projectId: string, options: Parameters<typeof web.webVitals>[2]) =>
 	web.webVitals(config(), projectId, { ...options, internal: await internalFor(projectId) });
 
+export const heatmapPages = async (
+	projectId: string,
+	options: Parameters<typeof heatmaps.heatmapPages>[2]
+) =>
+	heatmaps.heatmapPages(config(), projectId, {
+		...options,
+		internal: await internalFor(projectId)
+	});
+
+export const heatmap = async (projectId: string, options: Parameters<typeof heatmaps.heatmap>[2]) =>
+	heatmaps.heatmap(config(), projectId, { ...options, internal: await internalFor(projectId) });
+
 // Insights follow their own `filterInternal`, else the project's setting.
 
 export const trends = async (projectId: string, query: Parameters<typeof insights.trends>[2]) =>
@@ -221,6 +248,19 @@ export const lifecycle = async (
 		await internalFor(projectId, query.filterInternal)
 	);
 
+export const stickiness = async (
+	projectId: string,
+	query: Parameters<typeof insights.stickiness>[2]
+) =>
+	insights.stickiness(
+		config(),
+		projectId,
+		query,
+		undefined,
+		await cohortFor(projectId, query.cohort),
+		await internalFor(projectId, query.filterInternal)
+	);
+
 /**
  * Runs a saved insight's query; the result type follows its kind. The query comes back with
  * `filterInternal` set to what applied.
@@ -241,6 +281,8 @@ export async function runSaved(projectId: string, query: SavedQuery): Promise<Sa
 			return { ...saved, result: await paths(projectId, saved.query) };
 		case 'lifecycle':
 			return { ...saved, result: await lifecycle(projectId, saved.query) };
+		case 'stickiness':
+			return { ...saved, result: await stickiness(projectId, saved.query) };
 	}
 }
 

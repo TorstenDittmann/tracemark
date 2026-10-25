@@ -11,7 +11,8 @@ restored. People, their properties and group properties are kept, since they des
 rather than the past.
 
 Deletes are ClickHouse lightweight deletes: rows disappear from every screen at once and from disk
-when ClickHouse next merges the affected parts.
+when ClickHouse next merges the affected parts. An organization's **Usage** tab shows which
+projects store the most events and how much disk each table takes, see [usage.md](usage.md).
 
 ## Access requests
 

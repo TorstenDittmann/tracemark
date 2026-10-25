@@ -187,34 +187,59 @@ const MARKETING_PAGES = [
 	'/changelog',
 	'/about'
 ] as const;
-/** Buttons and links people click on a page, autocaptured as `$autocapture` events. */
-const CLICKS: Record<string, readonly (readonly [string, string, string?])[]> = {
+/**
+ * Buttons and links people click on a page, autocaptured as `$autocapture` events, with where
+ * they sit on a desktop layout as fractions of the page's width and height.
+ */
+const CLICKS: Record<
+	string,
+	readonly (readonly [string, string, string | null, number, number])[]
+> = {
 	'/': [
-		['button', 'Get started'],
-		['a', 'Read the docs', '/docs'],
-		['a', 'Pricing', '/pricing']
+		['button', 'Get started', null, 0.38, 0.12],
+		['a', 'Read the docs', '/docs', 0.55, 0.12],
+		['a', 'Pricing', '/pricing', 0.72, 0.015]
 	],
 	'/pricing': [
-		['button', 'Start free trial'],
-		['button', 'Compare plans'],
-		['a', 'Talk to sales', 'mailto:sales@demo.tracemark.dev']
+		['button', 'Start free trial', null, 0.5, 0.31],
+		['button', 'Compare plans', null, 0.5, 0.62],
+		['a', 'Talk to sales', 'mailto:sales@demo.tracemark.dev', 0.82, 0.31]
 	],
 	'/docs': [
-		['button', 'Copy code'],
-		['a', 'Getting started', '/docs/getting-started']
+		['button', 'Copy code', null, 0.78, 0.22],
+		['a', 'Getting started', '/docs/getting-started', 0.12, 0.1]
 	],
-	'/docs/getting-started': [['button', 'Copy code']],
+	'/docs/getting-started': [['button', 'Copy code', null, 0.78, 0.18]],
 	'/app/dashboards': [
-		['button', 'New dashboard'],
-		['button', 'Add insight']
+		['button', 'New dashboard', null, 0.9, 0.05],
+		['button', 'Add insight', null, 0.5, 0.4]
 	],
 	'/app/insights/trends': [
-		['button', 'Add filter'],
-		['button', 'Save insight']
+		['button', 'Add filter', null, 0.22, 0.12],
+		['button', 'Save insight', null, 0.92, 0.04]
 	],
-	'/app/flags': [['button', 'New flag']],
-	'/app/events': [['button', 'Load older events']]
+	'/app/flags': [['button', 'New flag', null, 0.9, 0.05]],
+	'/app/events': [['button', 'Load older events', null, 0.5, 0.94]]
 };
+
+/** Things that look clickable but aren't, recorded as `$heatmap_click` events. */
+const OTHER_CLICKS: Record<string, readonly (readonly [string, number, number])[]> = {
+	'/': [
+		['main > section.hero > img.screenshot', 0.62, 0.3],
+		['main > section.features > h3', 0.3, 0.52]
+	],
+	'/pricing': [
+		['div.plan > ul > li', 0.5, 0.42],
+		['div.plan > p.price', 0.5, 0.26]
+	]
+};
+
+/** Viewport widths per device type, and how much taller a page is than on desktop. */
+const VIEWPORTS = {
+	Desktop: { widths: [1280, 1440, 1536, 1920], height: 900, stretch: 1 },
+	Tablet: { widths: [768, 820, 834], height: 1100, stretch: 1.6 },
+	Mobile: { widths: [375, 390, 412], height: 800, stretch: 2.4 }
+} as const;
 
 /** Typical web vitals per page in ms (CLS unitless), before device and noise. */
 function vitalBase(path: string) {
@@ -457,6 +482,19 @@ export const MOCK_INSIGHTS: { name: string; saved: SavedQuery }[] = [
 			kind: 'lifecycle',
 			query: { event: '$pageview', interval: 'week', range: '30d', filters: [] }
 		}
+	},
+	{
+		name: 'Weekly stickiness',
+		saved: {
+			kind: 'stickiness',
+			query: {
+				events: ['$pageview', 'insight_viewed'],
+				interval: 'week',
+				range: '30d',
+				cumulative: false,
+				filters: []
+			}
+		}
 	}
 ];
 export const MOCK_DASHBOARD = 'Demo overview';
@@ -492,6 +530,8 @@ export function mockEvents(projectId: string, now: Date, flags: FlagDefinition[]
 	const r = random(`mock:${projectId}`);
 	// Clicks and web vitals draw from their own generator, so the rest of the data stays the same.
 	const w = random(`mock-web:${projectId}`);
+	// And click positions from theirs, so web vitals stay the same.
+	const h = random(`mock-heatmap:${projectId}`);
 	/** Roughly log-normal noise around 1. */
 	const noise = (spread: number) => Math.exp((w.next() + w.next() + w.next() - 1.5) * spread);
 	const end = now.getTime();
@@ -596,8 +636,27 @@ export function mockEvents(projectId: string, now: Date, flags: FlagDefinition[]
 				const page = { ...base(), $current_url: `https://${HOST}${path}`, $pathname: path };
 				const extra = { distinct_id: id(), session_id: sessionId, groups: groups() };
 				const clicks = CLICKS[path] ?? [];
+				const viewport = VIEWPORTS[person.device.device];
+				const vw =
+					viewport.widths[
+						(Number.parseInt(person.anonId.slice(-4), 10) || 0) % viewport.widths.length
+					] ?? 1280;
+				const docHeight = Math.round((path.startsWith('/app') ? 1400 : 3200) * viewport.stretch);
+				/** A click near (x, y) on desktop, moved to where it sits on this device's layout. */
+				const placed = (x: number, y: number) => {
+					const squeeze =
+						person.device.device === 'Desktop' ? 1 : person.device.device === 'Tablet' ? 0.7 : 0.3;
+					const round = (v: number) => Math.round(Math.min(1, Math.max(0, v)) * 10_000) / 10_000;
+					return {
+						$click_x: round(0.5 + (x - 0.5) * squeeze + (h.next() + h.next() - 1) * 0.03),
+						$click_y: round(y + (h.next() + h.next() - 1) * 0.006),
+						$viewport_width: vw,
+						$viewport_height: viewport.height,
+						$document_height: docHeight
+					};
+				};
 				if (clicks.length && w.next() < 0.45) {
-					const [tag, text, href] = w.pick(clicks);
+					const [tag, text, href, x, y] = w.pick(clicks);
 					push({
 						...extra,
 						uuid: w.uuid(),
@@ -609,7 +668,24 @@ export function mockEvents(projectId: string, now: Date, flags: FlagDefinition[]
 							$el_tag: tag,
 							$el_text: text,
 							$el_selector: tag === 'a' ? 'nav > a' : 'main > button.btn',
-							...(href ? { $el_href: href } : {})
+							...(href ? { $el_href: href } : {}),
+							...placed(x, y)
+						}
+					});
+				}
+				const others = OTHER_CLICKS[path] ?? [];
+				if (others.length && h.next() < 0.2) {
+					const [selector, x, y] = h.pick(others);
+					push({
+						...extra,
+						uuid: h.uuid(),
+						event: '$heatmap_click',
+						at: at + Math.floor(dwell * h.next() * 0.8),
+						properties: {
+							...base(),
+							$pathname: path,
+							$el_selector: selector,
+							...placed(x, y)
 						}
 					});
 				}
