@@ -1,0 +1,150 @@
+// tracemark on orch (https://orch.torsten.work): the app, the ingest service, a ClickHouse
+// database orch runs, and tracemark's own Caddy, which sends /e and /v1/traces to ingest and
+// everything else to the app. orch's ingress terminates TLS for `domain` in front of it.
+// Set the three values below, store the secrets and run `orch deploy`; see docs/orch.md.
+amends "https://orch.torsten.work/pkl/v1alpha1/Application.pkl"
+
+// Public hostname. Point its DNS at your ingress nodes.
+local domain = "analytics.example.com"
+
+// Image tag of the app and ingest images, e.g. "0.1.0". With "latest", `deploy.autoUpdate`
+// rolls out each new release on its own.
+local version = "latest"
+
+// Let anyone create an account and their own organization at /signup.
+local allowSignup = false
+
+name = "tracemark"
+
+// Routing between app and ingest; orch's own Caddy in front sets the forwarded headers.
+local caddyfile = """
+  {
+  	servers {
+  		trusted_proxies static private_ranges
+  	}
+  }
+
+  :80 {
+  	handle /__proxy/health {
+  		respond "ok"
+  	}
+  	# /v1/traces takes OpenTelemetry (OTLP/HTTP) spans from LLM instrumentation.
+  	@ingest path /e /e/* /v1/traces
+  	handle @ingest {
+  		reverse_proxy ingest.tracemark.svc.internal:8081
+  	}
+  	handle {
+  		reverse_proxy app.tracemark.svc.internal:3000
+  	}
+  }
+  """
+
+local clickhouseEnv = new Mapping<String, String> {
+  ["CLICKHOUSE_URL"] = "http://clickhouse.tracemark.svc.internal:8123"
+  ["CLICKHOUSE_USER"] = "orch"
+  ["CLICKHOUSE_DATABASE"] = "clickhouse"
+}
+
+services {
+  ["proxy"] {
+    image = "caddy:2"
+    command { "sh"; "-c" }
+    args { #"printf '%s\n' "$CADDYFILE" > /etc/caddy/Caddyfile && exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile"# }
+    env {
+      ["CADDYFILE"] = caddyfile
+    }
+    http = new Http {
+      port = 80
+      domains { domain }
+      healthPath = "/__proxy/health"
+    }
+    dependsOn { "app"; "ingest" }
+  }
+
+  ["app"] {
+    image = "ghcr.io/torstendittmann/tracemark-app:\(version)"
+    resources {
+      cpu = "500m"
+      memory = "1Gi"
+    }
+    env {
+      ...clickhouseEnv
+      ["PUBLIC_URL"] = "https://\(domain)"
+      ["ALLOW_SIGNUP"] = if (allowSignup) "on" else "off"
+      ["PROTOCOL_HEADER"] = "x-forwarded-proto"
+      ["HOST_HEADER"] = "x-forwarded-host"
+      // Client IPs for sign-in rate limiting; orch's ingress and the proxy are the two hops in front.
+      ["ADDRESS_HEADER"] = "x-forwarded-for"
+      ["XFF_DEPTH"] = "2"
+    }
+    secretEnv {
+      ["INTERNAL_TOKEN"] = "internal-token"
+      ["AUTH_SECRET"] = "auth-secret"
+      ["CLICKHOUSE_PASSWORD"] = "clickhouse-password"
+    }
+    // The libSQL file with accounts, projects and flags, plus uploaded source maps.
+    mounts {
+      new Mount { source = "app-data"; target = "/data" }
+    }
+    http = new Http {
+      port = 3000
+      healthPath = "/health"
+    }
+    dependsOn { "clickhouse" }
+  }
+
+  ["ingest"] {
+    image = "ghcr.io/torstendittmann/tracemark-ingest:\(version)"
+    resources {
+      cpu = "250m"
+      memory = "512Mi"
+    }
+    env {
+      ...clickhouseEnv
+      ["APP_INTERNAL_URL"] = "http://app.tracemark.svc.internal:3000"
+      // Client IPs for location lookups; they are never stored.
+      ["ADDRESS_HEADER"] = "x-forwarded-for"
+      ["XFF_DEPTH"] = "2"
+    }
+    secretEnv {
+      ["INTERNAL_TOKEN"] = "internal-token"
+      ["CLICKHOUSE_PASSWORD"] = "clickhouse-password"
+    }
+    // Batches ClickHouse couldn't take yet; the image pre-creates /app/spill for its nonroot user.
+    mounts {
+      new Mount { source = "ingest-spill"; target = "/app/spill" }
+    }
+    http = new Http {
+      port = 8081
+      healthPath = "/health"
+    }
+    dependsOn { "clickhouse" }
+  }
+}
+
+volumes {
+  ["app-data"] {
+    backup = new VolumeBackup {}
+  }
+  ["ingest-spill"] {}
+}
+
+databases {
+  // orch generates the password into the `clickhouse-password` secret.
+  ["clickhouse"] = new ClickHouse {
+    // Raise this for bigger workloads; orch places it on a worker with this much memory free.
+    resources {
+      cpu = "500m"
+      memory = "2Gi"
+    }
+    backup = new DatabaseBackup {}
+  }
+}
+
+deploy {
+  // Only one process may open the app's libSQL file, so replicas are stopped before they're replaced.
+  maxSurge = 0
+  maxUnavailable = 1
+  healthDeadline = "5m"
+  autoUpdate = true
+}
