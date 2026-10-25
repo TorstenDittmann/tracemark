@@ -2,9 +2,14 @@
 import { RANGES, type Range } from '#lib/web.js';
 import { page } from '$app/state';
 
-let { current }: { current: Range } = $props();
-
-const ranges = Object.keys(RANGES) as Range[];
+let {
+	current,
+	ranges = Object.keys(RANGES) as Range[]
+}: {
+	current: Range;
+	/** The ranges to offer; all of them by default. */
+	ranges?: readonly Range[];
+} = $props();
 
 function href(range: Range): string {
 	const url = new URL(page.url.href);

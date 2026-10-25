@@ -14,19 +14,14 @@ import {
 import { canManage, validateProjectName } from '#lib/server/projects.js';
 import type { Actions, PageServerLoad, RequestEvent } from './$types';
 
-export const load: PageServerLoad = async ({ locals, params, url }) => {
-	if (!locals.user) redirect(303, '/login');
+export const load: PageServerLoad = async ({ params, parent, url }) => {
+	const { role } = await parent();
 	const db = getDb();
-	const row = await getOrganizationForUser(db, locals.user.id, params.id);
-	if (!row) error(404, 'Organization not found');
-	const manager = canManage(row.role);
 	const [memberList, pending] = await Promise.all([
 		listMembers(db, params.id),
-		manager ? listPendingInvitations(db, params.id) : []
+		canManage(role) ? listPendingInvitations(db, params.id) : []
 	]);
 	return {
-		organization: { id: row.organization.id, name: row.organization.name },
-		role: row.role,
 		members: memberList,
 		invitations: pending.map((i) => ({ ...i, link: `${url.origin}/invite/${i.id}` }))
 	};
