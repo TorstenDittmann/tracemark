@@ -29,6 +29,7 @@ import * as persons from './persons';
 import * as privacy from './privacy';
 import { internalUsers } from './projects';
 import { type SavedQuery, withFilterInternal } from './saved';
+import * as usage from './usage';
 import * as web from './web';
 
 export type { AiOverview, TraceFilter, TraceSummary } from './ai';
@@ -46,6 +47,7 @@ export type {
 } from './insights';
 export type { IssueDetail, IssueList, IssueSummary } from './issues';
 export type { PersonDetail } from './persons';
+export type { StorageUsage, UsageVolume } from './usage';
 export type { WebAnalytics, WebVitals } from './web';
 
 export type SavedResult =
@@ -86,6 +88,15 @@ function config(): ClickHouseConfig {
 
 export const projectEventStats = (projectId: string) =>
 	events.projectEventStats(config(), projectId);
+
+// Usage counts everything stored, internal users included, since it is about volume and disk.
+
+export const usageVolume = (
+	projectIds: string[],
+	options: Parameters<typeof usage.usageVolume>[2]
+) => usage.usageVolume(config(), projectIds, options);
+
+export const storageUsage = (projectIds: string[]) => usage.storageUsage(config(), projectIds);
 
 export const deleteProjectEvents = (projectId: string) =>
 	events.deleteProjectEvents(config(), projectId);

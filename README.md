@@ -33,6 +33,7 @@ SDKs ──POST /e──▶ ingest (Rust) ──batched inserts──▶ ClickHo
 | `docs/ingest-protocol.md` | The wire protocol between SDKs and ingest |
 | `docs/privacy.md` | Data retention, personal data export and deletion |
 | `docs/internal-users.md` | Filtering out your own team's traffic |
+| `docs/usage.md` | The Usage page: event volume per project and ClickHouse disk use |
 | `docs/kubernetes.md` | Running tracemark on Kubernetes with the Helm chart |
 | `deploy/helm/tracemark/` | The Helm chart |
 | `docs/frameworks.md` | React, Next.js, Svelte, SvelteKit, Vue, Nuxt, Astro and Node server integrations |
