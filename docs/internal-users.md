@@ -34,8 +34,8 @@ With the setting on, internal users are left out of:
 - error issues, the issue page and its counts,
 - alerts: event counts, AI cost, and new or regressed issues.
 
-Insights (trends, funnels, retention, paths and lifecycle) have their own **Filter internal
-users** toggle. It starts at the project's setting, and a saved insight keeps the choice it was
+Insights (trends, funnels, retention, paths, lifecycle and stickiness) have their own **Filter
+internal users** toggle. It starts at the project's setting, and a saved insight keeps the choice it was
 saved with, also on dashboards and in the [query API](query-api.md), which takes an optional
 `filterInternal` boolean. Insights saved before the setting existed follow the project's setting.
 With no rules the toggle is off and links to the settings.

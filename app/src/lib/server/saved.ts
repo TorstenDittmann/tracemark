@@ -7,8 +7,10 @@ import {
 	parseLifecycle,
 	parsePaths,
 	parseRetention,
+	parseStickiness,
 	parseTrends,
 	type RetentionQuery,
+	type StickinessQuery,
 	type TrendsQuery
 } from '../insights';
 import type { Db } from './db/client';
@@ -21,14 +23,16 @@ export type SavedQuery =
 	| { kind: 'funnel'; query: FunnelQuery }
 	| { kind: 'retention'; query: RetentionQuery }
 	| { kind: 'paths'; query: PathsQuery }
-	| { kind: 'lifecycle'; query: LifecycleQuery };
+	| { kind: 'lifecycle'; query: LifecycleQuery }
+	| { kind: 'stickiness'; query: StickinessQuery };
 
 export const INSIGHT_KIND_VALUES = [
 	'trends',
 	'funnel',
 	'retention',
 	'paths',
-	'lifecycle'
+	'lifecycle',
+	'stickiness'
 ] as const satisfies readonly InsightKind[];
 
 export function isInsightKind(value: unknown): value is InsightKind {
@@ -52,6 +56,8 @@ export function parseSavedQuery(kind: InsightKind, json: string): SavedQuery {
 			return { kind, query: parsePaths(raw) };
 		case 'lifecycle':
 			return { kind, query: parseLifecycle(raw) };
+		case 'stickiness':
+			return { kind, query: parseStickiness(raw) };
 	}
 }
 

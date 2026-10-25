@@ -13,7 +13,7 @@ import {
 import { experiments, featureFlags, insights, organizations, users } from './db/schema';
 import { experimentCounts } from './experiment-results';
 import { listGroups } from './groups';
-import { lifecycle, paths } from './insights';
+import { lifecycle, paths, stickiness } from './insights';
 import { listIssues } from './issues';
 import { addMockData, MOCK_FLAGS, MOCK_INSIGHTS, removeMockData } from './mock-data';
 import { createProject } from './projects';
@@ -77,7 +77,7 @@ describe.skipIf(!clickhouseTestUrl)('mock data', () => {
 		expect(ai.modelScores.length).toBeGreaterThan(2);
 		expect((await listTraces(config, project.id, { range: '30d', now })).length).toBeGreaterThan(0);
 
-		// The saved paths and lifecycle insights have something to show.
+		// The saved paths, lifecycle and stickiness insights have something to show.
 		const flows = await paths(
 			config,
 			project.id,
@@ -95,6 +95,23 @@ describe.skipIf(!clickhouseTestUrl)('mock data', () => {
 		);
 		for (const status of ['new', 'returning', 'resurrecting', 'dormant'] as const) {
 			expect(states.counts[status].some((v) => v !== 0)).toBe(true);
+		}
+		const sticky = await stickiness(
+			config,
+			project.id,
+			{
+				events: ['$pageview', 'insight_viewed'],
+				interval: 'week',
+				range: '30d',
+				cumulative: false,
+				filters: []
+			},
+			now
+		);
+		for (const line of sticky.lines) {
+			expect(line.people).toBeGreaterThan(5);
+			// Some people come back on more than one week.
+			expect(line.counts.slice(1).some((n) => n > 0)).toBe(true);
 		}
 
 		const groups = await listGroups(config, project.id, 'company', { now });

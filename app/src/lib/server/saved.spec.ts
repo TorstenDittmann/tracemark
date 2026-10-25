@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_FUNNEL, DEFAULT_LIFECYCLE, DEFAULT_PATHS, DEFAULT_TRENDS } from '../insights';
+import {
+	DEFAULT_FUNNEL,
+	DEFAULT_LIFECYCLE,
+	DEFAULT_PATHS,
+	DEFAULT_STICKINESS,
+	DEFAULT_TRENDS
+} from '../insights';
 import { dashboardInsights, insights, organizations, users } from './db/schema';
 import { createProject, deleteProject } from './projects';
 import {
@@ -61,6 +67,10 @@ describe('saved insights', () => {
 			kind: 'lifecycle',
 			query: DEFAULT_LIFECYCLE
 		});
+		expect(parseSavedQuery('stickiness', '{"events":["login"],"cumulative":true}')).toEqual({
+			kind: 'stickiness',
+			query: { ...DEFAULT_STICKINESS, events: ['login'], cumulative: true }
+		});
 	});
 
 	it('are scoped to their project', async () => {
@@ -100,7 +110,7 @@ describe('saved insights', () => {
 			.values({
 				projectId: project.id,
 				name: 'Bad',
-				kind: 'stickiness' as 'trends',
+				kind: 'heatmap' as 'trends',
 				query: '{}',
 				createdBy: user.id
 			})

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_FUNNEL, DEFAULT_LIFECYCLE, DEFAULT_PATHS } from '../insights';
+import { DEFAULT_FUNNEL, DEFAULT_LIFECYCLE, DEFAULT_PATHS, DEFAULT_STICKINESS } from '../insights';
 import {
 	bearerKey,
 	eventsResponse,
@@ -39,6 +39,12 @@ describe('query API requests', () => {
 			kind: 'lifecycle',
 			query: { ...DEFAULT_LIFECYCLE, event: 'login', interval: 'week' }
 		});
+		expect(
+			parseQueryBody({ kind: 'stickiness', query: { events: ['login'], range: '90d' } })
+		).toEqual({
+			kind: 'stickiness',
+			query: { ...DEFAULT_STICKINESS, events: ['login'], interval: 'week', range: '90d' }
+		});
 		expect(parseQueryBody({ kind: 'paths', filterInternal: false }).query.filterInternal).toBe(
 			false
 		);
@@ -53,7 +59,7 @@ describe('query API requests', () => {
 		expect(() => parseQueryBody({ kind: 'trends', filterInternal: 'yes' })).toThrow(
 			/filterInternal must be true or false/
 		);
-		expect(() => parseQueryBody({ kind: 'stickiness' })).toThrow(InvalidRequest);
+		expect(() => parseQueryBody({ kind: 'heatmap' })).toThrow(InvalidRequest);
 		expect(() => parseQueryBody({ kind: 'trends', query: [] })).toThrow(/query must be an object/);
 		expect(() => parseQueryBody('trends')).toThrow(/JSON object/);
 	});

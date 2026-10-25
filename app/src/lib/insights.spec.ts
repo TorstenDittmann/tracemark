@@ -4,6 +4,7 @@ import {
 	DEFAULT_LIFECYCLE,
 	DEFAULT_PATHS,
 	DEFAULT_RETENTION,
+	DEFAULT_STICKINESS,
 	DEFAULT_TRENDS,
 	MAX_SERIES,
 	MAX_STEPS,
@@ -15,6 +16,8 @@ import {
 	parsePathsParam,
 	parseRetention,
 	parseRetentionParam,
+	parseStickiness,
+	parseStickinessParam,
 	parseTrends,
 	parseTrendsParam
 } from './insights';
@@ -106,6 +109,7 @@ describe('filterInternal', () => {
 		expect(parseRetention({ filterInternal: true }).filterInternal).toBe(true);
 		expect(parsePaths({ filterInternal: false }).filterInternal).toBe(false);
 		expect(parseLifecycle({ filterInternal: true }).filterInternal).toBe(true);
+		expect(parseStickiness({ filterInternal: false }).filterInternal).toBe(false);
 		expect('filterInternal' in parseTrends({ filterInternal: 'true' })).toBe(false);
 		expect('filterInternal' in parseFunnel({})).toBe(false);
 	});
@@ -156,5 +160,33 @@ describe('parseLifecycle', () => {
 		expect(parseLifecycle({ ...query, range: '24h' }).range).toBe('7d');
 		expect(parseLifecycle({ event: 5, interval: 'year' })).toEqual(DEFAULT_LIFECYCLE);
 		expect(parseLifecycleParam('{')).toEqual(DEFAULT_LIFECYCLE);
+	});
+});
+
+describe('parseStickiness', () => {
+	it('keeps a valid query and has no hourly range', () => {
+		const query = {
+			events: ['login', 'purchase'],
+			interval: 'week',
+			range: '30d',
+			cumulative: true,
+			filters: []
+		};
+		expect(parseStickiness(query)).toEqual(query);
+		expect(parseStickiness({ ...query, range: '24h' }).range).toBe('7d');
+		expect(parseStickiness({ events: [5], interval: 'month' })).toEqual(DEFAULT_STICKINESS);
+		expect(parseStickinessParam('{')).toEqual(DEFAULT_STICKINESS);
+	});
+
+	it('picks the interval from the range when none is given', () => {
+		expect(parseStickiness({ range: '7d' }).interval).toBe('day');
+		expect(parseStickiness({ range: '90d' }).interval).toBe('week');
+		expect(parseStickiness({ range: '90d', interval: 'day' }).interval).toBe('day');
+	});
+
+	it('caps events and only takes a true cumulative', () => {
+		const events = Array.from({ length: 8 }, (_, i) => `e${i}`);
+		expect(parseStickiness({ events }).events).toHaveLength(MAX_SERIES);
+		expect(parseStickiness({ cumulative: 'yes' }).cumulative).toBe(false);
 	});
 });
